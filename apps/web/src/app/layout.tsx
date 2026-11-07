@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'RANDEVO – Profesyonel Randevu Yönetim Platformu',
-  description: 'Berber, kuaför, oto servis, özel ders ve tüm randevulu işletmeler için yeni nesil randevu ve yönetim sistemi.',
+  title: 'RANDEVORY – Profesyonel Randevu ve Hizmet Yönetim Platformu',
+  description: 'İşini kolaylaştır, zamanını kazan. Berber, kuaför, oto servis, klinik, özel ders ve tüm randevulu işletmeler için yeni nesil randevu ve yönetim sistemi.',
+  applicationName: 'RANDEVORY',
+  keywords: ['randevu sistemi', 'RANDEVORY', 'online randevu', 'kuaför randevu', 'oto bakım randevu', 'işletme yönetimi'],
 };
 
 export default function RootLayout({

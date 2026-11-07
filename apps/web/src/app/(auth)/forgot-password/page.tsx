@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { Calendar, ArrowLeft, Mail, AlertCircle, CheckCircle } from 'lucide-react';
+import { useResendCooldown } from '@/lib/use-resend-cooldown';
+import { BrandLogo } from '@/components/brand-logo';
+import { ArrowLeft, Mail, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -11,13 +13,27 @@ export default function ForgotPasswordPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // 60 saniyelik SMTP cooldown koruması
+  const { cooldown, canResend, startCooldown } = useResendCooldown('forgot_resend', 60);
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
-    setLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      setErrorMessage('Lütfen e-posta adresinizi girin.');
+      return;
+    }
+
+    if (!canResend) {
+      setErrorMessage(`Güvenliğiniz için lütfen ${cooldown} saniye bekleyin.`);
+      return;
+    }
+
+    startCooldown();
+    setLoading(true);
 
     if (!isSupabaseConfigured()) {
       setTimeout(() => {
@@ -34,8 +50,14 @@ export default function ForgotPasswordPage() {
       });
 
       if (error) {
-        if (error.message.toLowerCase().includes('rate limit')) {
-          setErrorMessage('Çok fazla sıfırlama talebi yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.');
+        const lower = error.message.toLowerCase();
+        if (
+          lower.includes('rate limit') ||
+          lower.includes('too many requests') ||
+          lower.includes('over_email_send_rate_limit') ||
+          lower.includes('security purposes')
+        ) {
+          setErrorMessage('E-posta gönderim sınırı aşıldı. Güvenliğiniz için lütfen biraz bekledikten sonra tekrar deneyin.');
         } else {
           setErrorMessage(error.message || 'Sıfırlama e-postası gönderilemedi.');
         }
@@ -43,6 +65,7 @@ export default function ForgotPasswordPage() {
         return;
       }
 
+      startCooldown();
       setSuccessMessage('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.');
       setLoading(false);
     } catch (err: any) {
@@ -54,12 +77,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900">RANDEVO</span>
-        </Link>
+        <BrandLogo size="lg" showSlogan={true} className="justify-center" />
         <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900">
           Şifrenizi mi Unuttunuz?
         </h2>
@@ -102,10 +120,19 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50"
+              disabled={loading || !canResend}
+              className="w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder'}
+              {loading ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Gönderiliyor...
+                </>
+              ) : cooldown > 0 ? (
+                `Sıfırlama Bağlantısı Gönder (${cooldown}s)`
+              ) : (
+                'Sıfırlama Bağlantısı Gönder'
+              )}
             </button>
           </form>
 

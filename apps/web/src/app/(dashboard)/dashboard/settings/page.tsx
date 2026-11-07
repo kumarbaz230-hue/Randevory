@@ -138,7 +138,7 @@ export default function DashboardSettingsPage() {
               <label className="block font-semibold text-slate-700 mb-1">Özel Bağlantı Kodu (Slug)</label>
               <div className="flex items-center">
                 <span className="px-3 py-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 text-slate-500 font-mono">
-                  randevo.com/
+                  randevory.com/
                 </span>
                 <input
                   type="text"

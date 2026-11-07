@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useResendCooldown } from '@/lib/use-resend-cooldown';
+import { BrandLogo } from '@/components/brand-logo';
 import {
-  Calendar,
   ArrowRight,
   Lock,
   Mail,
@@ -16,6 +17,7 @@ import {
   Eye,
   EyeOff,
   Inbox,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -30,6 +32,56 @@ export default function RegisterPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
+
+  // Doğrulama e-postasını tekrar gönderme ve 60 saniyelik cooldown sayacı
+  const { cooldown, canResend, startCooldown } = useResendCooldown('signup_resend', 60);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendStatusMessage, setResendStatusMessage] = useState('');
+  const [resendErrorMessage, setResendErrorMessage] = useState('');
+
+  const handleResendConfirmation = async () => {
+    if (!registeredEmail) return;
+    if (!canResend) {
+      setResendErrorMessage(`Güvenliğiniz için lütfen ${cooldown} saniye bekleyin.`);
+      return;
+    }
+
+    setResendingEmail(true);
+    setResendStatusMessage('');
+    setResendErrorMessage('');
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: registeredEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        const lower = error.message.toLowerCase();
+        if (
+          lower.includes('rate limit') ||
+          lower.includes('too many requests') ||
+          lower.includes('over_email_send_rate_limit') ||
+          lower.includes('security purposes')
+        ) {
+          setResendErrorMessage('E-posta gönderim sınırı aşıldı. Güvenliğiniz için lütfen biraz bekledikten sonra tekrar deneyin.');
+        } else {
+          setResendErrorMessage(error.message || 'Onay e-postası tekrar gönderilemedi.');
+        }
+      } else {
+        startCooldown();
+        setResendStatusMessage(`Yeni onay bağlantısı ${registeredEmail} adresine iletildi. Lütfen gelen kutunuzu kontrol edin.`);
+      }
+    } catch (err: any) {
+      setResendErrorMessage(err.message || 'Bir hata meydana geldi.');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,12 +158,7 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-          <Link href="/" className="inline-flex items-center space-x-2">
-            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <span className="text-2xl font-black tracking-tight text-slate-900">RANDEVO</span>
-          </Link>
+          <BrandLogo size="lg" showSlogan={true} className="justify-center" />
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
@@ -123,19 +170,51 @@ export default function RegisterPage() {
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
               <span className="font-semibold text-slate-900">{registeredEmail}</span> adresinize bir doğrulama bağlantısı gönderdik.
             </p>
+
             <div className="my-5 p-4 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs text-slate-600 space-y-1.5">
               <div className="font-semibold text-slate-800">Sonraki Adımlar:</div>
-              <div>1. E-posta gelen kutunuzu (ve spam klasörünü) kontrol edin.</div>
+              <div>1. E-posta gelen kutunuzu (ve gereksiz/spam klasörünü) kontrol edin.</div>
               <div>2. Size gönderilen onay bağlantısına tıklayın.</div>
               <div>3. Onay sonrasında işletmenizi tanımlamak için giriş yapın.</div>
             </div>
 
-            <Link
-              href="/login"
-              className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 flex items-center justify-center gap-2"
-            >
-              Giriş Ekranına Git <ArrowRight className="w-4 h-4" />
-            </Link>
+            {resendStatusMessage && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2 text-left">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span>{resendStatusMessage}</span>
+              </div>
+            )}
+
+            {resendErrorMessage && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 text-left">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{resendErrorMessage}</span>
+              </div>
+            )}
+
+            {/* Tekrar Gönder Butonu (60s Cooldown Korumalı) */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resendingEmail || !canResend}
+                className="w-full py-2.5 px-4 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${resendingEmail ? 'animate-spin' : ''}`} />
+                {resendingEmail
+                  ? 'Gönderiliyor...'
+                  : cooldown > 0
+                  ? `Doğrulama E-postasını Tekrar Gönder (${cooldown}s)`
+                  : 'Doğrulama E-postasını Tekrar Gönder'}
+              </button>
+
+              <Link
+                href="/login"
+                className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 flex items-center justify-center gap-2"
+              >
+                Giriş Ekranına Git <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -145,12 +224,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900">RANDEVO</span>
-        </Link>
+        <BrandLogo size="lg" showSlogan={true} className="justify-center" />
         <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900">
           İşletme Hesabı Oluşturun
         </h2>

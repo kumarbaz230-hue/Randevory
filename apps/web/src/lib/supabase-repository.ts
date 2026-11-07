@@ -3,7 +3,7 @@ import { store } from './data-store';
 import { Appointment, Business, BusinessSector, Customer, Service, Staff, WorkingHour } from '@/types';
 
 /**
- * RANDEVO Canlı Veri Katmanı (Supabase & Multi-Tenant PostgreSQL)
+ * RANDEVORY Canlı Veri Katmanı (Supabase & Multi-Tenant PostgreSQL)
  */
 export class DataRepository {
   private static instance: DataRepository;

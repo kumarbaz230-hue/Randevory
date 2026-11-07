@@ -727,6 +727,13 @@ export default function BusinessPublicPage() {
             </p>
           </div>
         </div>
+
+        {/* Powered by RANDEVORY Footer */}
+        <footer className="mt-10 py-6 text-center text-xs text-slate-400 border-t border-slate-200/80">
+          <p>
+            Güvenli Randevu Altyapısı – <span className="font-bold text-slate-600">RANDEVORY</span> • <em>İşini kolaylaştır, zamanını kazan.</em>
+          </p>
+        </footer>
       </main>
     </div>
   );

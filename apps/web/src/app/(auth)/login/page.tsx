@@ -4,8 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useResendCooldown } from '@/lib/use-resend-cooldown';
+import { BrandLogo } from '@/components/brand-logo';
 import {
-  Calendar,
   ArrowRight,
   Lock,
   Mail,
@@ -28,6 +29,9 @@ function LoginForm() {
   const [successMessage, setSuccessMessage] = useState('');
   const [showResendButton, setShowResendButton] = useState(false);
 
+  // 60 saniyelik SMTP cooldown sayacı
+  const { cooldown, canResend, startCooldown } = useResendCooldown('login_resend', 60);
+
   useEffect(() => {
     const errorParam = searchParams.get('error');
     const confirmedParam = searchParams.get('confirmed');
@@ -48,8 +52,13 @@ function LoginForm() {
       setShowResendButton(true);
       return 'E-posta adresiniz henüz onaylanmamış. Lütfen gelen kutunuza gönderilen doğrulama bağlantısına tıklayın.';
     }
-    if (lower.includes('rate limit') || lower.includes('too many requests')) {
-      return 'Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.';
+    if (
+      lower.includes('rate limit') ||
+      lower.includes('too many requests') ||
+      lower.includes('over_email_send_rate_limit') ||
+      lower.includes('security purposes')
+    ) {
+      return 'E-posta gönderim sınırı aşıldı. Güvenliğiniz için lütfen biraz bekledikten sonra tekrar deneyin.';
     }
     if (lower.includes('user not found')) {
       return 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.';
@@ -64,7 +73,13 @@ function LoginForm() {
       return;
     }
 
+    if (!canResend) {
+      setErrorMessage(`Güvenliğiniz için lütfen ${cooldown} saniye bekleyin.`);
+      return;
+    }
+
     setResendingEmail(true);
+    setErrorMessage('');
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resend({
@@ -78,6 +93,7 @@ function LoginForm() {
       if (error) {
         setErrorMessage(mapSupabaseError(error.message));
       } else {
+        startCooldown();
         setSuccessMessage(`Doğrulama bağlantısı ${cleanEmail} adresine tekrar gönderildi. Lütfen gelen kutunuzu kontrol edin.`);
         setShowResendButton(false);
       }
@@ -152,12 +168,7 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link href="/" className="inline-flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900">RANDEVO</span>
-        </Link>
+        <BrandLogo size="lg" showSlogan={true} className="justify-center" />
         <h2 className="mt-6 text-2xl font-bold tracking-tight text-slate-900">
           İşletme Girişi
         </h2>
@@ -178,11 +189,15 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={handleResendConfirmation}
-                  disabled={resendingEmail}
-                  className="w-full mt-2 py-2 px-3 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                  disabled={resendingEmail || !canResend}
+                  className="w-full mt-2 py-2 px-3 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${resendingEmail ? 'animate-spin' : ''}`} />
-                  {resendingEmail ? 'Gönderiliyor...' : 'Doğrulama E-postasını Tekrar Gönder'}
+                  {resendingEmail
+                    ? 'Gönderiliyor...'
+                    : cooldown > 0
+                    ? `Doğrulama E-postasını Tekrar Gönder (${cooldown}s)`
+                    : 'Doğrulama E-postasını Tekrar Gönder'}
                 </button>
               )}
             </div>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand-logo';
 import {
   Calendar,
   Clock,
@@ -30,17 +31,7 @@ export default function HomePage() {
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-xl font-bold tracking-tight text-slate-900">RANDEVO</span>
-              <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-semibold border border-brand-200">
-                PRO
-              </span>
-            </div>
-          </div>
+          <BrandLogo size="md" showBadge={true} showSlogan={false} />
 
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
             <a href="#features" className="hover:text-slate-900 transition-colors">Özellikler</a>
@@ -205,7 +196,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Özel Müşteri Sayfası</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                İşletmenize özel bağlantı (randevo.com/salonunuz). Müşterileriniz üyelik zorunluluğu olmadan saniyeler içinde randevu alsın.
+                İşletmenize özel bağlantı (randevory.com/salonunuz). Müşterileriniz üyelik zorunluluğu olmadan saniyeler içinde randevu alsın.
               </p>
             </div>
 
@@ -340,14 +331,9 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-12 mt-auto border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold">
-              R
-            </div>
-            <span className="text-lg font-bold text-white tracking-wider">RANDEVO</span>
-          </div>
-          <p className="text-xs text-slate-500">
-            &copy; {new Date().getFullYear()} RANDEVO. Tüm hakları saklıdır. Profesyonel Randevu ve İşletme Yönetim Platformu.
+          <BrandLogo size="md" variant="dark" showSlogan={true} />
+          <p className="text-xs text-slate-500 text-center md:text-left">
+            &copy; {new Date().getFullYear()} RANDEVORY. Tüm hakları saklıdır. Profesyonel Randevu ve Hizmet Yönetim Platformu.
           </p>
           <div className="flex items-center space-x-6 text-sm">
             <Link href="/salon-prestij" className="hover:text-white transition-colors">Örnek Randevu Sayfası</Link>

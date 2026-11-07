@@ -262,7 +262,7 @@ export default function DashboardOverviewPage() {
             </p>
 
             <div className="mt-4 p-2.5 rounded-xl bg-white/10 backdrop-blur border border-white/20 text-xs font-mono break-all flex items-center justify-between">
-              <span>randevo.com/{business?.slug}</span>
+              <span>randevory.com/{business?.slug}</span>
             </div>
 
             <div className="mt-4 flex gap-2">

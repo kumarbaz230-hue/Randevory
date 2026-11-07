@@ -1,6 +1,8 @@
-# RANDEVO – Profesyonel Randevu Yönetim Platformu
+# RANDEVORY – Profesyonel Randevu ve Hizmet Yönetim Platformu
 
-RANDEVO, berberlerden oto servislere, özel ders merkezlerinden güzellik salonlarına kadar her sektörden randevulu işletmenin operasyonlarını, randevularını, personellerini ve müşterilerini yönetebileceği modern ve ölçeklenebilir SaaS platformudur.
+> **Slogan:** "İşini kolaylaştır, zamanını kazan."
+
+RANDEVORY, berberlerden oto servislere, özel ders merkezlerinden güzellik salonlarına kadar her sektörden randevulu ve adrese hizmet veren işletmelerin operasyonlarını, randevularını, personellerini ve müşterilerini yönetebileceği modern ve ölçeklenebilir SaaS platformudur.
 
 ---
 

@@ -102,7 +102,7 @@ export default function CreateBusinessPage() {
             <label className="block font-semibold text-slate-700 mb-1">Özel Randevu Bağlantı Adresi (Slug) *</label>
             <div className="flex items-center">
               <span className="px-3 py-2.5 rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 text-slate-500 font-mono text-xs">
-                randevo.com/
+                randevory.com/
               </span>
               <input
                 type="text"

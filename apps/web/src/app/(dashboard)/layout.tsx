@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { repo } from '@/lib/supabase-repository';
 import { Business } from '@/types';
+import { BrandLogo } from '@/components/brand-logo';
 import {
   Calendar,
   LayoutDashboard,
@@ -78,15 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 shrink-0 border-r border-slate-800">
         {/* Brand */}
         <div className="h-16 px-6 flex items-center justify-between border-b border-slate-800">
-          <Link href="/" className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold shadow-sm">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <span className="font-extrabold text-white tracking-wider text-base">RANDEVO</span>
-          </Link>
-          <span className="text-[10px] bg-brand-500/20 text-brand-400 font-semibold px-2 py-0.5 rounded-full border border-brand-500/30">
-            PRO
-          </span>
+          <BrandLogo size="sm" variant="dark" showBadge={true} showSlogan={false} />
         </div>
 
         {/* Business Selector Preview */}
@@ -160,12 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Mobile Header */}
       <header className="md:hidden bg-slate-900 text-white h-16 px-4 flex items-center justify-between sticky top-0 z-40 border-b border-slate-800">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold">
-            <Calendar className="w-4 h-4" />
-          </div>
-          <span className="font-bold text-white">RANDEVO</span>
-        </Link>
+        <BrandLogo size="sm" variant="dark" showBadge={false} showSlogan={false} />
         <div className="flex items-center gap-2">
           <Link
             href="/salon-prestij"

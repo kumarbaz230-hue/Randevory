@@ -1,7 +1,7 @@
 import { Appointment, Business, Service, Staff, TimeSlot, WorkingHour } from '@/types';
 
 /**
- * RANDEVO Slot Hesaplama ve Çakışma Önleme Motoru
+ * RANDEVORY Slot Hesaplama ve Çakışma Önleme Motoru
  * Bu motor hem istemci hem de sunucu tarafında aynı mantıkla çalışarak
  * çakışan randevuların oluşmasını 0'a indirir.
  */
