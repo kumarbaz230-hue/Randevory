@@ -91,8 +91,14 @@ export default function DashboardCalendarPage() {
     });
   }, [appointments, currentDate, selectedStaffFilter]);
 
-  // Hourly timeline from 09:00 to 19:00
-  const hours = Array.from({ length: 11 }, (_, i) => i + 9);
+  // Hourly timeline from 08:00 to 23:00 (plus dynamically includes any appointment hour)
+  const hours = useMemo(() => {
+    const baseHours = new Set<number>(Array.from({ length: 16 }, (_, i) => i + 8)); // 08:00 .. 23:00
+    dayAppointments.forEach((a) => {
+      baseHours.add(new Date(a.start_time).getHours());
+    });
+    return Array.from(baseHours).sort((a, b) => a - b);
+  }, [dayAppointments]);
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,15 +269,23 @@ export default function DashboardCalendarPage() {
                           <div className="text-[10px] text-slate-400 mt-0.5 flex items-center justify-between">
                             <span>Uzman: {staffMember?.name}</span>
                             <span
-                              className={`font-semibold capitalize ${
+                              className={`font-semibold ${
                                 apt.status === 'confirmed'
                                   ? 'text-emerald-600'
                                   : apt.status === 'pending'
                                   ? 'text-amber-600'
-                                  : 'text-slate-400'
+                                  : apt.status === 'completed'
+                                  ? 'text-blue-600'
+                                  : 'text-rose-500'
                               }`}
                             >
-                              {apt.status}
+                              {apt.status === 'confirmed'
+                                ? 'Onaylandı'
+                                : apt.status === 'pending'
+                                ? 'Onay Bekliyor'
+                                : apt.status === 'completed'
+                                ? 'Tamamlandı'
+                                : 'İptal Edildi'}
                             </span>
                           </div>
                         </div>
@@ -337,8 +351,24 @@ export default function DashboardCalendarPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Durum:</span>
-                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 uppercase">
-                  {selectedAptDetail.status}
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    selectedAptDetail.status === 'confirmed'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : selectedAptDetail.status === 'pending'
+                      ? 'bg-amber-100 text-amber-800'
+                      : selectedAptDetail.status === 'completed'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-rose-100 text-rose-700'
+                  }`}
+                >
+                  {selectedAptDetail.status === 'confirmed'
+                    ? 'Onaylandı'
+                    : selectedAptDetail.status === 'pending'
+                    ? '⏳ Onay Bekliyor'
+                    : selectedAptDetail.status === 'completed'
+                    ? 'Tamamlandı'
+                    : 'İptal Edildi'}
                 </span>
               </div>
               {selectedAptDetail.customer_notes && (
@@ -392,10 +422,18 @@ export default function DashboardCalendarPage() {
                 </a>
               </div>
               <div className="flex gap-2">
-                {selectedAptDetail.status !== 'completed' && selectedAptDetail.status !== 'cancelled' && (
+                {selectedAptDetail.status === 'pending' && (
+                  <button
+                    onClick={() => handleStatusChange(selectedAptDetail.id, 'confirmed')}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-sm flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Randevuyu Onayla
+                  </button>
+                )}
+                {selectedAptDetail.status === 'confirmed' && (
                   <button
                     onClick={() => handleStatusChange(selectedAptDetail.id, 'completed')}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-sm"
+                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm"
                   >
                     Tamamlandı Olarak İşaretle
                   </button>

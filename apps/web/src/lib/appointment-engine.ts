@@ -6,16 +6,30 @@ import { Appointment, Business, Service, Staff, TimeSlot, WorkingHour } from '@/
  * çakışan randevuların oluşmasını 0'a indirir.
  */
 
-// Saat string'ini (HH:mm) dakikaya çevirir (Örn: "09:30" -> 570)
+// Saat string'ini (HH:mm veya HH:mm:ss) dakikaya çevirir (Örn: "09:30" -> 570)
 export function timeToMinutes(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + (minutes || 0);
+  const [hours, minutes] = (timeStr || '00:00').split(':').map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
 }
 
-// Dakikayı saat string'ine (HH:mm) çevirir (Örn: 570 -> "09:30")
+// Kapanış saatini dakikaya çevirir: "00:00" (gece yarısı) veya açılıştan küçük saatleri (gece 01:00, 02:00 vb.)
+// gün sonu / gece mesaisi olarak doğru hesaplar (Örn: open 09:00, close 00:00 -> 1440 dk = 24:00)
+export function closeTimeToMinutes(closeTimeStr: string, openMinutes: number): number {
+  const rawClose = timeToMinutes(closeTimeStr);
+  if (rawClose === 0) {
+    return 24 * 60; // 00:00 gece yarısı = 1440 dakika
+  }
+  if (rawClose <= openMinutes) {
+    return rawClose + 24 * 60; // Örn: 09:00 - 02:00 gece mesaisi
+  }
+  return rawClose;
+}
+
+// Dakikayı saat string'ine (HH:mm) çevirir (Örn: 570 -> "09:30", 1440 -> "00:00")
 export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  const normalized = ((minutes % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalized / 60);
+  const mins = normalized % 60;
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
@@ -61,7 +75,7 @@ export function generateAvailableSlots(params: {
   }
 
   const openMinutes = timeToMinutes(daySchedule.open_time);
-  const closeMinutes = timeToMinutes(daySchedule.close_time);
+  const closeMinutes = closeTimeToMinutes(daySchedule.close_time, openMinutes);
   const serviceDuration = service.duration_minutes + (service.buffer_after_minutes || 0);
 
   const availableSlots: TimeSlot[] = [];

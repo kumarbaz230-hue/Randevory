@@ -294,7 +294,7 @@ export default function BusinessPublicPage() {
         start_time: selectedSlot.isoStartTime,
         end_time: selectedSlot.isoEndTime,
         total_price: selectedService.price,
-        status: business.settings.auto_confirm_appointments ? 'confirmed' : 'pending',
+        status: business.settings?.auto_confirm_appointments === false ? 'pending' : 'confirmed',
       });
 
       saveCustomerIdentity(customerName, customerPhone);
@@ -1015,16 +1015,33 @@ export default function BusinessPublicPage() {
               {/* STEP 5: SUCCESS CONFIRMATION SCREEN */}
               {step === 5 && createdAppointment && (
                 <div className="py-6 text-center max-w-md mx-auto">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 className="w-10 h-10" />
+                  <div
+                    className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                      createdAppointment.status === 'cancelled'
+                        ? 'bg-rose-100 text-rose-600'
+                        : createdAppointment.status === 'pending'
+                        ? 'bg-amber-100 text-amber-600'
+                        : 'bg-emerald-100 text-emerald-600'
+                    }`}
+                  >
+                    {createdAppointment.status === 'pending' ? (
+                      <Clock className="w-10 h-10" />
+                    ) : (
+                      <CheckCircle2 className="w-10 h-10" />
+                    )}
                   </div>
                   <h2 className="text-2xl font-bold text-slate-900">
                     {createdAppointment.status === 'cancelled'
                       ? 'Randevunuz İptal Edildi'
+                      : createdAppointment.status === 'pending'
+                      ? 'Randevu Talebiniz Alındı! (Onay Bekliyor)'
                       : 'Randevunuz Başarıyla Alındı!'}
                   </h2>
                   <p className="text-sm text-slate-600 mt-2">
-                    Sayın <span className="font-semibold text-slate-900">{customerName}</span>, randevu detaylarınız aşağıdadır. İstediğiniz zaman telefon numaranızla randevunuzu sorgulayabilir, iptal edebilir veya işletmeye mesaj yazabilirsiniz.
+                    Sayın <span className="font-semibold text-slate-900">{customerName}</span>,{' '}
+                    {createdAppointment.status === 'pending'
+                      ? 'randevunuz oluşturuldu ve işletme onayına iletildi. İşletme onayladığında durumunuz "Onaylandı" olarak güncellenecektir.'
+                      : 'randevu detaylarınız aşağıdadır. İstediğiniz zaman telefon numaranızla randevunuzu sorgulayabilir, iptal edebilir veya işletmeye mesaj yazabilirsiniz.'}
                   </p>
 
                   <div className="mt-6 p-5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-sm space-y-2.5">
@@ -1040,10 +1057,16 @@ export default function BusinessPublicPage() {
                         className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                           createdAppointment.status === 'cancelled'
                             ? 'bg-rose-100 text-rose-700'
+                            : createdAppointment.status === 'pending'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
                             : 'bg-emerald-100 text-emerald-700'
                         }`}
                       >
-                        {createdAppointment.status === 'cancelled' ? 'İptal Edildi' : 'Onaylandı'}
+                        {createdAppointment.status === 'cancelled'
+                          ? 'İptal Edildi'
+                          : createdAppointment.status === 'pending'
+                          ? '⏳ İşletme Onayı Bekliyor'
+                          : 'Onaylandı'}
                       </span>
                     </div>
                     <div className="flex justify-between">

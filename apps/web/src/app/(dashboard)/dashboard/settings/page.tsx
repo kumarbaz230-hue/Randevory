@@ -62,15 +62,21 @@ export default function DashboardSettingsPage() {
         setPhone(b.phone);
         setEmail(b.email);
         setAddress(b.address);
-        setSlotInterval(b.settings.slot_interval_minutes);
-        setAutoConfirm(b.settings.auto_confirm_appointments);
-        setCancelHours(b.settings.cancellation_deadline_hours);
+        setSlotInterval(b.settings.slot_interval_minutes ?? 30);
+        setAutoConfirm(b.settings.auto_confirm_appointments !== false);
+        setCancelHours(b.settings.cancellation_deadline_hours ?? 2);
 
         const [wh, plans] = await Promise.all([
           repo.getWorkingHours(b.id),
           repo.getSubscriptionPlans(),
         ]);
-        setWorkingHours(wh);
+        setWorkingHours(
+          wh.map((h) => ({
+            ...h,
+            open_time: (h.open_time || '09:00').slice(0, 5),
+            close_time: (h.close_time || '19:00').slice(0, 5),
+          }))
+        );
         const foundPlan = plans.find((p) => p.tier === b.subscription_plan) || plans[0] || null;
         setCurrentPlan(foundPlan);
       }
