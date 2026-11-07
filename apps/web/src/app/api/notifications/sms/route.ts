@@ -124,7 +124,27 @@ async function sendViaTwilio(phone90: string, message: string) {
 }
 
 async function sendViaWhatsAppApi(phone90: string, message: string) {
-  // 1. UltraMsg / Green-API style WhatsApp Gateway
+  // 1. Green-API (Ücretsiz Başlangıç Paketi & QR ile 1 Dakikada Bağlanan Otomatik WhatsApp Botu)
+  const greenId = process.env.GREEN_API_ID_INSTANCE;
+  const greenToken = process.env.GREEN_API_TOKEN_INSTANCE;
+  const greenHost = process.env.GREEN_API_HOST || 'https://api.green-api.com';
+  if (greenId && greenToken) {
+    const res = await fetch(
+      `${greenHost}/waInstance${greenId}/sendMessage/${greenToken}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: `${phone90}@c.us`,
+          message,
+        }),
+      }
+    );
+    const data = await res.json().catch(() => ({}));
+    return { sent: res.ok, provider: 'whatsapp_green_api', response: data };
+  }
+
+  // 2. UltraMsg WhatsApp Gateway
   const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
   const token = process.env.ULTRAMSG_TOKEN;
   if (instanceId && token) {
