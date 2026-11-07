@@ -122,3 +122,26 @@ export interface TimeSlot {
   staff_id: string;
   staff_name: string;
 }
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  tier: SubscriptionTier;
+  price_monthly: number;
+  price_yearly: number;
+  max_staff: number;
+  max_services: number;
+  max_appointments_per_month: number;
+  features: string[];
+}
+
+export interface Subscription {
+  id: string;
+  business_id: string;
+  plan_id: string;
+  status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  plan?: SubscriptionPlan;
+}

@@ -70,6 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Personel Yönetimi', href: '/dashboard/staff', icon: UserCheck },
     { name: 'Müşteriler (CRM)', href: '/dashboard/customers', icon: Users },
     { name: 'Raporlar & Gelir', href: '/dashboard/reports', icon: TrendingUp },
+    { name: 'Abonelik & Lisans', href: '/dashboard/billing', icon: CreditCard },
     { name: 'İşletme Ayarları', href: '/dashboard/settings', icon: Settings },
   ];
 

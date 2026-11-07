@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { store } from './data-store';
-import { Appointment, Business, BusinessSector, Customer, Service, Staff, WorkingHour } from '@/types';
+import { Appointment, Business, BusinessSector, Customer, Service, Staff, WorkingHour, SubscriptionPlan, Subscription, SubscriptionTier } from '@/types';
 
 /**
  * RANDEVORY Canlı Veri Katmanı (Supabase & Multi-Tenant PostgreSQL)
@@ -642,6 +642,176 @@ export class DataRepository {
       .eq('id', id);
 
     if (error) throw new Error(error.message);
+  }
+
+  // --- ABONELİK VE LİSANS YÖNETİMİ ---
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    if (!isSupabaseConfigured()) {
+      return [
+        {
+          id: 'p-free',
+          name: 'Ücretsiz Başlangıç',
+          tier: 'free',
+          price_monthly: 0,
+          price_yearly: 0,
+          max_staff: 1,
+          max_services: 5,
+          max_appointments_per_month: 50,
+          features: ['Temel Randevu Takvimi', 'Özel İşletme Linki', 'Müşteri Kayıtları'],
+        },
+        {
+          id: 'p-standard',
+          name: 'Standart Paket',
+          tier: 'standard',
+          price_monthly: 399,
+          price_yearly: 3990,
+          max_staff: 3,
+          max_services: 20,
+          max_appointments_per_month: 300,
+          features: ['3 Personel Yönetimi', 'SMS & E-posta Hatırlatma', 'Gelişmiş Takvim', 'Öncelikli Destek'],
+        },
+        {
+          id: 'p-pro',
+          name: 'Profesyonel Paket',
+          tier: 'pro',
+          price_monthly: 799,
+          price_yearly: 7990,
+          max_staff: 10,
+          max_services: 100,
+          max_appointments_per_month: 1500,
+          features: ['10 Personel', 'Finans & Gelir Raporları', 'Çoklu Şube Altyapısı', 'Özelleştirilebilir Bildirimler'],
+        },
+        {
+          id: 'p-enterprise',
+          name: 'Kurumsal Paket',
+          tier: 'enterprise',
+          price_monthly: 1499,
+          price_yearly: 14990,
+          max_staff: 999,
+          max_services: 999,
+          max_appointments_per_month: 999999,
+          features: ['Sınırsız Personel ve Hizmet', 'Özel Entegrasyonlar', 'Özel Müşteri Temsilcisi', 'VIP API Erişimi'],
+        },
+      ];
+    }
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .order('price_monthly', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data || []).map((p: any) => ({
+      ...p,
+      price_monthly: parseFloat(p.price_monthly) || 0,
+      price_yearly: parseFloat(p.price_yearly) || 0,
+      features: Array.isArray(p.features) ? p.features : [],
+    })) as SubscriptionPlan[];
+  }
+
+  async getBusinessSubscription(businessId: string): Promise<Subscription | null> {
+    if (!isSupabaseConfigured()) {
+      return null;
+    }
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*, plan:subscription_plans(*)')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Subscription fetch error:', error.message);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      ...data,
+      plan: data.plan
+        ? {
+            ...data.plan,
+            price_monthly: parseFloat(data.plan.price_monthly) || 0,
+            price_yearly: parseFloat(data.plan.price_yearly) || 0,
+          }
+        : undefined,
+    } as Subscription;
+  }
+
+  async upgradeSubscription(params: {
+    businessId: string;
+    tier: SubscriptionTier;
+    billingCycle: 'monthly' | 'yearly';
+    paymentMethod: {
+      cardHolder: string;
+      lastFour: string;
+      brand?: string;
+    };
+  }): Promise<{ success: boolean; plan: SubscriptionPlan }> {
+    const plans = await this.getSubscriptionPlans();
+    const selectedPlan = plans.find((p) => p.tier === params.tier);
+    if (!selectedPlan) {
+      throw new Error('Seçilen abonelik paketi bulunamadı.');
+    }
+
+    if (!isSupabaseConfigured()) {
+      return { success: true, plan: selectedPlan };
+    }
+
+    const supabase = createClient();
+    const now = new Date();
+    const endDate = new Date(now);
+    if (params.billingCycle === 'yearly') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    // 1. İşletmenin paketini güncelle
+    const { error: bizError } = await supabase
+      .from('businesses')
+      .update({
+        subscription_plan: params.tier,
+        updated_at: now.toISOString(),
+      })
+      .eq('id', params.businessId);
+
+    if (bizError) throw new Error(bizError.message);
+
+    // 2. Subscriptions tablosuna kayıt oluştur veya güncelle
+    const { error: subError } = await supabase
+      .from('subscriptions')
+      .upsert(
+        {
+          business_id: params.businessId,
+          plan_id: selectedPlan.id,
+          status: 'active',
+          current_period_start: now.toISOString(),
+          current_period_end: endDate.toISOString(),
+          cancel_at_period_end: false,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: 'business_id' }
+      );
+
+    if (subError) {
+      // Eğer onConflict yoksa insert deneyelim
+      await supabase.from('subscriptions').insert({
+        business_id: params.businessId,
+        plan_id: selectedPlan.id,
+        status: 'active',
+        current_period_start: now.toISOString(),
+        current_period_end: endDate.toISOString(),
+        cancel_at_period_end: false,
+      });
+    }
+
+    return { success: true, plan: selectedPlan };
   }
 }
 
