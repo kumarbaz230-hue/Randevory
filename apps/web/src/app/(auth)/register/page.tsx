@@ -18,6 +18,10 @@ import {
   EyeOff,
   Inbox,
   RefreshCw,
+  FileText,
+  ShieldCheck,
+  X,
+  Check,
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -28,6 +32,10 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [kvkkAccepted, setKvkkAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<'kvkk' | 'terms' | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState('');
@@ -86,6 +94,12 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (!kvkkAccepted || !termsAccepted) {
+      setErrorMessage('Kayıt olabilmek için lütfen KVKK Aydınlatma Metni ve Kullanıcı Sözleşmesini okuyup onaylayın.');
+      return;
+    }
+
     setLoading(true);
 
     if (password.length < 6) {
@@ -120,6 +134,9 @@ export default function RegisterPage() {
             full_name: fullName.trim(),
             phone: phone.trim(),
             role: 'business_owner',
+            kvkk_accepted: true,
+            terms_accepted: true,
+            legal_accepted_at: new Date().toISOString(),
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -137,7 +154,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // E-posta onayı gerekiyor mu kontrol et:
       if (!data.session) {
         setRegisteredEmail(cleanEmail);
         setNeedsEmailConfirmation(true);
@@ -145,7 +161,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // Oturum anında açıldıysa işletme kurulumuna yönlendir
       router.push('/create-business');
     } catch (err: any) {
       setErrorMessage(err.message || 'Bir hata meydana geldi.');
@@ -153,7 +168,6 @@ export default function RegisterPage() {
     }
   };
 
-  // E-posta Onay Bildirim Ekranı
   if (needsEmailConfirmation) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -192,7 +206,6 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Tekrar Gönder Butonu (60s Cooldown Korumalı) */}
             <div className="space-y-3">
               <button
                 type="button"
@@ -325,10 +338,51 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Zorunlu KVKK ve Kullanıcı Sözleşmesi Onay Kutuları */}
+            <div className="pt-2 space-y-2.5 border-t border-slate-100">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={kvkkAccepted}
+                  onChange={(e) => setKvkkAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 shrink-0"
+                />
+                <span className="text-[11px] text-slate-600 leading-relaxed">
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalType('kvkk')}
+                    className="font-bold text-brand-600 hover:underline"
+                  >
+                    6698 Sayılı KVKK Aydınlatma Metni ve Gizlilik Politikasını
+                  </button>{' '}
+                  okudum, kişisel verilerimin işlenmesine açık rıza veriyorum. *
+                </span>
+              </label>
+
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 shrink-0"
+                />
+                <span className="text-[11px] text-slate-600 leading-relaxed">
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalType('terms')}
+                    className="font-bold text-brand-600 hover:underline"
+                  >
+                    Kullanıcı Sözleşmesi, Platform Sorumluluk Sınırları ve Hizmet Şartlarını
+                  </button>{' '}
+                  okudum ve kabul ediyorum. *
+                </span>
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={loading || !kvkkAccepted || !termsAccepted}
+              className="w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? 'Kayıt Yapılıyor...' : 'Hesap Oluştur'}
               <ArrowRight className="w-4 h-4" />
@@ -343,6 +397,90 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
+
+      {/* Yasal Metin Okuma ve Onaylama Modalı */}
+      {legalModalType && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {legalModalType === 'kvkk' ? (
+                  <ShieldCheck className="w-5 h-5 text-brand-400" />
+                ) : (
+                  <FileText className="w-5 h-5 text-brand-400" />
+                )}
+                <h3 className="font-bold text-sm">
+                  {legalModalType === 'kvkk'
+                    ? '6698 Sayılı KVKK Aydınlatma Metni ve Açık Rıza Beyanı'
+                    : 'Kullanıcı Sözleşmesi ve Platform Sorumluluk Sınırları'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLegalModalType(null)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto text-xs text-slate-600 space-y-4 leading-relaxed">
+              {legalModalType === 'kvkk' ? (
+                <>
+                  <p>
+                    <strong>1. Veri Sorumlusu ve Veri İşleyen Sıfatı:</strong> 6698 sayılı Kişisel Verilerin Korunması Kanunu (&ldquo;KVKK&rdquo;) uyarınca; platforma üye olan İşletme Sahiplerinin üyelik verileri bakımından <strong>RANDEVORY</strong> Veri Sorumlusudur. Üye işletmelerin kendi müşterilerine ait kaydettiği veya müşterilerin randevu alırken paylaştığı veriler bakımından ise <strong>ilgili İşletme &ldquo;Veri Sorumlusu&rdquo;</strong>, RANDEVORY ise yalnızca teknik altyapı sağlayan <strong>&ldquo;Veri İşleyen&rdquo;</strong> konumundadır.
+                  </p>
+                  <p>
+                    <strong>2. İşlenen Kişisel Veriler ve Amaçları:</strong> Ad, soyad, telefon numarası, e-posta adresi, işletme bilgileri ve işlem güvenliği kayıtlarınız; üyelik oluşturulması, kimlik doğrulaması, randevu takviminin yürütülmesi, bildirimlerin gönderilmesi ve yasal yükümlülüklerin yerine getirilmesi amacıyla işlenmektedir.
+                  </p>
+                  <p>
+                    <strong>3. Üye İşletmenin KVKK Yükümlülüğü:</strong> Üye İşletme, RANDEVORY paneli üzerinden eriştiği müşteri iletişim ve randevu bilgilerini yalnızca randevu hizmetinin sunulması amacıyla kullanmayı, müşterilerin açık rızası olmaksızın üçüncü kişilerle paylaşmamayı ve KVKK mevzuatına tam uyum sağlamayı kabul ve taahhüt eder.
+                  </p>
+                  <p>
+                    <strong>4. Veri Güvenliği ve Haklarınız:</strong> Kişisel verileriniz 256-bit SSL şifreli bulut altyapısında korunur ve üçüncü şahıslara pazarlama amacıyla asla satılmaz. KVKK Madde 11 kapsamındaki tüm taleplerinizi <code>noreply@randevory.com</code> adresine iletebilirsiniz.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    <strong>1. Platformun Hukuki Konumu (Teknik Altyapı Sağlayıcı):</strong> <strong>RANDEVORY</strong>, randevulu çalışan işletmelerin kendi takvim, personel ve hizmetlerini yönetmelerini sağlayan bulut tabanlı bir yazılım altyapısıdır (SaaS). RANDEVORY, üye işletmelerin sunduğu hizmetlerin satıcısı, sağlayıcısı veya ortağı değildir.
+                  </p>
+                  <p>
+                    <strong>2. Sorumluluk Reddi:</strong> İşletmenin müşterilerine sunduğu hizmetlerin kalitesi, güvenliği, fiyatlandırması, randevu iptalleri, müşteri ile işletme arasındaki ücret tahsilatı, vergi/fatura yükümlülükleri ve doğabilecek her türlü tüketici uyuşmazlığında <strong>tek muhatap ve sorumlu ilgili İşletmedir</strong>. RANDEVORY, işletme ile müşteri arasındaki uyuşmazlıklarda hiçbir hukuki, cezai veya mali sorumluluk kabul etmez.
+                  </p>
+                  <p>
+                    <strong>3. İçerik ve Kullanım Şartları:</strong> İşletme sahibi, oluşturduğu işletme sayfasındaki tüm bilgilerin doğruluğundan ve yürürlükteki mevzuata uygunluğundan bizzat sorumludur. Yasa dışı veya yanıltıcı kullanım tespit edildiğinde RANDEVORY hesabı askıya alma hakkına sahiptir.
+                  </p>
+                  <p>
+                    <strong>4. Lisans ve İptal Şartları:</strong> Yazılım abonelik paketleri taahhütsüzdür; dilediğiniz dönem sonlandırabilirsiniz. Ödemeler Shopier 3D Secure güvenli ödeme altyapısı üzerinden tahsil edilir.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <Link
+                href="/yasal"
+                target="_blank"
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+              >
+                Tüm Yasal Metinleri Yeni Sekmede Aç &rarr;
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  if (legalModalType === 'kvkk') setKvkkAccepted(true);
+                  if (legalModalType === 'terms') setTermsAccepted(true);
+                  setLegalModalType(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Check className="w-4 h-4" /> Okudum, Anladım ve Onaylıyorum
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

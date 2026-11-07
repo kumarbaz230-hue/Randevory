@@ -19,6 +19,8 @@ import {
   Check,
   Building,
   Info,
+  ShieldCheck,
+  X,
 } from 'lucide-react';
 
 export default function BusinessPublicPage() {
@@ -49,6 +51,8 @@ export default function BusinessPublicPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [customerConsent, setCustomerConsent] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null);
@@ -118,6 +122,11 @@ export default function BusinessPublicPage() {
 
     if (!customerName.trim() || !customerPhone.trim()) {
       setErrorMessage('Lütfen ad soyad ve telefon numaranızı girin.');
+      return;
+    }
+
+    if (!customerConsent) {
+      setErrorMessage('Randevu oluşturabilmek için lütfen KVKK ve Randevu Koşulları onay kutusunu işaretleyin.');
       return;
     }
 
@@ -562,7 +571,7 @@ export default function BusinessPublicPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Örn: Mehmet Demir"
+                      placeholder="Adınız ve Soyadınız"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -577,7 +586,7 @@ export default function BusinessPublicPage() {
                       <input
                         type="tel"
                         required
-                        placeholder="Örn: 0532 000 0000"
+                        placeholder="0532 000 0000"
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -589,7 +598,7 @@ export default function BusinessPublicPage() {
                       </label>
                       <input
                         type="email"
-                        placeholder="Örn: mehmet@example.com"
+                        placeholder="ornek@eposta.com"
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -610,6 +619,29 @@ export default function BusinessPublicPage() {
                     ></textarea>
                   </div>
 
+                  {/* Müşteri KVKK ve Sorumluluk Onay Kutusu */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={customerConsent}
+                        onChange={(e) => setCustomerConsent(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 shrink-0"
+                      />
+                      <span className="text-xs text-slate-600 leading-relaxed">
+                        Randevu oluşturulması ve takibi amacıyla iletişim bilgilerimin <strong>{business.name}</strong> işletmesi ile paylaşılmasını,{' '}
+                        <button
+                          type="button"
+                          onClick={() => setShowConsentModal(true)}
+                          className="font-bold text-brand-600 hover:underline"
+                        >
+                          KVKK Aydınlatma Metni ve Randevu Koşullarını
+                        </button>{' '}
+                        okuduğumu ve kabul ettiğimi onaylıyorum. *
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="pt-4 flex items-center justify-between border-t border-slate-200">
                     <button
                       type="button"
@@ -620,8 +652,8 @@ export default function BusinessPublicPage() {
                     </button>
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="px-8 py-3 rounded-xl bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 disabled:opacity-50 transition-all shadow-md shadow-brand-500/20 flex items-center gap-2"
+                      disabled={isSubmitting || !customerConsent}
+                      className="px-8 py-3 rounded-xl bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-brand-500/20 flex items-center gap-2"
                     >
                       {isSubmitting ? 'Kaydediliyor...' : 'Randevuyu Onayla'}
                       <CheckCircle2 className="w-4 h-4" />
@@ -687,16 +719,11 @@ export default function BusinessPublicPage() {
                       setSelectedSlot(null);
                       setCustomerName('');
                       setCustomerPhone('');
+                      setCustomerConsent(false);
                     }}
                     className="w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
                   >
                     Yeni Bir Randevu Al
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="w-full py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition-colors"
-                  >
-                    İşletme Yönetim Paneline Git
                   </Link>
                 </div>
               </div>
@@ -745,12 +772,65 @@ export default function BusinessPublicPage() {
         </div>
 
         {/* Powered by RANDEVORY Footer */}
-        <footer className="mt-10 py-6 text-center text-xs text-slate-400 border-t border-slate-200/80">
+        <footer className="mt-10 py-6 text-center text-xs text-slate-400 border-t border-slate-200/80 space-y-1.5">
           <p>
             Güvenli Randevu Altyapısı – <Link href="/" className="font-bold text-slate-600 hover:text-brand-600">RANDEVORY</Link> • <em>İşini kolaylaştır, zamanını kazan.</em>
           </p>
+          <p className="text-[11px]">
+            <Link href="/yasal#kvkk" className="hover:underline">KVKK Aydınlatma Metni</Link> •{' '}
+            <Link href="/yasal#sorumluluk" className="hover:underline">Kullanım ve Sorumluluk Şartları</Link>
+          </p>
         </footer>
       </main>
+
+      {/* Müşteri KVKK ve Sorumluluk Bilgilendirme Modalı */}
+      {showConsentModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-brand-400" />
+                <h3 className="font-bold text-sm">KVKK Aydınlatma Metni ve Randevu Koşulları</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConsentModal(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto text-xs text-slate-600 space-y-3 leading-relaxed">
+              <p>
+                <strong>1. Kişisel Verilerin İşlenmesi (KVKK):</strong> Girmiş olduğunuz Ad Soyad, Telefon Numarası, E-posta ve Randevu Notu bilgileriniz; yalnızca randevunuzun oluşturulması, çakışmaların önlenmesi ve randevu bilgilendirmelerinin yapılması amacıyla 6698 sayılı KVKK kapsamında randevu aldığınız <strong>{business.name}</strong> işletmesi (Veri Sorumlusu) ile paylaşılmaktadır.
+              </p>
+              <p>
+                <strong>2. Hizmet ve Sorumluluk Sınırı:</strong> <strong>RANDEVORY</strong> yalnızca randevu takibini sağlayan teknik yazılım altyapısıdır. Randevu aldığınız hizmetin sunulması, kalitesi, fiyatlandırılması, ücret tahsilatı veya randevu iptal/erteleme süreçlerinden doğrudan randevu aldığınız <strong>{business.name}</strong> işletmesi sorumludur.
+              </p>
+              <p>
+                <strong>3. İptal ve Değişiklik:</strong> Randevunuza katılamayacağınız durumlarda en geç {business.settings.cancellation_deadline_hours} saat öncesinden işletmenin telefon numarası ({business.phone}) üzerinden bilgi vermeniz rica olunur.
+              </p>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              <Link href="/yasal" target="_blank" className="text-xs font-semibold text-slate-500 hover:text-slate-800">
+                Detaylı Hukuki Metin &rarr;
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerConsent(true);
+                  setShowConsentModal(false);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition-colors flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> Okudum ve Onaylıyorum
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

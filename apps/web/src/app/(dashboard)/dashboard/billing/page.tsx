@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { repo } from '@/lib/supabase-repository';
 import { Business, SubscriptionPlan, Subscription, SubscriptionTier } from '@/types';
 import {
@@ -15,12 +16,12 @@ import {
   Lock,
   ArrowRight,
   AlertCircle,
-  Clock,
   RefreshCw,
-  Building,
+  ExternalLink,
 } from 'lucide-react';
 
-export default function BillingPage() {
+function BillingContent() {
+  const searchParams = useSearchParams();
   const [business, setBusiness] = useState<Business | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSub, setCurrentSub] = useState<Subscription | null>(null);
@@ -40,8 +41,9 @@ export default function BillingPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [callbackBanner, setCallbackBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Card form
+  // Card form (Sandbox / Test fallback)
   const [cardHolder, setCardHolder] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
@@ -80,13 +82,80 @@ export default function BillingPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const paymentStatus = searchParams?.get('payment');
+    if (paymentStatus === 'success') {
+      setCallbackBanner({
+        type: 'success',
+        text: 'Shopier ödemeniz başarıyla onaylandı ve yeni lisans paketiniz aktif edildi!',
+      });
+    } else if (paymentStatus === 'failed' || paymentStatus === 'error') {
+      setCallbackBanner({
+        type: 'error',
+        text: 'Shopier ödeme işlemi tamamlanamadı veya iptal edildi.',
+      });
+    }
+  }, [searchParams]);
+
   const currentTier: SubscriptionTier = business?.subscription_plan || 'free';
   const activePlan = plans.find((p) => p.tier === currentTier) || plans[0];
 
-  const handleOpenCheckout = (plan: SubscriptionPlan) => {
+  const handleOpenCheckout = async (plan: SubscriptionPlan) => {
     setSelectedPlanForUpgrade(plan);
     setPaymentError('');
     setPaymentSuccess(false);
+
+    // Eğer Shopier API veya Ürün Linki aktifse doğrudan Shopier oturumunu kontrol et
+    if (business && plan.price_monthly > 0) {
+      try {
+        const amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        const res = await fetch('/api/shopier/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            businessId: business.id,
+            businessName: business.name,
+            planTier: plan.tier,
+            planName: plan.name,
+            billingCycle,
+            amount,
+            buyerName: business.name,
+            buyerEmail: business.email,
+            buyerPhone: business.phone,
+            buyerAddress: business.address,
+            buyerCity: business.city,
+          }),
+        });
+
+        const data = await res.json();
+
+        // Mod 1: Doğrudan Shopier Ürün Linki yönlendirmesi
+        if (data.mode === 'redirect_link' && data.redirectUrl) {
+          window.location.href = data.redirectUrl;
+          return;
+        }
+
+        // Mod 2: Shopier Özel API İmzalı Form Post
+        if (data.mode === 'form_post' && data.endpoint && data.formFields) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = data.endpoint;
+          Object.entries(data.formFields).forEach(([k, v]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = k;
+            input.value = String(v);
+            form.appendChild(input);
+          });
+          document.body.appendChild(form);
+          form.submit();
+          return;
+        }
+      } catch {
+        // Sandbox moduna devam et
+      }
+    }
+
     setIsModalOpen(true);
   };
 
@@ -110,10 +179,8 @@ export default function BillingPage() {
     setPaymentError('');
 
     try {
-      // 3D Secure / Sanal POS simülasyonu (1.2 saniye gecikme)
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      // Veritabanında lisans ve aboneliği yükselt
       await repo.upgradeSubscription({
         businessId: business.id,
         tier: selectedPlanForUpgrade.tier,
@@ -125,7 +192,6 @@ export default function BillingPage() {
       });
 
       setPaymentSuccess(true);
-      // Verileri tekrar çek
       await loadData();
     } catch (err: any) {
       setPaymentError(err.message || 'Ödeme işlemi onaylanamadı.');
@@ -161,6 +227,23 @@ export default function BillingPage() {
           İşletmenizin büyümesine uygun lisans paketini seçin, yeni personeller ve sınırsız randevu kapasitesi kazanın.
         </p>
       </div>
+
+      {callbackBanner && (
+        <div
+          className={`p-4 rounded-2xl border text-xs font-semibold flex items-center gap-2.5 ${
+            callbackBanner.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}
+        >
+          {callbackBanner.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+          )}
+          <span>{callbackBanner.text}</span>
+        </div>
+      )}
 
       {/* Current Active Plan Status Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
@@ -414,7 +497,7 @@ export default function BillingPage() {
                         : 'bg-slate-900 text-white hover:bg-slate-800'
                     }`}
                   >
-                    {plan.price_monthly === 0 ? 'Bu Pakete Geç' : 'Lisansı Satın Al'} <ArrowRight className="w-3.5 h-3.5" />
+                    {plan.price_monthly === 0 ? 'Bu Pakete Geç' : 'Shopier ile Satın Al'} <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -430,14 +513,14 @@ export default function BillingPage() {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h4 className="font-bold text-slate-900 text-sm">Güvenli Ödeme ve Taahhütsüz Kullanım</h4>
+            <h4 className="font-bold text-slate-900 text-sm">Shopier Güvencesiyle Ödeme ve Taahhütsüz Kullanım</h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              Tüm ödemeler 256-bit SSL şifrelemeyle ve 3D Secure güvencesiyle gerçekleşir. İstediğiniz ay iptal edebilirsiniz.
+              Tüm ödemeler Shopier 256-bit SSL şifrelemeyle ve 3D Secure güvencesiyle gerçekleşir. İstediğiniz ay iptal edebilirsiniz.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-slate-400 font-semibold shrink-0">
-          <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg">PayTR Altyapısı</span>
+        <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold shrink-0">
+          <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-indigo-700 font-bold">Shopier Ödeme</span>
           <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg">256-Bit SSL</span>
           <span className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg">3D Secure</span>
         </div>
@@ -456,8 +539,8 @@ export default function BillingPage() {
                   <Lock className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">3D Secure Güvenli Lisans Ödemesi</h3>
-                  <p className="text-[11px] text-slate-400">RANDEVORY Sanal POS & Lisans Sistemi</p>
+                  <h3 className="font-bold text-sm">Shopier 3D Secure Lisans Ödemesi</h3>
+                  <p className="text-[11px] text-slate-400">RANDEVORY & Shopier Güvenli Ödeme Sistemi</p>
                 </div>
               </div>
               <button
@@ -529,7 +612,7 @@ export default function BillingPage() {
                 <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-base">🧪</span>
-                    <span className="font-semibold text-[11px]">Test / Sandbox Modu Aktif</span>
+                    <span className="font-semibold text-[11px]">Shopier Hesap Onayı Beklenirken Test Modu Aktif</span>
                   </div>
                   <button
                     type="button"
@@ -636,7 +719,7 @@ export default function BillingPage() {
                 </button>
 
                 <p className="text-[10px] text-center text-slate-400 pt-1">
-                  Kart bilgileriniz PayTR 256-Bit SSL altyapısıyla korunmaktadır. RANDEVORY kart bilgilerinizi asla saklamaz.
+                  Kart bilgileriniz Shopier 256-Bit SSL altyapısıyla korunmaktadır. RANDEVORY kart bilgilerinizi asla saklamaz.
                 </p>
               </form>
             )}
@@ -644,5 +727,19 @@ export default function BillingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <RefreshCw className="w-8 h-8 text-brand-600 animate-spin" />
+        </div>
+      }
+    >
+      <BillingContent />
+    </Suspense>
   );
 }

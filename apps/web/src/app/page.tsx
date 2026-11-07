@@ -401,8 +401,11 @@ export default function HomePage() {
           <p className="text-xs text-slate-500 text-center md:text-left">
             &copy; {new Date().getFullYear()} RANDEVORY. Tüm hakları saklıdır. Profesyonel Randevu ve Hizmet Yönetim Platformu.
           </p>
-          <div className="flex items-center space-x-6 text-sm">
+          <div className="flex flex-wrap items-center justify-center gap-5 text-xs">
             <Link href="/nasil-kullanilir" className="hover:text-white transition-colors">Nasıl Kullanılır?</Link>
+            <Link href="/yasal#hizmet-sozlesmesi" className="hover:text-white transition-colors">Hizmet Sözleşmesi</Link>
+            <Link href="/yasal#iptal-iade" className="hover:text-white transition-colors">İptal & İade Koşulları</Link>
+            <Link href="/yasal#kvkk" className="hover:text-white transition-colors">Gizlilik & KVKK</Link>
             <Link href="/dashboard" className="hover:text-white transition-colors">Yönetim Paneli</Link>
           </div>
         </div>
