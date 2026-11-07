@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   MessageCircle,
   XCircle,
+  ImagePlus,
 } from 'lucide-react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp-helper';
 
@@ -53,7 +54,7 @@ interface AdminTicketRow {
   reported_business_slug: string | null;
   status: 'open' | 'answered' | 'closed';
   admin_reply: string | null;
-  messages?: Array<{ sender: 'user' | 'admin'; text: string; created_at: string }>;
+  messages?: Array<{ sender: 'user' | 'admin'; text: string; image_url?: string | null; created_at: string }>;
   replied_at: string | null;
   created_at: string;
 }
@@ -94,6 +95,8 @@ export default function SuperAdminDashboardPage() {
 
   // Ticket reply state
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replyImages, setReplyImages] = useState<Record<string, string>>({});
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
 
   // Ban modal state
@@ -222,10 +225,47 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
+  const handleAdminImageSelect = (ticketId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1000;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const dataUrl = ctx ? canvas.toDataURL('image/jpeg', 0.78) : (ev.target?.result as string);
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          setReplyImages((prev) => ({ ...prev, [ticketId]: canvas.toDataURL('image/jpeg', 0.78) }));
+        } else {
+          setReplyImages((prev) => ({ ...prev, [ticketId]: dataUrl }));
+        }
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleReplyTicket = async (ticket: AdminTicketRow, newStatus: 'answered' | 'closed') => {
     const replyText = (replyDrafts[ticket.id] ?? '').trim();
-    if (!replyText && newStatus === 'answered') {
-      alert('Lütfen önce göndermek istediğiniz mesajı yazın.');
+    const replyImg = replyImages[ticket.id] || null;
+    if (!replyText && !replyImg && newStatus === 'answered') {
+      alert('Lütfen önce göndermek istediğiniz mesajı yazın veya fotoğraf ekleyin.');
       return;
     }
 
@@ -236,6 +276,7 @@ export default function SuperAdminDashboardPage() {
         p_ticket_id: ticket.id,
         p_reply: replyText,
         p_status: newStatus,
+        p_image_url: replyImg,
       });
 
       if (error) throw error;
@@ -247,10 +288,11 @@ export default function SuperAdminDashboardPage() {
             return data as AdminTicketRow;
           }
           const nextMsgs = [...(t.messages || [])];
-          if (replyText) {
+          if (replyText || replyImg) {
             nextMsgs.push({
               sender: 'admin',
-              text: replyText,
+              text: replyText || '📷 [Destek Ekibi Fotoğraf Gönderdi]',
+              image_url: replyImg,
               created_at: new Date().toISOString(),
             });
           }
@@ -264,6 +306,11 @@ export default function SuperAdminDashboardPage() {
         })
       );
       setReplyDrafts((prev) => ({ ...prev, [ticket.id]: '' }));
+      setReplyImages((prev) => {
+        const copy = { ...prev };
+        delete copy[ticket.id];
+        return copy;
+      });
       showToast(
         newStatus === 'closed'
           ? '✅ Görüşme çözüldü olarak kapatıldı.'
@@ -734,13 +781,14 @@ export default function SuperAdminDashboardPage() {
                   </div>
 
                   {/* Live Conversation Thread */}
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 max-h-64 overflow-y-auto">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 max-h-72 overflow-y-auto">
                     {(Array.isArray(ticket.messages) && ticket.messages.length > 0
                       ? ticket.messages
                       : [
                           {
                             sender: 'user' as const,
                             text: ticket.message,
+                            image_url: null,
                             created_at: ticket.created_at,
                           },
                           ...(ticket.admin_reply
@@ -748,6 +796,7 @@ export default function SuperAdminDashboardPage() {
                                 {
                                   sender: 'admin' as const,
                                   text: ticket.admin_reply,
+                                  image_url: null,
                                   created_at: ticket.replied_at || ticket.created_at,
                                 },
                               ]
@@ -774,6 +823,16 @@ export default function SuperAdminDashboardPage() {
                             >
                               {isAdmin ? '🛡️ Siz (RANDEVORY Destek Ekibi)' : `👤 ${ticket.sender_name}`}
                             </div>
+                            {msg.image_url && (
+                              <div className="my-1.5">
+                                <img
+                                  src={msg.image_url}
+                                  alt="Gönderilen Ekran Görüntüsü"
+                                  onClick={() => setLightboxImage(msg.image_url || null)}
+                                  className="rounded-xl max-h-52 w-auto object-cover border border-slate-200 cursor-zoom-in hover:opacity-95"
+                                />
+                              </div>
+                            )}
                             <p className="whitespace-pre-wrap">{msg.text}</p>
                           </div>
                         </div>
@@ -784,12 +843,51 @@ export default function SuperAdminDashboardPage() {
                   {/* Admin Reply Box */}
                   <div className="pt-2 space-y-2">
                     <label className="block text-xs font-bold text-slate-700">
-                      🛡️ Karşı Tarafa Canlı Mesaj Gönder:
+                      🛡️ Karşı Tarafa Canlı Mesaj veya Fotoğraf Gönder:
                     </label>
+                    {replyImages[ticket.id] && (
+                      <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={replyImages[ticket.id]}
+                            alt="Önizleme"
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-300"
+                          />
+                          <span className="text-xs font-semibold text-slate-700">
+                            📷 Fotoğraf eklendi
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReplyImages((prev) => {
+                              const copy = { ...prev };
+                              delete copy[ticket.id];
+                              return copy;
+                            })
+                          }
+                          className="text-xs font-bold text-rose-600 hover:underline px-2"
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                    )}
                     <div className="flex gap-2">
+                      <label
+                        title="Fotoğraf / Ekran Görüntüsü Ekle"
+                        className="px-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer flex items-center justify-center shrink-0"
+                      >
+                        <ImagePlus className="w-4 h-4 text-brand-600" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleAdminImageSelect(ticket.id, e)}
+                          className="hidden"
+                        />
+                      </label>
                       <input
                         type="text"
-                        placeholder="Mesajınızı yazın (Karşı tarafın ekranına anında düşer ve o da tekrar yanıt yazabilir)..."
+                        placeholder="Mesajınızı yazın veya 📷 fotoğraf ekleyin..."
                         value={replyDrafts[ticket.id] ?? ''}
                         onChange={(e) =>
                           setReplyDrafts((prev) => ({ ...prev, [ticket.id]: e.target.value }))
@@ -978,6 +1076,29 @@ export default function SuperAdminDashboardPage() {
             {savingSettings ? 'Kaydediliyor...' : 'Ayarları Kaydet ve Yayınla'}
           </button>
         </form>
+      )}
+
+      {/* LIGHTBOX FOR SUPPORT SCREENSHOTS */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-4xl max-h-[85vh]">
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-10 right-0 px-3 py-1 rounded-lg bg-white/20 text-white text-xs font-bold hover:bg-white/30"
+            >
+              Kapat (X)
+            </button>
+            <img
+              src={lightboxImage}
+              alt="Büyütülmüş Ekran Görüntüsü"
+              className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/20 object-contain"
+            />
+          </div>
+        </div>
       )}
 
       {/* BAN CONFIRMATION MODAL */}

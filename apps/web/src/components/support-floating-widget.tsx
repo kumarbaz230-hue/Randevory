@@ -8,17 +8,24 @@ import {
   Send,
   ShieldAlert,
   Clock,
-  Sparkles,
   Megaphone,
   MessageCircle,
   PlusCircle,
   ShieldCheck,
+  Bot,
+  Sparkles,
+  ImagePlus,
+  CheckCircle2,
+  RotateCcw,
+  UserCheck,
+  ChevronRight,
 } from 'lucide-react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp-helper';
 
 export interface SupportChatMessage {
   sender: 'user' | 'admin';
   text: string;
+  image_url?: string | null;
   created_at: string;
 }
 
@@ -37,10 +44,166 @@ export interface SupportTicketRow {
   created_at: string;
 }
 
+interface AiChatBubble {
+  sender: 'ai' | 'user';
+  text: string;
+  options?: Array<{ id: string; label: string; category?: string }>;
+  showSolvedActions?: boolean;
+}
+
 const ACTIVE_TICKET_STORAGE_KEY = 'randevory_active_support_ticket_id';
+
+const ROOT_AI_OPTIONS = [
+  { id: 'cat_app_error', label: '🛠️ Uygulama / Site Hatası Yaşıyorum' },
+  { id: 'cat_booking', label: '📅 Randevu Alma veya İptal Sorunu' },
+  { id: 'cat_qr_wp', label: '📱 WhatsApp, QR Kod & Vitrin Afişi' },
+  { id: 'cat_billing', label: '💳 Paketler, Abonelik & Ödeme' },
+  { id: 'cat_complaint', label: '🚨 Şüpheli / Güvenilir Olmayan İşletme Şikayeti' },
+];
+
+const SUB_AI_OPTIONS: Record<string, Array<{ id: string; label: string }>> = {
+  cat_app_error: [
+    { id: 'sol_link_error', label: '🔗 İşletme linkim açılmıyor / Bulunamadı diyor' },
+    { id: 'sol_slots_empty', label: '⏰ Takvimde müsait saatler görünmüyor' },
+    { id: 'sol_login_issue', label: '🔑 Şifremi unuttum veya giriş yapamıyorum' },
+    { id: 'sol_staff_service', label: '👥 Personel veya hizmet ekleyemiyorum' },
+  ],
+  cat_booking: [
+    { id: 'sol_cancel_apt', label: '❌ Aldığım randevuyu nasıl iptal ederim?' },
+    { id: 'sol_no_time', label: '📅 İstediğim saat listede neden yok?' },
+    { id: 'sol_chat_biz', label: '💬 İşletmeye nasıl mesaj atabilirim?' },
+  ],
+  cat_qr_wp: [
+    { id: 'sol_qr_download', label: '🖨️ QR Kod ve Vitrin Afişini nereden indiririm?' },
+    { id: 'sol_wp_msg', label: '📲 WhatsApp bildirimleri nasıl çalışıyor?' },
+  ],
+  cat_billing: [
+    { id: 'sol_upgrade', label: '👑 Ücretli pakete nasıl geçiş yaparım?' },
+    { id: 'sol_free_limits', label: '🎁 Ücretsiz paketin limitleri nelerdir?' },
+  ],
+};
+
+const AI_SOLUTIONS: Record<string, { title: string; answer: string; category: 'support' | 'complaint' | 'billing' | 'suggestion' }> = {
+  sol_link_error: {
+    title: 'İşletme Linki Sorunu',
+    category: 'support',
+    answer:
+      'Çözüm Adımları:\n1. Yönetim Panelinde sol menüden "İşletme Ayarları" sayfasına gidin.\n2. "Özel Bağlantı Kodu (Slug)" kısmında boşluk veya özel karakter olmadığından emin olup "Değişiklikleri Kaydet" butonuna basın.\n3. Sistem Türkçe karakterleri otomatik düzeltecek ve "Sayfayı Gör" butonunuz anında güncellenecektir.',
+  },
+  sol_slots_empty: {
+    title: 'Takvimde Saat Görünmeme Sorunu',
+    category: 'support',
+    answer:
+      'Müşteri ekranında saatlerin görünmesi için şu 3 ayarı kontrol edin:\n1. İşletme Ayarları > Çalışma Saatleri kısmında ilgili günün "Açık" olduğundan emin olun.\n2. Personel Yönetimi sayfasında en az 1 aktif personeliniz bulunsun ve hizmetleriniz bu personele işaretlenmiş olsun.\n3. Seçilen gün için tüm saatler zaten doluysa çakışma önleme motoru dolu saatleri gizler.',
+  },
+  sol_login_issue: {
+    title: 'Giriş ve Şifre Sorunu',
+    category: 'support',
+    answer:
+      '• Şifrenizi unuttuysanız Giriş Yap (/login) ekranındaki "Şifremi Unuttum" bağlantısına tıklayarak e-postanıza sıfırlama linki gönderebilirsiniz.\n• Sürekli tekrar giriş yapmamak için giriş ekranındaki "Beni Hatırla (Oturumumu açık tut)" kutucuğunu işaretleyin.',
+  },
+  sol_staff_service: {
+    title: 'Personel ve Hizmet Ekleme Limitleri',
+    category: 'billing',
+    answer:
+      'Ücretsiz Başlangıç paketinde 1 Personel ve 5 Hizmet tanımlanabilir. Daha fazla personel veya hizmet eklemek için sol menüden "Abonelik & Lisans" sayfasına giderek Standart veya Profesyonel pakete geçebilirsiniz.',
+  },
+  sol_cancel_apt: {
+    title: 'Randevu Sorgulama ve İptal',
+    category: 'support',
+    answer:
+      'Randevu aldığınız işletmenin sayfasına (randevory.com/isletme-adi) girin:\n1. Üstteki sekmelerden "Randevu Sorgula / İptal" sekmesine tıklayın.\n2. Randevu alırken yazdığınız telefon numarasını girin.\n3. Aktif randevunuzun yanındaki "Randevuyu İptal Et" butonuna basarak saniyeler içinde iptal edebilirsiniz.',
+  },
+  sol_no_time: {
+    title: 'Müsait Saatlerin Görünmesi',
+    category: 'support',
+    answer:
+      'RANDEVORY Çakışma Önleme Motoru, başka bir müşterinin aldığı saatleri otomatik olarak listeden kaldırır. Farklı bir gün veya "Fark Etmez (İlk Müsait Uzman)" seçeneğini deneyebilirsiniz.',
+  },
+  sol_chat_biz: {
+    title: 'İşletmeyle Canlı Sohbet',
+    category: 'support',
+    answer:
+      'Randevu aldığınız işletmenin sayfasındaki "İşletmeye Mesaj Yaz" sekmesine tıklayarak veya randevu onay ekranındaki "WhatsApp ile Gönder" butonuna basarak işletmeyle doğrudan iletişim kurabilirsiniz.',
+  },
+  sol_qr_download: {
+    title: 'QR Kod ve Vitrin Afişi İndirme',
+    category: 'support',
+    answer:
+      'Yönetim Panelinde sol menüdeki veya üst bardaki "QR Kod & Afiş İndir" butonuna tıklayın:\n• "Vitrin Afişi İndir (PNG)" butonuyla baskıya hazır 1080x1350 poster indirebilir,\n• "Sadece QR Kod İndir" butonuyla yüksek çözünürlüklü karekod alabilirsiniz.',
+  },
+  sol_wp_msg: {
+    title: 'WhatsApp Bildirim Sistemi',
+    category: 'support',
+    answer:
+      '• Müşteri randevu aldığında ekranda "İşletmeye WhatsApp\'tan Bildir" butonu çıkar.\n• İşletme sahibi ise Takvim veya Genel Bakış ekranında randevuyu onayladığında "WhatsApp Onay Mesajı Gönder" kartıyla hazır metni tek tuşla müşteriye iletebilir.',
+  },
+  sol_upgrade: {
+    title: 'Paket Yükseltme ve Ödeme',
+    category: 'billing',
+    answer:
+      'Yönetim Paneli > Abonelik & Lisans (/dashboard/billing) sayfasından ihtiyacınıza uygun paketi seçip 3D Secure güvencesiyle yükseltebilir veya canlı destekten kurucu ekibimize yazabilirsiniz.',
+  },
+  sol_free_limits: {
+    title: 'Ücretsiz Paket Özellikleri',
+    category: 'billing',
+    answer:
+      'Ücretsiz Başlangıç Paketi (0 ₺/ay): 1 Personel, 5 Hizmet, Aylık 50 Randevu, Özel Randevu Linki, QR Kod & Vitrin Afişi ve Canlı Müşteri Sohbeti özelliklerini içerir.',
+  },
+};
+
+async function compressImageToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1000;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(ev.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.78);
+        resolve(compressed);
+      };
+      img.onerror = () => reject(new Error('Görsel okunamadı.'));
+      img.src = ev.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Dosya okunamadı.'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export function SupportFloatingWidget() {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Mode when no activeTicket exists: 'ai' (AI Assistant first) or 'human_form' (Connect to Live Agent)
+  const [widgetStage, setWidgetStage] = useState<'ai' | 'human_form'>('ai');
+
+  // AI Assistant Conversation State
+  const [aiBubbles, setAiBubbles] = useState<AiChatBubble[]>([
+    {
+      sender: 'ai',
+      text: 'Merhaba! 👋 Ben RANDEVORY Yapay Zeka Destek Asistanıyım.\n\nMüşteri temsilcimize bağlanmadan önce sorununuzu saniyeler içinde çözebilmem için lütfen aşağıdan bir konu seçin veya sorunuzu yazın:',
+      options: ROOT_AI_OPTIONS,
+    },
+  ]);
+  const [aiInput, setAiInput] = useState('');
 
   // Global announcement banner from platform_settings
   const [announcementActive, setAnnouncementActive] = useState(false);
@@ -48,22 +211,30 @@ export function SupportFloatingWidget() {
   const [supportWhatsapp, setSupportWhatsapp] = useState('');
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // Active Live Support Ticket (if user already started a conversation)
+  // Active Live Support Ticket (human representative chat)
   const [activeTicket, setActiveTicket] = useState<SupportTicketRow | null>(null);
   const [replyInput, setReplyInput] = useState('');
+  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
   const [sendingReply, setSendingReply] = useState(false);
 
-  // New Ticket Form (shown only before starting a conversation)
+  // New Ticket Form (for connecting to live agent)
   const [category, setCategory] = useState<'support' | 'complaint' | 'billing' | 'suggestion'>('support');
   const [senderName, setSenderName] = useState('');
   const [senderContact, setSenderContact] = useState('');
   const [reportedBusiness, setReportedBusiness] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [formImagePreview, setFormImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Fullscreen Image Lightbox
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const aiEndRef = useRef<HTMLDivElement>(null);
+  const formFileInputRef = useRef<HTMLInputElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchActiveTicketById = useCallback(async (ticketId: string) => {
     const supabase = createClient();
@@ -94,7 +265,6 @@ export function SupportFloatingWidget() {
         setSupportWhatsapp(settingsData.support_whatsapp || '');
       }
 
-      // Check localStorage for an existing active support chat
       const savedTicketId =
         typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_TICKET_STORAGE_KEY) : null;
 
@@ -102,7 +272,6 @@ export function SupportFloatingWidget() {
         await fetchActiveTicketById(savedTicketId);
       }
 
-      // Pre-fill user info if logged in, and if no localStorage ticket, load their latest active ticket
       const { data: authData } = await supabase.auth.getUser();
       if (authData?.user) {
         const metaName =
@@ -136,7 +305,7 @@ export function SupportFloatingWidget() {
     loadInitial();
   }, [fetchActiveTicketById]);
 
-  // Poll active ticket every 3 seconds when widget is open so Admin replies appear immediately
+  // Poll active ticket every 3 seconds when widget is open
   useEffect(() => {
     if (!isOpen || !activeTicket?.id) return;
     const timer = setInterval(() => {
@@ -173,21 +342,170 @@ export function SupportFloatingWidget() {
     }
   }, [isOpen, activeTicket, chatMessages.length]);
 
+  useEffect(() => {
+    if (isOpen && !activeTicket && widgetStage === 'ai') {
+      aiEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isOpen, activeTicket, widgetStage, aiBubbles.length]);
+
+  // Handle AI Option Selection
+  const handleAiOptionClick = (optId: string, optLabel: string) => {
+    if (optId === 'cat_complaint') {
+      setCategory('complaint');
+      setSubject('Şüpheli / Güvenilir Olmayan İşletme Bildirimi');
+      setWidgetStage('human_form');
+      return;
+    }
+
+    if (SUB_AI_OPTIONS[optId]) {
+      setAiBubbles((prev) => [
+        ...prev,
+        { sender: 'user', text: optLabel },
+        {
+          sender: 'ai',
+          text: 'Lütfen yaşadığınız durumu daha net seçin:',
+          options: SUB_AI_OPTIONS[optId],
+        },
+      ]);
+      return;
+    }
+
+    const sol = AI_SOLUTIONS[optId];
+    if (sol) {
+      setCategory(sol.category);
+      setSubject(sol.title);
+      setAiBubbles((prev) => [
+        ...prev,
+        { sender: 'user', text: optLabel },
+        {
+          sender: 'ai',
+          text: `🤖 **${sol.title} – Çözüm Rehberi:**\n\n${sol.answer}`,
+          showSolvedActions: true,
+        },
+      ]);
+    }
+  };
+
+  // Handle Free-Text Question to AI Assistant
+  const handleAiFreeTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = aiInput.trim();
+    if (!q) return;
+    setAiInput('');
+
+    const lower = q.toLowerCase();
+    let matchedKey: string | null = null;
+
+    if (lower.includes('link') || lower.includes('bulunamadı') || lower.includes('açılmıyor') || lower.includes('slug')) {
+      matchedKey = 'sol_link_error';
+    } else if (lower.includes('saat') || lower.includes('takvim') || lower.includes('müsait') || lower.includes('kapalı')) {
+      matchedKey = 'sol_slots_empty';
+    } else if (lower.includes('şifre') || lower.includes('giriş') || lower.includes('hesap')) {
+      matchedKey = 'sol_login_issue';
+    } else if (lower.includes('iptal')) {
+      matchedKey = 'sol_cancel_apt';
+    } else if (lower.includes('qr') || lower.includes('afiş') || lower.includes('poster') || lower.includes('karekod')) {
+      matchedKey = 'sol_qr_download';
+    } else if (lower.includes('whatsapp') || lower.includes('wp') || lower.includes('sms') || lower.includes('bildirim')) {
+      matchedKey = 'sol_wp_msg';
+    } else if (lower.includes('paket') || lower.includes('ücret') || lower.includes('fiyat') || lower.includes('ödeme')) {
+      matchedKey = 'sol_upgrade';
+    } else if (lower.includes('şikayet') || lower.includes('dolandırıcı') || lower.includes('güvenilir') || lower.includes('yasak')) {
+      setCategory('complaint');
+      setSubject('Şüpheli İşletme / Kullanıcı Şikayeti');
+      setMessage(q);
+      setAiBubbles((prev) => [
+        ...prev,
+        { sender: 'user', text: q },
+        {
+          sender: 'ai',
+          text: '🚨 Güvenlik ve şikayet bildirimleriniz doğrudan Kurucu & Güvenlik Ekibimiz tarafından incelenir. Sizi hemen canlı müşteri temsilcimize aktarıyorum.',
+          showSolvedActions: true,
+        },
+      ]);
+      return;
+    }
+
+    if (matchedKey && AI_SOLUTIONS[matchedKey]) {
+      const sol = AI_SOLUTIONS[matchedKey];
+      setCategory(sol.category);
+      setSubject(sol.title);
+      setMessage(q);
+      setAiBubbles((prev) => [
+        ...prev,
+        { sender: 'user', text: q },
+        {
+          sender: 'ai',
+          text: `🤖 **${sol.title} İçin Önerilen Çözüm:**\n\n${sol.answer}`,
+          showSolvedActions: true,
+        },
+      ]);
+    } else {
+      setSubject(q.slice(0, 60));
+      setMessage(q);
+      setAiBubbles((prev) => [
+        ...prev,
+        { sender: 'user', text: q },
+        {
+          sender: 'ai',
+          text: 'Sorunuzu kaydettim! Bu konuda size en doğru yardımı sunabilmemiz için aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayarak canlı destek ekibimizle (fotoğraf da ekleyerek) hemen görüşebilirsiniz.',
+          showSolvedActions: true,
+        },
+      ]);
+    }
+  };
+
+  const handleResetAi = () => {
+    setAiBubbles([
+      {
+        sender: 'ai',
+        text: 'Size başka hangi konuda yardımcı olabilirim? Aşağıdan bir başlık seçebilir veya direkt müşteri temsilcimize bağlanabilirsiniz:',
+        options: ROOT_AI_OPTIONS,
+      },
+    ]);
+  };
+
+  const handleSelectImageForForm = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setFormImagePreview(dataUrl);
+    } catch {
+      alert('Fotoğraf yüklenirken bir hata oluştu.');
+    }
+    e.target.value = '';
+  };
+
+  const handleSelectImageForChat = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setReplyImagePreview(dataUrl);
+    } catch {
+      alert('Fotoğraf yüklenirken bir hata oluştu.');
+    }
+    e.target.value = '';
+  };
+
   const handleStartSupportChat = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!senderName.trim() || !senderContact.trim() || !subject.trim() || !message.trim()) {
-      setErrorMsg('Lütfen tüm zorunlu alanları doldurun.');
+    if (!senderName.trim() || !senderContact.trim() || !subject.trim() || (!message.trim() && !formImagePreview)) {
+      setErrorMsg('Lütfen adınızı, iletişim bilginizi ve mesajınızı (veya fotoğrafınızı) girin.');
       return;
     }
 
     setSubmitting(true);
     try {
       const supabase = createClient();
+      const cleanMsg = message.trim() || '📷 [Fotoğraf Gönderildi]';
       const firstMessageObj: SupportChatMessage = {
         sender: 'user',
-        text: message.trim(),
+        text: cleanMsg,
+        image_url: formImagePreview || null,
         created_at: new Date().toISOString(),
       };
 
@@ -198,7 +516,7 @@ export function SupportFloatingWidget() {
           sender_contact: senderContact.trim(),
           category,
           subject: subject.trim(),
-          message: message.trim(),
+          message: cleanMsg,
           messages: [firstMessageObj],
           reported_business_slug:
             category === 'complaint' && reportedBusiness.trim() ? reportedBusiness.trim() : null,
@@ -216,6 +534,7 @@ export function SupportFloatingWidget() {
       }
       setSubject('');
       setMessage('');
+      setFormImagePreview(null);
       setReportedBusiness('');
     } catch (err: any) {
       setErrorMsg(err?.message || 'Destek sohbeti başlatılırken bir hata oluştu.');
@@ -226,15 +545,17 @@ export function SupportFloatingWidget() {
 
   const handleSendFollowUpMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTicket || !replyInput.trim() || sendingReply) return;
+    if (!activeTicket || (!replyInput.trim() && !replyImagePreview) || sendingReply) return;
 
     const textToSend = replyInput.trim();
+    const imgToSend = replyImagePreview;
     setSendingReply(true);
     try {
       const supabase = createClient();
       const { data, error } = await supabase.rpc('user_send_support_message', {
         p_ticket_id: activeTicket.id,
         p_message: textToSend,
+        p_image_url: imgToSend || null,
       });
 
       if (error) throw error;
@@ -245,6 +566,7 @@ export function SupportFloatingWidget() {
         await fetchActiveTicketById(activeTicket.id);
       }
       setReplyInput('');
+      setReplyImagePreview(null);
     } catch (err: any) {
       alert(err?.message || 'Mesaj gönderilemedi.');
     } finally {
@@ -258,7 +580,10 @@ export function SupportFloatingWidget() {
     }
     setActiveTicket(null);
     setReplyInput('');
+    setReplyImagePreview(null);
     setErrorMsg(null);
+    setWidgetStage('ai');
+    handleResetAi();
   };
 
   const lastMessage = chatMessages[chatMessages.length - 1];
@@ -266,7 +591,7 @@ export function SupportFloatingWidget() {
 
   return (
     <>
-      {/* Global Top Announcement Banner (if enabled by Admin) */}
+      {/* Global Top Announcement Banner */}
       {announcementActive && announcementText && !bannerDismissed && (
         <div className="bg-gradient-to-r from-brand-700 via-indigo-700 to-slate-900 text-white px-4 py-2 text-xs font-medium relative z-[60] shadow-sm">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
@@ -286,6 +611,29 @@ export function SupportFloatingWidget() {
         </div>
       )}
 
+      {/* Fullscreen Image Lightbox */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-[80] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-3xl max-h-[85vh]">
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-10 right-0 px-3 py-1 rounded-lg bg-white/20 text-white text-xs font-bold hover:bg-white/30"
+            >
+              Kapat (X)
+            </button>
+            <img
+              src={lightboxImage}
+              alt="Ekran Görüntüsü"
+              className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/20 object-contain"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Floating Support Trigger Button */}
       <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
         {!isOpen && (
@@ -300,7 +648,7 @@ export function SupportFloatingWidget() {
             </div>
             <div className="text-left">
               <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
-                7/24 Güvenlik & Yardım
+                AI Asistan & Canlı Destek
               </div>
               <div className="text-xs font-extrabold leading-tight mt-0.5">
                 Canlı Destek / Bildir
@@ -311,35 +659,43 @@ export function SupportFloatingWidget() {
 
         {/* Support Modal / Live Chat Drawer */}
         {isOpen && (
-          <div className="w-[360px] sm:w-[410px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
+          <div className="w-[365px] sm:w-[420px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shrink-0 shadow-inner relative">
-                  <Headset className="w-5 h-5 text-white" />
+                  {activeTicket || widgetStage === 'human_form' ? (
+                    <Headset className="w-5 h-5 text-white" />
+                  ) : (
+                    <Bot className="w-5 h-5 text-white" />
+                  )}
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm flex items-center gap-1.5">
-                    RANDEVORY Canlı Destek
+                    {activeTicket
+                      ? 'Müşteri Temsilcisi (Canlı)'
+                      : widgetStage === 'human_form'
+                      ? 'Müşteri Temsilcisine Bağlan'
+                      : 'RANDEVORY AI Destek Asistanı'}
                   </h3>
-                  <p className="text-[11px] text-slate-300">
+                  <p className="text-[11px] text-slate-300 truncate max-w-[200px]">
                     {activeTicket
                       ? `Konu: ${activeTicket.subject}`
-                      : 'Yardım, Öneri & Şüpheli İşletme Bildirimi'}
+                      : 'Yapay Zeka & 7/24 Canlı Temsilci'}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1">
-                {activeTicket && (
+                {(activeTicket || widgetStage === 'human_form') && (
                   <button
                     type="button"
                     onClick={handleStartNewTopic}
-                    title="Yeni Destek Konusu Başlat"
+                    title="AI Asistana Dön / Yeni Konu"
                     className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center gap-1"
                   >
-                    <PlusCircle className="w-3.5 h-3.5" /> Yeni Konu
+                    <PlusCircle className="w-3.5 h-3.5" /> AI / Yeni
                   </button>
                 )}
                 <button
@@ -352,15 +708,13 @@ export function SupportFloatingWidget() {
               </div>
             </div>
 
-            {/* Body: Either Live Chat Room (if activeTicket exists) OR Start Form */}
+            {/* STAGE 1: ACTIVE HUMAN LIVE CHAT ROOM */}
             {activeTicket ? (
-              <div className="flex flex-col h-[430px]">
-                {/* Chat Messages Scroll Area */}
+              <div className="flex flex-col h-[450px]">
                 <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50">
-                  {/* Info Banner */}
                   <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
                     <span>
-                      Gönderen: <strong>{activeTicket.sender_name}</strong>
+                      Kullanıcı: <strong>{activeTicket.sender_name}</strong>
                     </span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -374,12 +728,11 @@ export function SupportFloatingWidget() {
                       {activeTicket.status === 'closed'
                         ? 'Görüşme Tamamlandı'
                         : activeTicket.status === 'answered'
-                        ? 'Destek Ekibi Yanıtladı'
-                        : 'Destek Ekibi Bekleniyor'}
+                        ? 'Temsilci Yanıtladı'
+                        : 'Temsilci Bekleniyor'}
                     </span>
                   </div>
 
-                  {/* Message Bubbles */}
                   {chatMessages.map((msg, idx) => {
                     const isAdmin = msg.sender === 'admin';
                     return (
@@ -397,7 +750,17 @@ export function SupportFloatingWidget() {
                           {isAdmin && (
                             <div className="font-extrabold text-[10px] uppercase tracking-wider text-brand-700 flex items-center gap-1 mb-1">
                               <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-                              RANDEVORY Destek Ekibi
+                              RANDEVORY Müşteri Temsilcisi
+                            </div>
+                          )}
+                          {msg.image_url && (
+                            <div className="mb-2">
+                              <img
+                                src={msg.image_url}
+                                alt="Eklenen Görsel"
+                                onClick={() => setLightboxImage(msg.image_url || null)}
+                                className="rounded-xl max-h-48 w-auto object-cover border border-white/20 cursor-zoom-in hover:opacity-95 transition-opacity"
+                              />
                             </div>
                           )}
                           <p className="whitespace-pre-wrap">{msg.text}</p>
@@ -414,14 +777,13 @@ export function SupportFloatingWidget() {
                     );
                   })}
 
-                  {/* Waiting Indicator when waiting for Admin reply */}
                   {isWaitingForAdmin && (
                     <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2.5 animate-pulse">
                       <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-bold">Destek ekibimiz mesajınızı inceliyor...</div>
+                        <div className="font-bold">Müşteri temsilcimiz mesajınızı inceliyor...</div>
                         <div className="text-amber-700 mt-0.5">
-                          Bu pencereden ayrılmanıza gerek yoktur; yanıt geldiğinde otomatik olarak ekrana düşecektir.
+                          Bu ekranda bekleyebilirsiniz; temsilcimiz yanıt yazdığında anında buraya düşecektir.
                         </div>
                       </div>
                     </div>
@@ -430,7 +792,29 @@ export function SupportFloatingWidget() {
                   <div ref={chatEndRef} />
                 </div>
 
-                {/* Bottom Reply Input Box so User can keep messaging back and forth */}
+                {/* Image Preview Bar before sending in chat */}
+                {replyImagePreview && (
+                  <div className="px-3 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={replyImagePreview}
+                        alt="Önizleme"
+                        className="w-10 h-10 rounded-lg object-cover border border-slate-300"
+                      />
+                      <span className="text-[11px] font-semibold text-slate-700">
+                        Fotoğraf eklendi (Göndermeye hazır)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyImagePreview(null)}
+                      className="text-rose-600 hover:text-rose-700 p-1 text-xs font-bold"
+                    >
+                      Kaldır
+                    </button>
+                  </div>
+                )}
+
                 {activeTicket.status === 'closed' ? (
                   <div className="p-3 bg-white border-t border-slate-200 text-center space-y-2">
                     <div className="text-xs text-slate-500 font-medium">
@@ -450,16 +834,31 @@ export function SupportFloatingWidget() {
                     className="p-3 bg-white border-t border-slate-200 flex items-center gap-2"
                   >
                     <input
+                      ref={chatFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSelectImageForChat}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => chatFileInputRef.current?.click()}
+                      title="Fotoğraf / Ekran Görüntüsü Gönder"
+                      className="p-2.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 shrink-0 transition-colors"
+                    >
+                      <ImagePlus className="w-4 h-4 text-brand-600" />
+                    </button>
+                    <input
                       type="text"
-                      placeholder="Destek ekibine mesajınızı yazın..."
+                      placeholder="Mesajınızı yazın veya 📷 fotoğraf ekleyin..."
                       value={replyInput}
                       onChange={(e) => setReplyInput(e.target.value)}
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      className="flex-1 px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <button
                       type="submit"
-                      disabled={sendingReply || !replyInput.trim()}
-                      className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50 transition-all"
+                      disabled={sendingReply || (!replyInput.trim() && !replyImagePreview)}
+                      className="px-3.5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1 shrink-0 disabled:opacity-50 transition-all"
                     >
                       <Send className="w-3.5 h-3.5" />
                       Gönder
@@ -467,10 +866,145 @@ export function SupportFloatingWidget() {
                   </form>
                 )}
               </div>
+            ) : widgetStage === 'ai' ? (
+              /* STAGE 2: AI ASSISTANT WITH QUICK CHOICES + DIRECT CONNECT TO REPRESENTATIVE */
+              <div className="flex flex-col h-[470px]">
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50">
+                  {aiBubbles.map((b, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex flex-col ${b.sender === 'ai' ? 'items-start' : 'items-end'}`}
+                    >
+                      <div
+                        className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${
+                          b.sender === 'ai'
+                            ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'
+                            : 'bg-brand-600 text-white rounded-tr-sm'
+                        }`}
+                      >
+                        {b.sender === 'ai' && (
+                          <div className="font-extrabold text-[10px] uppercase tracking-wider text-brand-600 flex items-center gap-1 mb-1">
+                            <Sparkles className="w-3 h-3" /> RANDEVORY AI Asistan
+                          </div>
+                        )}
+                        <p className="whitespace-pre-wrap">{b.text}</p>
+
+                        {/* Selectable Quick Options */}
+                        {b.options && b.options.length > 0 && (
+                          <div className="mt-3 space-y-1.5">
+                            {b.options.map((opt) => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => handleAiOptionClick(opt.id, opt.label)}
+                                className="w-full text-left px-3 py-2 rounded-xl bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 text-slate-800 hover:text-brand-700 font-semibold text-[11px] flex items-center justify-between transition-all"
+                              >
+                                <span>{opt.label}</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Solved / Connect to Representative Actions */}
+                        {b.showSolvedActions && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">
+                              Bu yanıt sorununuzu çözdü mü?
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAiBubbles((prev) => [
+                                    ...prev,
+                                    {
+                                      sender: 'user',
+                                      text: '✅ Teşekkürler, sorunum çözüldü!',
+                                    },
+                                    {
+                                      sender: 'ai',
+                                      text: 'Harika! 😊 Başka bir sorunuz olursa her zaman buradayım.',
+                                    },
+                                  ])
+                                }
+                                className="px-2.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[11px] flex items-center justify-center gap-1"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                Çözüldü
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleResetAi}
+                                className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center gap-1"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                Başka Konu Seç
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setWidgetStage('human_form')}
+                              className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              Çözülmedi, Müşteri Temsilcisine Bağlan
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={aiEndRef} />
+                </div>
+
+                {/* Direct "Connect to Customer Representative" Bar + AI Free-Text Input */}
+                <div className="p-3 bg-white border-t border-slate-200 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setWidgetStage('human_form')}
+                    className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <UserCheck className="w-4 h-4 text-emerald-400" />
+                    Direkt Müşteri Temsilcisine Bağlan (Mesaj & Fotoğraf)
+                  </button>
+
+                  <form onSubmit={handleAiFreeTextSubmit} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Veya sorunuzu yapay zekaya yazın..."
+                      value={aiInput}
+                      onChange={(e) => setAiInput(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!aiInput.trim()}
+                      className="px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs disabled:opacity-50"
+                    >
+                      Sor
+                    </button>
+                  </form>
+                </div>
+              </div>
             ) : (
-              /* Start New Support Conversation Form */
-              <div className="p-4 max-h-[440px] overflow-y-auto">
+              /* STAGE 3: CONNECT TO HUMAN REPRESENTATIVE FORM (WITH PHOTO UPLOAD) */
+              <div className="p-4 max-h-[460px] overflow-y-auto">
                 <form onSubmit={handleStartSupportChat} className="space-y-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-brand-50 border border-brand-200 text-brand-900 flex items-center justify-between">
+                    <span className="font-bold text-[11px] flex items-center gap-1.5">
+                      <UserCheck className="w-4 h-4 text-brand-600" />
+                      Canlı Müşteri Temsilcisi Bağlantı Formu
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setWidgetStage('ai')}
+                      className="text-[11px] text-brand-700 font-bold hover:underline"
+                    >
+                      &larr; AI Şıklarına Dön
+                    </button>
+                  </div>
+
                   {errorMsg && (
                     <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-medium">
                       {errorMsg}
@@ -548,12 +1082,57 @@ export function SupportFloatingWidget() {
                     <label className="block font-bold text-slate-700 mb-1">Mesajınız *</label>
                     <textarea
                       rows={3}
-                      required
-                      placeholder="Size nasıl yardımcı olabiliriz? Mesajınızı yazıp canlı sohbete bağlanın..."
+                      placeholder="Yaşadığınız sorunu müşteri temsilcimize yazın..."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300"
                     />
+                  </div>
+
+                  {/* Photo Upload Button & Preview */}
+                  <div>
+                    <input
+                      ref={formFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSelectImageForForm}
+                      className="hidden"
+                    />
+                    {formImagePreview ? (
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={formImagePreview}
+                            alt="Yüklenen Fotoğraf"
+                            className="w-12 h-12 rounded-lg object-cover border border-slate-300"
+                          />
+                          <div>
+                            <div className="font-bold text-slate-800 text-[11px]">
+                              📷 Ekran Görüntüsü / Fotoğraf Eklendi
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              Mesajınızla birlikte temsilciye iletilecek
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormImagePreview(null)}
+                          className="text-rose-600 hover:text-rose-700 font-bold text-xs px-2 py-1"
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => formFileInputRef.current?.click()}
+                        className="w-full py-2 px-3 rounded-xl border border-dashed border-slate-300 hover:border-brand-400 bg-slate-50 hover:bg-brand-50/40 text-slate-700 font-semibold flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <ImagePlus className="w-4 h-4 text-brand-600" />
+                        📷 Fotoğraf veya Ekran Görüntüsü Ekle (Opsiyonel)
+                      </button>
+                    )}
                   </div>
 
                   <button
@@ -562,7 +1141,7 @@ export function SupportFloatingWidget() {
                     className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    {submitting ? 'Sohbet Başlatılıyor...' : 'Canlı Desteğe Bağlan & Gönder'}
+                    {submitting ? 'Temsilciye Bağlanılıyor...' : 'Müşteri Temsilcisine Bağlan & Gönder'}
                   </button>
 
                   {supportWhatsapp && (
