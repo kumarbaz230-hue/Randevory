@@ -1,23 +1,29 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { store } from '@/lib/data-store';
+import Link from 'next/link';
 import { repo } from '@/lib/supabase-repository';
-import { Business, WorkingHour, SubscriptionTier } from '@/types';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { Business, WorkingHour, SubscriptionPlan } from '@/types';
 import {
-  Settings,
   Clock,
   Building,
   CreditCard,
-  CheckCircle2,
-  ExternalLink,
   Save,
   Check,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
 
   // Form Fields
@@ -29,6 +35,14 @@ export default function DashboardSettingsPage() {
   const [slotInterval, setSlotInterval] = useState(30);
   const [autoConfirm, setAutoConfirm] = useState(true);
   const [cancelHours, setCancelHours] = useState(2);
+
+  // Password Change State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
 
   const daysTurkish = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
@@ -45,8 +59,14 @@ export default function DashboardSettingsPage() {
         setSlotInterval(b.settings.slot_interval_minutes);
         setAutoConfirm(b.settings.auto_confirm_appointments);
         setCancelHours(b.settings.cancellation_deadline_hours);
-        const wh = await repo.getWorkingHours(b.id);
+
+        const [wh, plans] = await Promise.all([
+          repo.getWorkingHours(b.id),
+          repo.getSubscriptionPlans(),
+        ]);
         setWorkingHours(wh);
+        const foundPlan = plans.find((p) => p.tier === b.subscription_plan) || plans[0] || null;
+        setCurrentPlan(foundPlan);
       }
     };
     load();
@@ -96,14 +116,61 @@ export default function DashboardSettingsPage() {
     setTimeout(() => setSavedMessage(false), 3000);
   };
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+
+    if (newPassword.length < 6) {
+      setPassError('Yeni şifreniz en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPassError('Şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+
+    setPassLoading(true);
+
+    if (!isSupabaseConfigured()) {
+      setTimeout(() => {
+        setPassLoading(false);
+        setPassSuccess('Şifreniz başarıyla güncellendi.');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }, 500);
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        setPassError(error.message || 'Şifre güncellenemedi.');
+      } else {
+        setPassSuccess('Hesap şifreniz başarıyla güncellendi!');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }
+    } catch (err: any) {
+      setPassError(err.message || 'Bir hata oluştu.');
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">İşletme ve Randevu Ayarları</h1>
+          <h1 className="text-xl font-bold text-slate-900">İşletme ve Hesap Ayarları</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            İşletme profilinizi, çalışma saatlerinizi ve abonelik paketinizi bu ekrandan yönetin.
+            İşletme profilinizi, çalışma saatlerinizi, hesap şifrenizi ve abonelik paketinizi bu ekrandan yönetin.
           </p>
         </div>
 
@@ -282,28 +349,46 @@ export default function DashboardSettingsPage() {
           </div>
         </div>
 
-        {/* Subscription Plan Card */}
+        {/* Subscription Plan Card (Dynamic) */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-brand-600" />
-            Abonelik Paketi
+            Abonelik Paketi ve Lisans
           </h2>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 text-base">Profesyonel Paket</span>
+                <span className="font-bold text-slate-900 text-base">
+                  {currentPlan?.name || 'Başlangıç Paketi'}
+                </span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                  Aktif
+                  Aktif Lisans
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                10 Personel, Sınırsız Randevu, SMS & E-posta Hatırlatma, Finans Raporları
+                {currentPlan
+                  ? `${currentPlan.max_staff >= 999 ? 'Sınırsız' : currentPlan.max_staff} Personel, Aylık ${
+                      currentPlan.max_appointments_per_month >= 99999 ? 'Sınırsız' : currentPlan.max_appointments_per_month
+                    } Randevu`
+                  : '1 Personel, Aylık 50 Randevu'}
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-xl font-extrabold text-slate-900">799 ₺</span>
-              <span className="text-xs text-slate-500"> / ay</span>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <span className="text-xl font-extrabold text-slate-900">
+                  {currentPlan && currentPlan.price_monthly > 0 ? `${currentPlan.price_monthly} ₺` : 'Ücretsiz'}
+                </span>
+                {currentPlan && currentPlan.price_monthly > 0 && (
+                  <span className="text-xs text-slate-500"> / ay</span>
+                )}
+              </div>
+              <Link
+                href="/dashboard/billing"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              >
+                Planları İncele / Yükselt <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
         </div>
@@ -314,10 +399,88 @@ export default function DashboardSettingsPage() {
             type="submit"
             className="px-6 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-colors flex items-center gap-2 shadow-sm"
           >
-            <Save className="w-4 h-4" /> Tüm Değişiklikleri Kaydet
+            <Save className="w-4 h-4" /> İşletme Ayarlarını Kaydet
           </button>
         </div>
       </form>
+
+      {/* Account Security & Password Change Form */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-brand-600" />
+            Hesap Güvenliği ve Şifre Değiştirme
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Giriş şifrenizi buradan anında güncelleyebilirsiniz.
+          </p>
+        </div>
+
+        {passError && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{passError}</span>
+          </div>
+        )}
+
+        {passSuccess && (
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{passSuccess}</span>
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordChange} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end text-xs">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Yeni Şifre</label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type={showPass ? 'text' : 'password'}
+                required
+                minLength={6}
+                placeholder="En az 6 karakter"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Yeni Şifre (Tekrar)</label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type={showPass ? 'text' : 'password'}
+                required
+                minLength={6}
+                placeholder="Tekrar girin"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={passLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
+            >
+              {passLoading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

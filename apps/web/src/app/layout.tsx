@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthRecoveryListener } from '@/components/auth-recovery-listener';
 
 export const metadata: Metadata = {
   title: 'RANDEVORY – Profesyonel Randevu ve Hizmet Yönetim Platformu',
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-brand-500 selection:text-white">
+        <AuthRecoveryListener />
         {children}
       </body>
     </html>

@@ -1,16 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
 import {
   TrendingUp,
-  DollarSign,
   CalendarCheck,
   Award,
   BarChart3,
-  PieChart,
+  Users,
 } from 'lucide-react';
 
 export default function DashboardReportsPage() {
@@ -38,20 +36,40 @@ export default function DashboardReportsPage() {
   }, []);
 
   const totalAppointments = appointments.length;
-  const completedAppointments = appointments.filter((a) => a.status === 'completed' || a.status === 'confirmed').length;
+  const completedAppointments = appointments.filter(
+    (a) => a.status === 'completed' || a.status === 'confirmed'
+  ).length;
   const cancelledAppointments = appointments.filter((a) => a.status === 'cancelled').length;
-  const completionRate = totalAppointments > 0 ? Math.round((completedAppointments / totalAppointments) * 100) : 100;
+  const completionRate =
+    totalAppointments > 0 ? Math.round((completedAppointments / totalAppointments) * 100) : 100;
 
   const totalRevenue = appointments
     .filter((a) => a.status === 'confirmed' || a.status === 'completed')
     .reduce((sum, a) => sum + (a.total_price || 0), 0);
 
   // Popular Services calculation
-  const serviceStats = services.map((s) => {
-    const count = appointments.filter((a) => a.service_id === s.id).length;
-    const revenue = count * s.price;
-    return { ...s, count, revenue };
-  }).sort((a, b) => b.count - a.count);
+  const serviceStats = services
+    .map((s) => {
+      const validApts = appointments.filter(
+        (a) => a.service_id === s.id && (a.status === 'confirmed' || a.status === 'completed')
+      );
+      const count = validApts.length;
+      const revenue = validApts.reduce((sum, a) => sum + (a.total_price || s.price), 0);
+      return { ...s, count, revenue };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
+
+  // Staff Performance calculation
+  const staffStats = staffList
+    .map((st) => {
+      const staffApts = appointments.filter(
+        (a) => a.staff_id === st.id && (a.status === 'confirmed' || a.status === 'completed')
+      );
+      const count = staffApts.length;
+      const revenue = staffApts.reduce((sum, a) => sum + (a.total_price || 0), 0);
+      return { ...st, count, revenue };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
 
   return (
     <div className="space-y-6">
@@ -59,7 +77,7 @@ export default function DashboardReportsPage() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <h1 className="text-xl font-bold text-slate-900">Gelir ve Performans Raporları</h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          İşletmenizin ciro gelişimini, popüler hizmetlerini ve randevu verimliliğini analiz edin.
+          {business?.name || 'İşletmenizin'} ciro gelişimini, popüler hizmetlerini ve uzman verimliliğini analiz edin.
         </p>
       </div>
 
@@ -74,7 +92,7 @@ export default function DashboardReportsPage() {
           </div>
           <div className="mt-4 text-3xl font-extrabold text-slate-900">{totalRevenue} ₺</div>
           <span className="text-xs text-emerald-600 font-semibold mt-1 inline-block">
-            Onaylanmış & Tamamlanmış
+            Onaylanmış & Tamamlanmış ({completedAppointments} Randevu)
           </span>
         </div>
 
@@ -107,32 +125,77 @@ export default function DashboardReportsPage() {
         </div>
       </div>
 
-      {/* Services Performance Breakdown */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-brand-600" />
-          Hizmet Talebi ve Gelir Dağılımı
-        </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Services Performance Breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-brand-600" />
+            Hizmet Talebi ve Gelir Dağılımı
+          </h2>
 
-        <div className="space-y-4">
-          {serviceStats.map((srv) => {
-            const percentage = totalRevenue > 0 ? Math.round((srv.revenue / totalRevenue) * 100) : 0;
-            return (
-              <div key={srv.id} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
-                <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
-                  <span className="font-bold text-slate-900 text-sm">{srv.name}</span>
-                  <span className="font-bold text-slate-900">{srv.revenue} ₺ ({srv.count} Randevu)</span>
+          <div className="space-y-4">
+            {serviceStats.map((srv) => {
+              const percentage = totalRevenue > 0 ? Math.round((srv.revenue / totalRevenue) * 100) : 0;
+              return (
+                <div key={srv.id} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
+                    <span className="font-bold text-slate-900 text-sm">{srv.name}</span>
+                    <span className="font-bold text-slate-900">
+                      {srv.revenue} ₺ ({srv.count} Randevu)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-brand-600 h-full rounded-full transition-all"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
                 </div>
-                {/* Progress bar */}
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-brand-600 h-full rounded-full transition-all"
-                    style={{ width: `${percentage}%` }}
-                  ></div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Staff Performance Breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-brand-600" />
+            Personel & Uzman Performansı
+          </h2>
+
+          <div className="space-y-4">
+            {staffStats.map((st) => {
+              const percentage = totalRevenue > 0 ? Math.round((st.revenue / totalRevenue) * 100) : 0;
+              return (
+                <div key={st.id} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-5 h-5 rounded-md text-white font-bold text-[10px] flex items-center justify-center"
+                        style={{ backgroundColor: st.color_code || '#2563eb' }}
+                      >
+                        {st.name.charAt(0)}
+                      </span>
+                      <span className="font-bold text-slate-900 text-sm">{st.name}</span>
+                      <span className="text-slate-400">({st.title})</span>
+                    </div>
+                    <span className="font-bold text-slate-900">
+                      {st.revenue} ₺ ({st.count} Seans)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${percentage}%`,
+                        backgroundColor: st.color_code || '#2563eb',
+                      }}
+                    ></div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

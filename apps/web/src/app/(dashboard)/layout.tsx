@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         });
       });
     }
-  }, [pathname]);
+  }, [pathname, router]);
 
   const handleLogout = async () => {
     if (isSupabaseConfigured()) {
@@ -73,6 +73,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Abonelik & Lisans', href: '/dashboard/billing', icon: CreditCard },
     { name: 'İşletme Ayarları', href: '/dashboard/settings', icon: Settings },
   ];
+
+  const activeNavTitle =
+    navigation.find((item) => item.href === pathname)?.name || 'Genel Bakış';
+
+  const publicBookingUrl = `/${activeBiz?.slug || 'salon-prestij'}`;
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
@@ -96,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {activeBiz?.name || 'Salon Prestij'}
             </div>
             <Link
-              href={`/${activeBiz?.slug || 'salon-prestij'}`}
+              href={publicBookingUrl}
               target="_blank"
               className="mt-2 text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium"
             >
@@ -135,7 +140,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div className="overflow-hidden">
               <div className="font-semibold text-white truncate max-w-[110px]">
-                {currentUser?.name || 'Ahmet Karaca'}
+                {currentUser?.name || 'İşletme Yöneticisi'}
               </div>
               <div className="text-slate-500 text-[10px] truncate max-w-[110px]">
                 {currentUser?.email || 'İşletme Sahibi'}
@@ -157,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <BrandLogo size="sm" variant="dark" showBadge={false} showSlogan={false} />
         <div className="flex items-center gap-2">
           <Link
-            href="/salon-prestij"
+            href={publicBookingUrl}
             target="_blank"
             className="text-xs bg-slate-800 text-brand-300 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1"
           >
@@ -193,6 +198,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               );
             })}
+            <div className="pt-3 mt-3 border-t border-slate-800 flex items-center justify-between px-3.5 py-2">
+              <div className="text-xs text-slate-300 truncate">{currentUser?.email}</div>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1.5"
+              >
+                <LogOut className="w-4 h-4" /> Çıkış Yap
+              </button>
+            </div>
           </nav>
         </div>
       )}
@@ -204,20 +218,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 text-sm text-slate-500">
             <span className="font-medium text-slate-800">Yönetim Paneli</span>
             <span>/</span>
-            <span className="capitalize">{pathname.split('/')[2] || 'Genel Bakış'}</span>
+            <span className="font-semibold text-brand-600">{activeNavTitle}</span>
           </div>
 
           <div className="flex items-center gap-4">
             <Link
-              href="/salon-prestij"
+              href={publicBookingUrl}
               target="_blank"
               className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 transition-colors border border-slate-200"
             >
               Müşteri Ekranını Aç <ExternalLink className="w-3.5 h-3.5" />
             </Link>
-            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-200">
+            <Link
+              href="/dashboard/settings"
+              title="Ayarlar"
+              className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-200"
+            >
               <Bell className="w-4 h-4" />
-            </div>
+            </Link>
           </div>
         </header>
 

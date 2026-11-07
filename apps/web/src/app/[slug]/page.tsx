@@ -1,28 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { generateAvailableSlots, validateAppointmentConflict } from '@/lib/appointment-engine';
 import { Business, Service, Staff, TimeSlot, WorkingHour, Appointment } from '@/types';
 import Link from 'next/link';
 import {
-  Calendar,
   Clock,
   MapPin,
   Phone,
-  Mail,
   CheckCircle2,
   AlertCircle,
   ChevronRight,
   ChevronLeft,
   User,
-  Scissors,
   Check,
   Building,
   Info,
-  CalendarCheck,
 } from 'lucide-react';
 
 export default function BusinessPublicPage() {
@@ -34,6 +30,8 @@ export default function BusinessPublicPage() {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+
+  const daysTurkish = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
   // Wizard Steps: 1: Service, 2: Staff, 3: Date & Slot, 4: Customer Details, 5: Confirmation
   const [step, setStep] = useState<number>(1);
@@ -713,9 +711,27 @@ export default function BusinessPublicPage() {
               <Clock className="w-4 h-4 text-slate-500" /> Çalışma Saatleri
             </h4>
             <div className="space-y-1">
-              <div>Pazartesi - Cuma: 09:00 - 19:00</div>
-              <div>Cumartesi: 10:00 - 18:00</div>
-              <div>Pazar: Kapalı</div>
+              {workingHours.length > 0 ? (
+                [1, 2, 3, 4, 5, 6, 0].map((dayIdx) => {
+                  const wh = workingHours.find((w) => w.day_of_week === dayIdx);
+                  return (
+                    <div key={dayIdx} className="flex justify-between">
+                      <span className="font-medium text-slate-700">{daysTurkish[dayIdx]}:</span>
+                      <span>
+                        {wh && wh.is_open
+                          ? `${wh.open_time.slice(0, 5)} - ${wh.close_time.slice(0, 5)}`
+                          : 'Kapalı'}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <>
+                  <div>Pazartesi - Cuma: 09:00 - 19:00</div>
+                  <div>Cumartesi: 10:00 - 18:00</div>
+                  <div>Pazar: Kapalı</div>
+                </>
+              )}
             </div>
           </div>
           <div className="p-4 rounded-xl bg-white border border-slate-200">
@@ -731,7 +747,7 @@ export default function BusinessPublicPage() {
         {/* Powered by RANDEVORY Footer */}
         <footer className="mt-10 py-6 text-center text-xs text-slate-400 border-t border-slate-200/80">
           <p>
-            Güvenli Randevu Altyapısı – <span className="font-bold text-slate-600">RANDEVORY</span> • <em>İşini kolaylaştır, zamanını kazan.</em>
+            Güvenli Randevu Altyapısı – <Link href="/" className="font-bold text-slate-600 hover:text-brand-600">RANDEVORY</Link> • <em>İşini kolaylaştır, zamanını kazan.</em>
           </p>
         </footer>
       </main>
