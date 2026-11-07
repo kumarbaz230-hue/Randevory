@@ -27,6 +27,9 @@ export default function DashboardSettingsPage() {
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [showQrModal, setShowQrModal] = useState(false);
 
   // Form Fields
@@ -97,33 +100,78 @@ export default function DashboardSettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!business) return;
+    setSaveError('');
+    setSaveSuccessMsg('');
+    setSavedMessage(false);
 
-    const cleanSlug = repo.normalizeSlug(slug || name);
-    const updatedBiz = await repo.updateBusiness(business.id, {
-      name,
-      slug: cleanSlug,
-      phone,
-      email,
-      address,
-      settings: {
-        ...business.settings,
-        slot_interval_minutes: Number(slotInterval),
-        auto_confirm_appointments: autoConfirm,
-        cancellation_deadline_hours: Number(cancelHours),
-      },
-    });
-
-    await repo.updateWorkingHours(business.id, workingHours);
-
-    setBusiness(updatedBiz);
-    setSlug(updatedBiz.slug);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('randevory-business-updated', { detail: updatedBiz }));
+    if (!business) {
+      setSaveError('Aktif işletme bilgisi bulunamadı, lütfen sayfayı yenileyin.');
+      return;
     }
 
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 3000);
+    // Eksik alan kontrolleri
+    if (!name.trim()) {
+      setSaveError('Eksik Bilgi: Lütfen "İşletme Adı" alanını doldurun.');
+      return;
+    }
+
+    const cleanSlug = repo.normalizeSlug(slug || name);
+    if (!cleanSlug) {
+      setSaveError('Eksik Bilgi: Lütfen geçerli bir "Özel Bağlantı Kodu (Slug)" girin.');
+      return;
+    }
+
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 10) {
+      setSaveError('Eksik Bilgi: Lütfen geçerli bir "Telefon Numarası" girin (en az 10 rakam).');
+      return;
+    }
+
+    if (!address.trim()) {
+      setSaveError('Eksik Bilgi: Lütfen "Adres" alanını boş bırakmayın.');
+      return;
+    }
+
+    setSavingSettings(true);
+    try {
+      const updatedBiz = await repo.updateBusiness(business.id, {
+        name: name.trim(),
+        slug: cleanSlug,
+        phone: phone.trim(),
+        email: email.trim(),
+        address: address.trim(),
+        settings: {
+          ...business.settings,
+          slot_interval_minutes: Number(slotInterval),
+          auto_confirm_appointments: autoConfirm,
+          cancellation_deadline_hours: Number(cancelHours),
+        },
+      });
+
+      await repo.updateWorkingHours(business.id, workingHours);
+
+      setBusiness(updatedBiz);
+      setSlug(updatedBiz.slug);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('randevory-business-updated', { detail: updatedBiz }));
+      }
+
+      const okText = `✅ İşletme ayarlarınız ve "randevory.com/${updatedBiz.slug}" bağlantınız başarıyla kaydedildi!`;
+      setSaveSuccessMsg(okText);
+      setSavedMessage(true);
+      setTimeout(() => {
+        setSavedMessage(false);
+        setSaveSuccessMsg('');
+      }, 6000);
+    } catch (err: any) {
+      const rawMsg = err?.message || '';
+      if (rawMsg.includes('duplicate') || rawMsg.includes('unique') || rawMsg.includes('slug')) {
+        setSaveError('Hata: Bu Özel Bağlantı Kodu (Slug) başka bir işletme tarafından kullanılıyor. Lütfen farklı bir bağlantı kodu yazın.');
+      } else {
+        setSaveError(`Ayarlar kaydedilirken hata oluştu: ${rawMsg || 'Lütfen bilgilerinizi kontrol edin.'}`);
+      }
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -191,7 +239,42 @@ export default function DashboardSettingsPage() {
         )}
       </div>
 
-      <form onSubmit={handleSave} className="space-y-8">
+      {/* Floating Toast Notification (Fixed Top-Center so user always sees it regardless of scroll position) */}
+      {(saveSuccessMsg || saveError) && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[92%] animate-in fade-in slide-in-from-top-4">
+          {saveSuccessMsg ? (
+            <div className="p-4 rounded-2xl bg-emerald-600 text-white shadow-2xl border border-emerald-400 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveSuccessMsg('')}
+                className="text-white/80 hover:text-white text-xs underline shrink-0"
+              >
+                Kapat
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-rose-600 text-white shadow-2xl border border-rose-400 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span>{saveError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveError('')}
+                className="text-white/80 hover:text-white text-xs underline shrink-0"
+              >
+                Kapat
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSave} noValidate className="space-y-8">
         {/* Profile and General Info */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -416,14 +499,32 @@ export default function DashboardSettingsPage() {
           </div>
         </div>
 
-        {/* Submit Bar */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="px-6 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <Save className="w-4 h-4" /> İşletme Ayarlarını Kaydet
-          </button>
+        {/* Submit Bar & Inline Status Alert */}
+        <div className="space-y-3">
+          {saveError && (
+            <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-800 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-sm">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{saveError}</span>
+            </div>
+          )}
+
+          {saveSuccessMsg && (
+            <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-900 text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-sm">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>{saveSuccessMsg}</span>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={savingSettings}
+              className="px-6 py-3.5 rounded-xl bg-brand-600 text-white font-bold text-xs sm:text-sm hover:bg-brand-700 transition-all flex items-center gap-2 shadow-md disabled:opacity-60"
+            >
+              <Save className="w-4 h-4" />
+              {savingSettings ? 'Ayarlar Kaydediliyor...' : 'İşletme Ayarlarını Kaydet'}
+            </button>
+          </div>
         </div>
       </form>
 
