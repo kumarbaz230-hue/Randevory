@@ -53,6 +53,7 @@ interface AdminTicketRow {
   reported_business_slug: string | null;
   status: 'open' | 'answered' | 'closed';
   admin_reply: string | null;
+  messages?: Array<{ sender: 'user' | 'admin'; text: string; created_at: string }>;
   replied_at: string | null;
   created_at: string;
 }
@@ -148,6 +149,19 @@ export default function SuperAdminDashboardPage() {
     loadAdminOverview();
   }, [loadAdminOverview]);
 
+  // Destek sekmesindeyken karşı taraftan gelen yeni mesajları 4 saniyede bir canlı yenile
+  useEffect(() => {
+    if (!authorized || activeTab !== 'tickets') return;
+    const timer = setInterval(async () => {
+      const supabase = createClient();
+      const { data } = await supabase.rpc('admin_get_overview');
+      if (data && (data as any).tickets) {
+        setTickets((data as any).tickets);
+      }
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [authorized, activeTab]);
+
   const handleToggleBusinessBan = async (biz: AdminBusinessRow, makeActive: boolean, reason?: string) => {
     setActionBusyId(biz.id);
     try {
@@ -209,36 +223,52 @@ export default function SuperAdminDashboardPage() {
   };
 
   const handleReplyTicket = async (ticket: AdminTicketRow, newStatus: 'answered' | 'closed') => {
-    const replyText = (replyDrafts[ticket.id] ?? ticket.admin_reply ?? '').trim();
+    const replyText = (replyDrafts[ticket.id] ?? '').trim();
     if (!replyText && newStatus === 'answered') {
-      alert('Lütfen önce destek yanıtınızı yazın.');
+      alert('Lütfen önce göndermek istediğiniz mesajı yazın.');
       return;
     }
 
     setActionBusyId(ticket.id);
     try {
       const supabase = createClient();
-      const { error } = await supabase.rpc('admin_reply_support_ticket', {
+      const { data, error } = await supabase.rpc('admin_reply_support_ticket', {
         p_ticket_id: ticket.id,
-        p_reply: replyText || 'Talebiniz incelenmiş ve çözümlenmiştir.',
+        p_reply: replyText,
         p_status: newStatus,
       });
 
       if (error) throw error;
 
       setTickets((prev) =>
-        prev.map((t) =>
-          t.id === ticket.id
-            ? {
-                ...t,
-                admin_reply: replyText || 'Talebiniz incelenmiş ve çözümlenmiştir.',
-                status: newStatus,
-                replied_at: new Date().toISOString(),
-              }
-            : t
-        )
+        prev.map((t) => {
+          if (t.id !== ticket.id) return t;
+          if (data && (data as any).id) {
+            return data as AdminTicketRow;
+          }
+          const nextMsgs = [...(t.messages || [])];
+          if (replyText) {
+            nextMsgs.push({
+              sender: 'admin',
+              text: replyText,
+              created_at: new Date().toISOString(),
+            });
+          }
+          return {
+            ...t,
+            messages: nextMsgs,
+            admin_reply: replyText || t.admin_reply,
+            status: newStatus,
+            replied_at: new Date().toISOString(),
+          };
+        })
       );
-      showToast('✅ Destek talebi yanıtlandı ve kaydedildi.');
+      setReplyDrafts((prev) => ({ ...prev, [ticket.id]: '' }));
+      showToast(
+        newStatus === 'closed'
+          ? '✅ Görüşme çözüldü olarak kapatıldı.'
+          : '✅ Mesajınız karşı tarafa canlı olarak iletildi!'
+      );
     } catch (err: any) {
       alert(err?.message || 'Yanıt kaydedilemedi.');
     } finally {
@@ -703,43 +733,97 @@ export default function SuperAdminDashboardPage() {
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 leading-relaxed">
-                    {ticket.message}
+                  {/* Live Conversation Thread */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 max-h-64 overflow-y-auto">
+                    {(Array.isArray(ticket.messages) && ticket.messages.length > 0
+                      ? ticket.messages
+                      : [
+                          {
+                            sender: 'user' as const,
+                            text: ticket.message,
+                            created_at: ticket.created_at,
+                          },
+                          ...(ticket.admin_reply
+                            ? [
+                                {
+                                  sender: 'admin' as const,
+                                  text: ticket.admin_reply,
+                                  created_at: ticket.replied_at || ticket.created_at,
+                                },
+                              ]
+                            : []),
+                        ]
+                    ).map((msg, mIdx) => {
+                      const isAdmin = msg.sender === 'admin';
+                      return (
+                        <div
+                          key={mIdx}
+                          className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${
+                              isAdmin
+                                ? 'bg-brand-600 text-white rounded-tr-sm'
+                                : 'bg-white border border-slate-200 text-slate-900 rounded-tl-sm'
+                            }`}
+                          >
+                            <div
+                              className={`text-[10px] font-bold mb-0.5 ${
+                                isAdmin ? 'text-brand-100' : 'text-slate-500'
+                              }`}
+                            >
+                              {isAdmin ? '🛡️ Siz (RANDEVORY Destek Ekibi)' : `👤 ${ticket.sender_name}`}
+                            </div>
+                            <p className="whitespace-pre-wrap">{msg.text}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Admin Reply Box */}
                   <div className="pt-2 space-y-2">
                     <label className="block text-xs font-bold text-slate-700">
-                      🛡️ RANDEVORY Destek Ekibi Yanıtınız:
+                      🛡️ Karşı Tarafa Canlı Mesaj Gönder:
                     </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Kullanıcıya resmi destek yanıtınızı yazın (Kullanıcı destek penceresinden sorguladığında bu yanıtı görür)..."
-                      value={replyDrafts[ticket.id] ?? ticket.admin_reply ?? ''}
-                      onChange={(e) =>
-                        setReplyDrafts((prev) => ({ ...prev, [ticket.id]: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
-                    />
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Mesajınızı yazın (Karşı tarafın ekranına anında düşer ve o da tekrar yanıt yazabilir)..."
+                        value={replyDrafts[ticket.id] ?? ''}
+                        onChange={(e) =>
+                          setReplyDrafts((prev) => ({ ...prev, [ticket.id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleReplyTicket(ticket, 'answered');
+                          }
+                        }}
+                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs"
+                      />
+                      <button
+                        type="button"
+                        disabled={actionBusyId === ticket.id}
+                        onClick={() => handleReplyTicket(ticket, 'answered')}
+                        className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        Mesaj Gönder
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={actionBusyId === ticket.id}
-                          onClick={() => handleReplyTicket(ticket, 'answered')}
-                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          Yanıtı Kaydet & Gönder
-                        </button>
-                        <button
-                          type="button"
-                          disabled={actionBusyId === ticket.id}
-                          onClick={() => handleReplyTicket(ticket, 'closed')}
-                          className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs"
-                        >
-                          Çözüldü Olarak Kapat
-                        </button>
+                        {ticket.status !== 'closed' && (
+                          <button
+                            type="button"
+                            disabled={actionBusyId === ticket.id}
+                            onClick={() => handleReplyTicket(ticket, 'closed')}
+                            className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs"
+                          >
+                            Görüşmeyi Çözüldü Olarak Kapat
+                          </button>
+                        )}
                       </div>
 
                       {/\d{10,}/.test(ticket.sender_contact.replace(/\D/g, '')) && (
@@ -750,7 +834,7 @@ export default function SuperAdminDashboardPage() {
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5"
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />
                           WhatsApp&apos;tan Yaz

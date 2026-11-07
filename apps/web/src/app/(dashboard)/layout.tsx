@@ -73,7 +73,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, router]);
 
-  // Poll unread messages count periodically
+  // Poll unread messages count periodically + listen for business updates
+  useEffect(() => {
+    const onBizUpdated = (e: Event) => {
+      const customEv = e as CustomEvent<Business>;
+      if (customEv.detail) {
+        setActiveBiz(customEv.detail);
+      } else {
+        repo.getActiveBusiness().then((b) => b && setActiveBiz(b));
+      }
+    };
+    window.addEventListener('randevory-business-updated', onBizUpdated);
+    return () => window.removeEventListener('randevory-business-updated', onBizUpdated);
+  }, []);
+
   useEffect(() => {
     if (!activeBiz) return;
     const timer = setInterval(() => {

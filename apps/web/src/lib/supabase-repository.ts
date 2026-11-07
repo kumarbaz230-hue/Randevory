@@ -31,6 +31,35 @@ export class DataRepository {
     return (phone || '').replace(/[^0-9]/g, '').slice(-10);
   }
 
+  normalizeSlug(raw: string): string {
+    let decoded = raw || '';
+    try {
+      decoded = decodeURIComponent(decoded);
+    } catch {}
+    const trMap: Record<string, string> = {
+      ç: 'c',
+      Ç: 'c',
+      ğ: 'g',
+      Ğ: 'g',
+      ı: 'i',
+      İ: 'i',
+      I: 'i',
+      ö: 'o',
+      Ö: 'o',
+      ş: 's',
+      Ş: 's',
+      ü: 'u',
+      Ü: 'u',
+    };
+    return decoded
+      .trim()
+      .replace(/[çÇğĞıİIöÖşŞüÜ]/g, (ch) => trMap[ch] || ch)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
   // --- AKTİF İŞLETME YÖNETİMİ ---
   async getActiveBusiness(): Promise<Business | null> {
     if (!isSupabaseConfigured()) {
@@ -173,22 +202,50 @@ export class DataRepository {
 
   // --- İŞLETME METODLARI ---
   async getBusinessBySlug(slug: string): Promise<Business | null> {
+    let decodedSlug = slug || '';
+    try {
+      decodedSlug = decodeURIComponent(decodedSlug).trim();
+    } catch {}
+    const cleanSlug = this.normalizeSlug(decodedSlug);
+
     if (!isSupabaseConfigured()) {
-      return store.getBusinessBySlug(slug) || store.getBusinessById('b-1') || null;
+      return (
+        store.getBusinessBySlug(decodedSlug) ||
+        store.getBusinessBySlug(cleanSlug) ||
+        store.getBusinessById('b-1') ||
+        null
+      );
     }
 
     const supabase = createClient();
-    const { data, error } = await supabase
+
+    // 1. Tam eşleşme veya normalize edilmiş slug eşleşmesi dene
+    const { data: exactList } = await supabase
       .from('businesses')
       .select('*')
-      .eq('slug', slug)
       .eq('is_active', true)
-      .single();
+      .in('slug', Array.from(new Set([slug, decodedSlug, cleanSlug].filter(Boolean))));
 
-    if (error || !data) {
-      return store.getBusinessBySlug(slug) || null;
+    if (exactList && exactList.length > 0) {
+      return exactList[0] as Business;
     }
-    return data as Business;
+
+    // 2. Türkçe karakter / büyük-küçük harf farkı olan kayıtlar için tüm aktif işletmelerden normalize kontrolü yap
+    const { data: allActive } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('is_active', true);
+
+    if (allActive && allActive.length > 0) {
+      const matched = allActive.find(
+        (b: any) =>
+          this.normalizeSlug(b.slug || '') === cleanSlug ||
+          this.normalizeSlug(b.name || '') === cleanSlug
+      );
+      if (matched) return matched as Business;
+    }
+
+    return store.getBusinessBySlug(decodedSlug) || store.getBusinessBySlug(cleanSlug) || null;
   }
 
   async getBusinessById(id: string): Promise<Business | null> {
@@ -210,14 +267,19 @@ export class DataRepository {
   }
 
   async updateBusiness(id: string, updates: Partial<Business>): Promise<Business> {
+    const cleanUpdates = { ...updates };
+    if (typeof cleanUpdates.slug === 'string' && cleanUpdates.slug.trim()) {
+      cleanUpdates.slug = this.normalizeSlug(cleanUpdates.slug);
+    }
+
     if (!isSupabaseConfigured()) {
-      return store.updateBusiness(id, updates);
+      return store.updateBusiness(id, cleanUpdates);
     }
 
     const supabase = createClient();
     const { data, error } = await supabase
       .from('businesses')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...cleanUpdates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();

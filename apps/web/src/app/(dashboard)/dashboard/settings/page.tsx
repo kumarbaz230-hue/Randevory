@@ -99,9 +99,10 @@ export default function DashboardSettingsPage() {
     e.preventDefault();
     if (!business) return;
 
-    await repo.updateBusiness(business.id, {
+    const cleanSlug = repo.normalizeSlug(slug || name);
+    const updatedBiz = await repo.updateBusiness(business.id, {
       name,
-      slug,
+      slug: cleanSlug,
       phone,
       email,
       address,
@@ -114,6 +115,12 @@ export default function DashboardSettingsPage() {
     });
 
     await repo.updateWorkingHours(business.id, workingHours);
+
+    setBusiness(updatedBiz);
+    setSlug(updatedBiz.slug);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('randevory-business-updated', { detail: updatedBiz }));
+    }
 
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 3000);
@@ -199,7 +206,11 @@ export default function DashboardSettingsPage() {
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const nextName = e.target.value;
+                  setName(nextName);
+                  setSlug(repo.normalizeSlug(nextName));
+                }}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
               />
             </div>
@@ -215,7 +226,7 @@ export default function DashboardSettingsPage() {
                     type="text"
                     required
                     value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
+                    onChange={(e) => setSlug(repo.normalizeSlug(e.target.value))}
                     className="w-full px-3 py-2 rounded-r-xl border border-slate-300 font-mono focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
