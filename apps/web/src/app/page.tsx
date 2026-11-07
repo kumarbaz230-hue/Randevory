@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
-import { HomeNavbarAuth } from '@/components/home-navbar-auth';
+import { HomeHeader } from '@/components/home-header';
 import { ReviewsSection } from '@/components/reviews-section';
 import {
   Calendar,
@@ -34,27 +34,8 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <BrandLogo size="md" showBadge={true} showSlogan={false} />
-
-          <nav className="hidden md:flex items-center space-x-7 text-sm font-medium text-slate-600">
-            <a href="#features" className="hover:text-slate-900 transition-colors">Özellikler</a>
-            <a href="#nasil-calisir" className="hover:text-slate-900 transition-colors">Nasıl Kullanılır?</a>
-            <a href="#sectors" className="hover:text-slate-900 transition-colors">Sektörler</a>
-            <a href="#yorumlar" className="hover:text-slate-900 transition-colors flex items-center gap-1">
-              Yorumlar
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> 4.7
-              </span>
-            </a>
-            <a href="#plans" className="hover:text-slate-900 transition-colors">Paketler</a>
-          </nav>
-
-          <HomeNavbarAuth />
-        </div>
-      </header>
+      {/* Top Navbar & Mobile Quick Nav */}
+      <HomeHeader />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-32 bg-gradient-to-b from-white via-slate-50 to-slate-100">
@@ -118,7 +99,7 @@ export default function HomePage() {
       </section>
 
       {/* Step-by-Step How It Works Section */}
-      <section id="nasil-calisir" className="py-20 bg-white border-t border-slate-200">
+      <section id="nasil-calisir" className="scroll-mt-28 py-20 bg-white border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <span className="text-brand-600 font-semibold text-xs uppercase tracking-wider">Adım Adım Sistem Rehberi</span>
@@ -184,7 +165,7 @@ export default function HomePage() {
       </section>
 
       {/* Sectors Interactive Showcase */}
-      <section id="sectors" className="py-20 bg-slate-50 border-y border-slate-200">
+      <section id="sectors" className="scroll-mt-28 py-20 bg-slate-50 border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">
@@ -221,7 +202,7 @@ export default function HomePage() {
       </section>
 
       {/* Key Features */}
-      <section id="features" className="py-24 bg-white">
+      <section id="features" className="scroll-mt-28 py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-brand-600 font-semibold text-sm uppercase tracking-wider">İşletmenizi Büyütün</span>
@@ -298,7 +279,7 @@ export default function HomePage() {
       <ReviewsSection />
 
       {/* Subscription Plans Preview */}
-      <section id="plans" className="py-24 bg-slate-50 border-t border-slate-200">
+      <section id="plans" className="scroll-mt-28 py-24 bg-slate-50 border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">

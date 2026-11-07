@@ -260,7 +260,7 @@ export function ReviewsSection() {
   const displayedReviews = filteredReviews.slice(0, visibleCount);
 
   return (
-    <section id="yorumlar" className="py-24 bg-white border-t border-slate-200">
+    <section id="yorumlar" className="scroll-mt-28 py-24 bg-white border-t border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
