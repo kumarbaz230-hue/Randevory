@@ -24,6 +24,7 @@ import {
   Bell,
   MessageSquare,
   QrCode,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string } | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [openSupportTickets, setOpenSupportTickets] = useState<number>(0);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -40,14 +43,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (b) {
         setActiveBiz(b);
         repo.getUnreadBusinessMessagesCount(b.id).then((cnt) => setUnreadMessages(cnt));
-      } else if (pathname.startsWith('/dashboard')) {
+      } else if (pathname.startsWith('/dashboard') && pathname !== '/dashboard/admin') {
         router.push('/create-business');
       }
     });
 
     if (isSupabaseConfigured()) {
       const supabase = createClient();
-      supabase.auth.getUser().then(({ data: { user }, error }) => {
+      supabase.auth.getUser().then(async ({ data: { user }, error }) => {
         if (!user || error) {
           router.push('/login');
           return;
@@ -56,6 +59,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           email: user.email,
           name: user.user_metadata?.full_name || user.email?.split('@')[0],
         });
+
+        const isAdminEmail = user.email?.toLowerCase() === 'kumar.baz230@gmail.com';
+        if (isAdminEmail) {
+          setIsSuperAdmin(true);
+          const { count } = await supabase
+            .from('platform_support_tickets')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'open');
+          setOpenSupportTickets(count || 0);
+        }
       });
     }
   }, [pathname, router]);
@@ -78,6 +91,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const navigation = [
+    ...(isSuperAdmin
+      ? [
+          {
+            name: 'Kurucu & Destek Admin',
+            href: '/dashboard/admin',
+            icon: ShieldCheck,
+            badge: openSupportTickets,
+            highlightAdmin: true,
+          },
+        ]
+      : []),
     { name: 'Genel Bakış', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Randevu Takvimi', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Müşteri Mesajları', href: '/dashboard/messages', icon: MessageSquare, badge: unreadMessages },
@@ -136,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navigation.map((item) => {
+          {navigation.map((item: any) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
@@ -146,17 +170,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20 font-semibold'
+                    : item.highlightAdmin
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 font-bold mb-2'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 <span className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <Icon
+                    className={`w-4 h-4 ${
+                      isActive
+                        ? 'text-white'
+                        : item.highlightAdmin
+                        ? 'text-emerald-400'
+                        : 'text-slate-400'
+                    }`}
+                  />
                   {item.name}
                 </span>
                 {item.badge && item.badge > 0 ? (
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white text-brand-700' : 'bg-brand-600 text-white'
+                      isActive ? 'bg-white text-brand-700' : 'bg-rose-500 text-white'
                     }`}
                   >
                     {item.badge}
@@ -223,7 +257,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm pt-16">
           <nav className="p-4 bg-slate-900 border-b border-slate-800 space-y-1">
-            {navigation.map((item) => {
+            {navigation.map((item: any) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -240,7 +274,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {item.name}
                   </span>
                   {item.badge && item.badge > 0 ? (
-                    <span className="px-2 py-0.5 rounded-full bg-brand-500 text-white text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
                       {item.badge}
                     </span>
                   ) : null}
@@ -271,6 +305,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
+            {isSuperAdmin && (
+              <Link
+                href="/dashboard/admin"
+                className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-300 flex items-center gap-1.5 transition-colors shadow-sm"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                Kurucu / Admin Paneli
+                {openSupportTickets > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px]">
+                    {openSupportTickets}
+                  </span>
+                )}
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => setShowQrModal(true)}
@@ -302,6 +350,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page Content */}
         <main className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto flex-1">
+          {activeBiz && activeBiz.is_active === false && (
+            <div className="mb-6 p-4 rounded-2xl bg-rose-600 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs sm:text-sm font-bold">
+                🚫 İşletme sayfanız RANDEVORY Güvenlik ve Destek Ekibi tarafından askıya alınmıştır. Müşteri randevu alımı şu an kapalıdır.{(activeBiz as any).ban_reason ? ` (Neden: ${(activeBiz as any).ban_reason})` : ''}
+              </div>
+              <span className="text-[11px] bg-white/20 px-3 py-1.5 rounded-xl font-semibold shrink-0">
+                Sağ alttaki Canlı Destek butonundan itiraz edebilirsiniz
+              </span>
+            </div>
+          )}
           {children}
         </main>
       </div>

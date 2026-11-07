@@ -9,6 +9,12 @@ export function formatWhatsAppPhone(rawPhone: string): string {
   return `90${last10}`;
 }
 
+export function buildWhatsAppUrl(rawPhone: string, message: string): string {
+  const targetPhone = formatWhatsAppPhone(rawPhone);
+  const encoded = encodeURIComponent(message || '');
+  return targetPhone ? `https://wa.me/${targetPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+}
+
 export function createCustomerToBusinessWhatsAppUrl(params: {
   businessPhone: string;
   businessName: string;
