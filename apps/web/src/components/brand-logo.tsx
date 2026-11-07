@@ -83,11 +83,7 @@ export function BrandLogo({
         <div className="flex items-center gap-1.5 leading-none">
           <span
             className={`${textSizes[size]} ${
-              variant === 'dark'
-                ? 'text-white'
-                : variant === 'light'
-                ? 'text-slate-900'
-                : 'text-slate-900 dark:text-white'
+              variant === 'dark' ? 'text-white' : 'text-slate-900'
             }`}
           >
             RANDEV<span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">ORY</span>
