@@ -7,6 +7,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { repo } from '@/lib/supabase-repository';
 import { Business } from '@/types';
 import { BrandLogo } from '@/components/brand-logo';
+import { BusinessQrModal } from '@/components/business-qr-modal';
 import {
   Calendar,
   LayoutDashboard,
@@ -21,6 +22,8 @@ import {
   CreditCard,
   LogOut,
   Bell,
+  MessageSquare,
+  QrCode,
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -29,13 +32,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string } | null>(null);
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState<number>(0);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   useEffect(() => {
     repo.getActiveBusiness().then((b) => {
       if (b) {
         setActiveBiz(b);
+        repo.getUnreadBusinessMessagesCount(b.id).then((cnt) => setUnreadMessages(cnt));
       } else if (pathname.startsWith('/dashboard')) {
-        // Kullanıcı giriş yapmış ama henüz bir işletmesi yok, işletme oluşturmaya yönlendir
         router.push('/create-business');
       }
     });
@@ -55,6 +60,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, router]);
 
+  // Poll unread messages count periodically
+  useEffect(() => {
+    if (!activeBiz) return;
+    const timer = setInterval(() => {
+      repo.getUnreadBusinessMessagesCount(activeBiz.id).then((cnt) => setUnreadMessages(cnt));
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [activeBiz]);
+
   const handleLogout = async () => {
     if (isSupabaseConfigured()) {
       const supabase = createClient();
@@ -66,6 +80,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navigation = [
     { name: 'Genel Bakış', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Randevu Takvimi', href: '/dashboard/calendar', icon: Calendar },
+    { name: 'Müşteri Mesajları', href: '/dashboard/messages', icon: MessageSquare, badge: unreadMessages },
     { name: 'Hizmetler & Fiyatlar', href: '/dashboard/services', icon: Scissors },
     { name: 'Personel Yönetimi', href: '/dashboard/staff', icon: UserCheck },
     { name: 'Müşteriler (CRM)', href: '/dashboard/customers', icon: Users },
@@ -100,13 +115,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="font-bold text-white text-sm truncate mt-0.5">
               {activeBiz?.name || 'Salon Prestij'}
             </div>
-            <Link
-              href={publicBookingUrl}
-              target="_blank"
-              className="mt-2 text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium"
-            >
-              Randevu Sayfasını Gör <ExternalLink className="w-3 h-3" />
-            </Link>
+            <div className="mt-2.5 flex items-center justify-between gap-2 pt-2 border-t border-slate-700/60">
+              <Link
+                href={publicBookingUrl}
+                target="_blank"
+                className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 font-medium"
+              >
+                Sayfayı Gör <ExternalLink className="w-3 h-3" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="px-2 py-1 rounded-lg bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+              >
+                <QrCode className="w-3 h-3" /> QR Kod
+              </button>
+            </div>
           </div>
         </div>
 
@@ -119,14 +143,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20 font-semibold'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                {item.name}
+                <span className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  {item.name}
+                </span>
+                {item.badge && item.badge > 0 ? (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isActive ? 'bg-white text-brand-700' : 'bg-brand-600 text-white'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -161,6 +196,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="md:hidden bg-slate-900 text-white h-16 px-4 flex items-center justify-between sticky top-0 z-40 border-b border-slate-800">
         <BrandLogo size="sm" variant="dark" showBadge={false} showSlogan={false} />
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowQrModal(true)}
+            className="text-xs bg-slate-800 text-brand-300 px-2.5 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1"
+          >
+            <QrCode className="w-3.5 h-3.5" /> QR
+          </button>
           <Link
             href={publicBookingUrl}
             target="_blank"
@@ -189,12 +231,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium ${
                     isActive ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {item.name}
+                  <span className="flex items-center gap-3">
+                    <Icon className="w-4 h-4" />
+                    {item.name}
+                  </span>
+                  {item.badge && item.badge > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full bg-brand-500 text-white text-[10px] font-bold">
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -221,7 +270,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="font-semibold text-brand-600">{activeNavTitle}</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowQrModal(true)}
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 flex items-center gap-1.5 transition-colors border border-brand-200"
+            >
+              <QrCode className="w-3.5 h-3.5" /> QR Kod & Afiş İndir
+            </button>
             <Link
               href={publicBookingUrl}
               target="_blank"
@@ -230,11 +286,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               Müşteri Ekranını Aç <ExternalLink className="w-3.5 h-3.5" />
             </Link>
             <Link
-              href="/dashboard/settings"
-              title="Ayarlar"
-              className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-200"
+              href="/dashboard/messages"
+              title="Müşteri Mesajları"
+              className="relative w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-200"
             >
               <Bell className="w-4 h-4" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </Link>
           </div>
         </header>
@@ -244,6 +305,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      <BusinessQrModal
+        businessName={activeBiz?.name || 'Salon Prestij'}
+        slug={activeBiz?.slug || 'salon-prestij'}
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+      />
     </div>
   );
 }

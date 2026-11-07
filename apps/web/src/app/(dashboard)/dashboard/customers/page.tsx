@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { repo } from '@/lib/supabase-repository';
 import { Customer, Appointment, Business } from '@/types';
 import {
@@ -132,12 +133,13 @@ export default function DashboardCustomersPage() {
                 <th className="px-6 py-3.5 font-semibold">Toplam Harcama</th>
                 <th className="px-6 py-3.5 font-semibold">Son Randevu</th>
                 <th className="px-6 py-3.5 font-semibold">Özel Not</th>
+                <th className="px-6 py-3.5 font-semibold text-right">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
                     Kayıtlı müşteri bulunamadı.
                   </td>
                 </tr>
@@ -184,6 +186,14 @@ export default function DashboardCustomersPage() {
                       ) : (
                         <span className="text-slate-300">-</span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link
+                        href={`/dashboard/messages?phone=${encodeURIComponent(cust.phone)}&name=${encodeURIComponent(cust.full_name)}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 font-semibold text-xs transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Mesaj Yaz
+                      </Link>
                     </td>
                   </tr>
                 ))

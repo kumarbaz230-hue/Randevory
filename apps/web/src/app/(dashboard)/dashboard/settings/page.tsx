@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { repo } from '@/lib/supabase-repository';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Business, WorkingHour, SubscriptionPlan } from '@/types';
+import { BusinessQrModal } from '@/components/business-qr-modal';
 import {
   Clock,
   Building,
@@ -18,6 +19,7 @@ import {
   CheckCircle2,
   ArrowRight,
   ShieldCheck,
+  QrCode,
 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
@@ -25,6 +27,7 @@ export default function DashboardSettingsPage() {
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [savedMessage, setSavedMessage] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -202,18 +205,27 @@ export default function DashboardSettingsPage() {
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Özel Bağlantı Kodu (Slug)</label>
-              <div className="flex items-center">
-                <span className="px-3 py-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 text-slate-500 font-mono">
-                  randevory.com/
-                </span>
-                <input
-                  type="text"
-                  required
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  className="w-full px-3 py-2 rounded-r-xl border border-slate-300 font-mono focus:ring-2 focus:ring-brand-500"
-                />
+              <label className="block font-semibold text-slate-700 mb-1">Özel Bağlantı Kodu (Slug) & QR Kod</label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center flex-1">
+                  <span className="px-3 py-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-50 text-slate-500 font-mono">
+                    randevory.com/
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    className="w-full px-3 py-2 rounded-r-xl border border-slate-300 font-mono focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="px-3 py-2 rounded-xl bg-brand-50 text-brand-700 border border-brand-200 font-bold hover:bg-brand-100 transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  <QrCode className="w-4 h-4" /> QR İndir
+                </button>
               </div>
             </div>
 
@@ -481,6 +493,13 @@ export default function DashboardSettingsPage() {
           </div>
         </form>
       </div>
+
+      <BusinessQrModal
+        businessName={name || business?.name || 'İşletme'}
+        slug={slug || business?.slug || 'salon-prestij'}
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+      />
     </div>
   );
 }

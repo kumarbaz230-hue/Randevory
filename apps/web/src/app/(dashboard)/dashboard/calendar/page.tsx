@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
@@ -17,6 +18,7 @@ import {
   Phone,
   Scissors,
   CheckCircle,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function DashboardCalendarPage() {
@@ -344,17 +346,33 @@ export default function DashboardCalendarPage() {
                   {selectedAptDetail.customer_notes}
                 </div>
               )}
+              {selectedAptDetail.cancellation_reason && (
+                <div className="p-3 rounded-xl bg-rose-50 text-xs text-rose-700 border border-rose-200">
+                  <span className="font-semibold block text-rose-800">İptal Nedeni:</span>
+                  {selectedAptDetail.cancellation_reason}
+                </div>
+              )}
             </div>
 
-            <div className="pt-4 border-t border-slate-200 flex items-center justify-between gap-2">
-              <button
-                onClick={() => handleStatusChange(selectedAptDetail.id, 'cancelled')}
-                className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50"
-              >
-                İptal Et
-              </button>
+            <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {selectedAptDetail.status !== 'cancelled' && (
+                  <button
+                    onClick={() => handleStatusChange(selectedAptDetail.id, 'cancelled')}
+                    className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-600 text-xs font-semibold hover:bg-rose-50"
+                  >
+                    İptal Et
+                  </button>
+                )}
+                <Link
+                  href={`/dashboard/messages?phone=${encodeURIComponent(selectedAptDetail.customer_phone)}&name=${encodeURIComponent(selectedAptDetail.customer_name)}`}
+                  className="px-3.5 py-2 rounded-xl bg-brand-50 text-brand-700 text-xs font-semibold hover:bg-brand-100 flex items-center gap-1.5"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> Mesaj Gönder
+                </Link>
+              </div>
               <div className="flex gap-2">
-                {selectedAptDetail.status !== 'completed' && (
+                {selectedAptDetail.status !== 'completed' && selectedAptDetail.status !== 'cancelled' && (
                   <button
                     onClick={() => handleStatusChange(selectedAptDetail.id, 'completed')}
                     className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-sm"

@@ -145,3 +145,26 @@ export interface Subscription {
   cancel_at_period_end: boolean;
   plan?: SubscriptionPlan;
 }
+
+
+export interface ChatMessage {
+  id: string;
+  business_id: string;
+  customer_phone: string;
+  customer_name: string;
+  sender_type: 'customer' | 'business';
+  message: string;
+  appointment_id?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface ChatConversation {
+  customer_phone: string;
+  customer_name: string;
+  last_message: string;
+  last_message_at: string;
+  last_sender: 'customer' | 'business';
+  unread_count: number;
+  messages: ChatMessage[];
+}

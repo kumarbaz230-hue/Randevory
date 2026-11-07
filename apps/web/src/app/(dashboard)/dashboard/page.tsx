@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
+import { BusinessShareAndQrCard } from '@/components/business-qr-modal';
 import {
   Calendar,
   Clock,
@@ -16,7 +17,7 @@ import {
   Check,
   X,
   ExternalLink,
-  Copy,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function DashboardOverviewPage() {
@@ -24,7 +25,6 @@ export default function DashboardOverviewPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [copied, setCopied] = useState(false);
 
   const loadData = async () => {
     const b = await repo.getActiveBusiness();
@@ -48,14 +48,6 @@ export default function DashboardOverviewPage() {
   const handleStatusChange = async (aptId: string, newStatus: Appointment['status']) => {
     await repo.updateAppointmentStatus(aptId, newStatus);
     await loadData();
-  };
-
-  const handleCopyLink = () => {
-    const slug = business?.slug || 'salon-prestij';
-    const url = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : `https://randevory.com/${slug}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   // Metrics
@@ -84,7 +76,13 @@ export default function DashboardOverviewPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            href="/dashboard/messages"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2"
+          >
+            <MessageSquare className="w-4 h-4" /> Müşteri Mesajları
+          </Link>
           <Link
             href="/dashboard/calendar"
             className="px-4 py-2.5 rounded-xl bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 transition-colors shadow-sm flex items-center gap-2"
@@ -197,7 +195,7 @@ export default function DashboardOverviewPage() {
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : apt.status === 'completed'
                                 ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                : 'bg-slate-100 text-slate-600'
+                                : 'bg-rose-50 text-rose-600 border border-rose-200'
                             }`}
                           >
                             {apt.status === 'confirmed'
@@ -224,11 +222,23 @@ export default function DashboardOverviewPage() {
                             <Phone className="w-3 h-3 text-slate-400" /> {apt.customer_phone}
                           </span>
                         </div>
+                        {apt.status === 'cancelled' && apt.cancellation_reason && (
+                          <div className="text-[11px] text-rose-600 mt-1 font-medium">
+                            İptal Nedeni: {apt.cancellation_reason}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-end sm:self-center">
+                      <Link
+                        href={`/dashboard/messages?phone=${encodeURIComponent(apt.customer_phone)}&name=${encodeURIComponent(apt.customer_name)}`}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 flex items-center gap-1"
+                        title="Müşteriye Mesaj Gönder"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-brand-600" /> Mesaj
+                      </Link>
                       {apt.status === 'pending' && (
                         <button
                           onClick={() => handleStatusChange(apt.id, 'confirmed')}
@@ -261,49 +271,24 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        {/* Quick Links & Business Link Card */}
+        {/* Quick Links & Business Link + QR Card */}
         <div className="space-y-6">
-          {/* Shareable Link Card */}
-          <div className="bg-gradient-to-br from-brand-600 to-blue-700 text-white p-6 rounded-2xl shadow-md">
-            <h3 className="font-bold text-base text-white">Özel Randevu Bağlantınız</h3>
-            <p className="text-xs text-brand-100 mt-1 leading-relaxed">
-              Müşterileriniz bu link üzerinden 7/24 randevu alabilir. Sosyal medya profillerinize (Instagram Bio, Google Haritalar) ekleyebilirsiniz.
-            </p>
-
-            <div className="mt-4 p-2.5 rounded-xl bg-white/10 backdrop-blur border border-white/20 text-xs font-mono break-all flex items-center justify-between gap-2">
-              <span className="truncate">randevory.com/{publicSlug}</span>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-[10px] font-sans font-semibold flex items-center gap-1 shrink-0 transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3" /> Kopyalandı
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" /> Kopyala
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <Link
-                href={`/${publicSlug}`}
-                target="_blank"
-                className="w-full py-2 bg-white text-brand-700 rounded-lg text-xs font-bold text-center hover:bg-brand-50 transition-colors shadow-sm"
-              >
-                Sayfayı Aç ve Test Et
-              </Link>
-            </div>
-          </div>
+          <BusinessShareAndQrCard
+            businessName={business?.name || 'Salon Prestij'}
+            slug={publicSlug}
+          />
 
           {/* Quick Shortcuts */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <h3 className="font-bold text-sm text-slate-900 mb-4">Hızlı İşlemler</h3>
             <div className="space-y-2.5">
+              <Link
+                href="/dashboard/messages"
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <span>Müşteri Mesajları (Canlı Sohbet)</span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+              </Link>
               <Link
                 href="/dashboard/services"
                 className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"

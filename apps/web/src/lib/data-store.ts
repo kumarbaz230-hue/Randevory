@@ -5,6 +5,7 @@ import {
   Appointment,
   Customer,
   WorkingHour,
+  ChatMessage,
 } from '@/types';
 
 // Varsayılan Haftalık Çalışma Saatleri (09:00 - 19:00, Pazar kapalı)
@@ -268,6 +269,7 @@ class DataStore {
   private appointments: Appointment[] = [...INITIAL_APPOINTMENTS];
   private customers: Customer[] = [...INITIAL_CUSTOMERS];
   private workingHours: WorkingHour[] = [...defaultWorkingHours];
+  private chatMessages: ChatMessage[] = [];
 
   constructor() {
     this.loadFromStorage();
@@ -296,6 +298,10 @@ class DataStore {
         if (storedCustomers) {
           this.customers = JSON.parse(storedCustomers);
         }
+        const storedMessages = localStorage.getItem('randevo_chat_messages');
+        if (storedMessages) {
+          this.chatMessages = JSON.parse(storedMessages);
+        }
       } catch (e) {
         console.error('Storage parse error', e);
       }
@@ -310,6 +316,7 @@ class DataStore {
         localStorage.setItem('randevo_staff', JSON.stringify(this.staff));
         localStorage.setItem('randevo_business', JSON.stringify(this.businesses));
         localStorage.setItem('randevo_customers', JSON.stringify(this.customers));
+        localStorage.setItem('randevo_chat_messages', JSON.stringify(this.chatMessages));
       } catch (e) {
         console.error('Storage save error', e);
       }
@@ -496,6 +503,46 @@ class DataStore {
     this.customers.push(customer);
     this.saveToStorage();
     return customer;
+  }
+
+  // Canlı Mesajlaşma (Chat)
+  getChatMessages(businessId: string, customerPhone?: string): ChatMessage[] {
+    const norm = (p: string) => p.replace(/[^0-9]/g, '').slice(-10);
+    return this.chatMessages
+      .filter((m) => {
+        if (m.business_id !== businessId) return false;
+        if (customerPhone && norm(m.customer_phone) !== norm(customerPhone)) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }
+
+  addChatMessage(msg: Omit<ChatMessage, 'id' | 'created_at' | 'is_read'>): ChatMessage {
+    const newMsg: ChatMessage = {
+      ...msg,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    this.chatMessages.push(newMsg);
+    this.saveToStorage();
+    return newMsg;
+  }
+
+  markMessagesRead(businessId: string, customerPhone: string, readerType: 'customer' | 'business'): void {
+    const norm = (p: string) => p.replace(/[^0-9]/g, '').slice(-10);
+    const targetSender = readerType === 'business' ? 'customer' : 'business';
+    this.chatMessages = this.chatMessages.map((m) => {
+      if (
+        m.business_id === businessId &&
+        norm(m.customer_phone) === norm(customerPhone) &&
+        m.sender_type === targetSender
+      ) {
+        return { ...m, is_read: true };
+      }
+      return m;
+    });
+    this.saveToStorage();
   }
 }
 

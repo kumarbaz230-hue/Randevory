@@ -1,6 +1,18 @@
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { store } from './data-store';
-import { Appointment, Business, BusinessSector, Customer, Service, Staff, WorkingHour, SubscriptionPlan, Subscription, SubscriptionTier } from '@/types';
+import {
+  Appointment,
+  Business,
+  BusinessSector,
+  Customer,
+  Service,
+  Staff,
+  WorkingHour,
+  SubscriptionPlan,
+  Subscription,
+  SubscriptionTier,
+  ChatMessage,
+} from '@/types';
 
 /**
  * RANDEVORY Canlı Veri Katmanı (Supabase & Multi-Tenant PostgreSQL)
@@ -13,6 +25,10 @@ export class DataRepository {
       DataRepository.instance = new DataRepository();
     }
     return DataRepository.instance;
+  }
+
+  normalizePhone(phone: string): string {
+    return (phone || '').replace(/[^0-9]/g, '').slice(-10);
   }
 
   // --- AKTİF İŞLETME YÖNETİMİ ---
@@ -290,7 +306,6 @@ export class DataRepository {
     const supabase = createClient();
     const { error } = await supabase.from('services').delete().eq('id', id);
     if (error) {
-      // Geçmiş randevusu varsa veri bütünlüğünü bozmamak için pasife al (soft-delete)
       if (error.code === '23503') {
         const { error: updateErr } = await supabase
           .from('services')
@@ -424,7 +439,6 @@ export class DataRepository {
     const supabase = createClient();
     const { error } = await supabase.from('staff').delete().eq('id', id);
     if (error) {
-      // Geçmiş randevusu varsa veri bütünlüğünü bozmamak için pasife al (soft-delete)
       if (error.code === '23503') {
         const { error: updateErr } = await supabase
           .from('staff')
@@ -496,6 +510,53 @@ export class DataRepository {
     return data as Appointment[];
   }
 
+  async getCustomerAppointmentsByPhone(businessId: string, customerPhone: string): Promise<Appointment[]> {
+    const normInput = this.normalizePhone(customerPhone);
+    if (normInput.length < 10) return [];
+
+    const all = await this.getAppointments(businessId);
+    return all
+      .filter((apt) => this.normalizePhone(apt.customer_phone) === normInput)
+      .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+  }
+
+  async cancelCustomerAppointment(
+    appointmentId: string,
+    customerPhone: string,
+    reason = 'Müşteri tarafından online iptal edildi'
+  ): Promise<{ success: boolean; error?: string }> {
+    const normInput = this.normalizePhone(customerPhone);
+    if (normInput.length < 10) {
+      return { success: false, error: 'Lütfen geçerli bir telefon numarası girin.' };
+    }
+
+    if (!isSupabaseConfigured()) {
+      store.updateAppointmentStatus(appointmentId, 'cancelled', reason);
+      return { success: true };
+    }
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('cancel_customer_appointment', {
+        p_appointment_id: appointmentId,
+        p_customer_phone: customerPhone,
+        p_reason: reason,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data && typeof data === 'object' && 'success' in data) {
+        return data as { success: boolean; error?: string };
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message || 'İptal işlemi sırasında hata oluştu.' };
+    }
+  }
+
   async createAppointment(appointment: Omit<Appointment, 'id' | 'created_at'>): Promise<Appointment> {
     if (!isSupabaseConfigured()) {
       return store.addAppointment(appointment);
@@ -547,7 +608,7 @@ export class DataRepository {
 
   async updateAppointmentStatus(id: string, status: Appointment['status'], reason?: string): Promise<void> {
     if (!isSupabaseConfigured()) {
-      store.updateAppointmentStatus(id, status);
+      store.updateAppointmentStatus(id, status, reason);
       return;
     }
 
@@ -568,6 +629,125 @@ export class DataRepository {
       .eq('id', id);
 
     if (error) throw new Error(error.message);
+  }
+
+  // --- CANLI SOHBET / MESAJLAŞMA (CHAT) ---
+  async getChatMessages(businessId: string, customerPhone?: string): Promise<ChatMessage[]> {
+    if (!isSupabaseConfigured()) {
+      return store.getChatMessages(businessId, customerPhone);
+    }
+
+    const supabase = createClient();
+    let query = supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: true });
+
+    if (customerPhone) {
+      const norm = this.normalizePhone(customerPhone);
+      if (norm.length >= 10) {
+        query = query.eq('customer_phone', norm);
+      }
+    }
+
+    const { data, error } = await query;
+    if (error || !data) {
+      return store.getChatMessages(businessId, customerPhone);
+    }
+
+    return data as ChatMessage[];
+  }
+
+  async sendChatMessage(params: {
+    business_id: string;
+    customer_phone: string;
+    customer_name: string;
+    sender_type: 'customer' | 'business';
+    message: string;
+    appointment_id?: string;
+  }): Promise<ChatMessage> {
+    const normPhone = this.normalizePhone(params.customer_phone);
+    if (normPhone.length < 10) {
+      throw new Error('Geçerli bir telefon numarası gereklidir.');
+    }
+
+    const cleanPayload = {
+      business_id: params.business_id,
+      customer_phone: normPhone,
+      customer_name: params.customer_name.trim() || 'Müşteri',
+      sender_type: params.sender_type,
+      message: params.message.trim(),
+      appointment_id: params.appointment_id || undefined,
+    };
+
+    if (!isSupabaseConfigured()) {
+      return store.addChatMessage(cleanPayload);
+    }
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        business_id: cleanPayload.business_id,
+        customer_phone: cleanPayload.customer_phone,
+        customer_name: cleanPayload.customer_name,
+        sender_type: cleanPayload.sender_type,
+        message: cleanPayload.message,
+        appointment_id: cleanPayload.appointment_id || null,
+        is_read: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message || 'Mesaj gönderilemedi.');
+    }
+
+    return data as ChatMessage;
+  }
+
+  async markMessagesAsRead(
+    businessId: string,
+    customerPhone: string,
+    readerType: 'customer' | 'business'
+  ): Promise<void> {
+    const normPhone = this.normalizePhone(customerPhone);
+    if (normPhone.length < 10) return;
+
+    if (!isSupabaseConfigured()) {
+      store.markMessagesRead(businessId, normPhone, readerType);
+      return;
+    }
+
+    const supabase = createClient();
+    const targetSender = readerType === 'business' ? 'customer' : 'business';
+    await supabase
+      .from('chat_messages')
+      .update({ is_read: true })
+      .eq('business_id', businessId)
+      .eq('customer_phone', normPhone)
+      .eq('sender_type', targetSender)
+      .eq('is_read', false);
+  }
+
+  async getUnreadBusinessMessagesCount(businessId: string): Promise<number> {
+    if (!isSupabaseConfigured()) {
+      return store
+        .getChatMessages(businessId)
+        .filter((m) => m.sender_type === 'customer' && !m.is_read).length;
+    }
+
+    const supabase = createClient();
+    const { count, error } = await supabase
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('business_id', businessId)
+      .eq('sender_type', 'customer')
+      .eq('is_read', false);
+
+    if (error) return 0;
+    return count || 0;
   }
 
   // --- MÜŞTERİLER (CRM) ---
@@ -800,7 +980,6 @@ export class DataRepository {
       );
 
     if (subError) {
-      // Eğer onConflict yoksa insert deneyelim
       await supabase.from('subscriptions').insert({
         business_id: params.businessId,
         plan_id: selectedPlan.id,
