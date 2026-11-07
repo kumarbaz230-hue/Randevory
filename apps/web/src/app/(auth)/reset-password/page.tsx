@@ -3,7 +3,9 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { useResendCooldown } from '@/lib/use-resend-cooldown';
 import { BrandLogo } from '@/components/brand-logo';
 import {
   Lock,
@@ -14,6 +16,7 @@ import {
   RefreshCw,
   ArrowRight,
   KeyRound,
+  Mail,
 } from 'lucide-react';
 
 function ResetPasswordContent() {
@@ -30,6 +33,12 @@ function ResetPasswordContent() {
   const [successMessage, setSuccessMessage] = useState('');
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  // Eğer eski/süresi dolmuş bir linkle gelindiyse aynı ekrandan yeni link gönderebilmek için:
+  const [resendEmail, setResendEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
+  const { cooldown, canResend, startCooldown } = useResendCooldown('forgot_resend', 60);
+
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setVerifyingSession(false);
@@ -42,49 +51,7 @@ function ResetPasswordContent() {
 
     const verifyRecoveryLink = async () => {
       try {
-        const urlError = searchParams?.get('error');
-        const urlErrorDesc = searchParams?.get('error_description');
-        if (urlError === 'expired' || urlError === 'access_denied') {
-          if (mounted) {
-            setErrorMessage(
-              urlErrorDesc ||
-                'Şifre sıfırlama bağlantınızın süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir bağlantı isteyin.'
-            );
-            setVerifyingSession(false);
-          }
-          return;
-        }
-
-        // 1. URL'de ?code=... varsa (PKCE akışı)
-        const code = searchParams?.get('code');
-        if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error && data?.session) {
-            if (mounted) {
-              setSessionReady(true);
-              setUserEmail(data.session.user?.email || null);
-              setVerifyingSession(false);
-            }
-            return;
-          }
-        }
-
-        // 2. URL'de ?token_hash=...&type=... varsa (OTP / Recovery token akışı)
-        const token_hash = searchParams?.get('token_hash');
-        const type = (searchParams?.get('type') as any) || 'recovery';
-        if (token_hash) {
-          const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
-          if (!error && data?.session) {
-            if (mounted) {
-              setSessionReady(true);
-              setUserEmail(data.session.user?.email || null);
-              setVerifyingSession(false);
-            }
-            return;
-          }
-        }
-
-        // 3. URL Hash (#access_token=...&refresh_token=...&type=recovery) kontrolü
+        // 1. Önce URL Hash (#access_token=...&refresh_token=...&type=recovery) kontrolü (Implicit Flow)
         if (typeof window !== 'undefined' && window.location.hash) {
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get('access_token');
@@ -93,7 +60,9 @@ function ResetPasswordContent() {
 
           if (hashError) {
             if (mounted) {
-              setErrorMessage('Şifre sıfırlama bağlantınızın süresi dolmuş veya geçersiz. Lütfen yeni bir bağlantı isteyin.');
+              setErrorMessage(
+                'Tıkladığınız şifre sıfırlama bağlantısının süresi dolmuş veya daha önce kullanılmış. Aşağıdan yeni bir bağlantı gönderebilirsiniz.'
+              );
               setVerifyingSession(false);
             }
             return;
@@ -108,14 +77,60 @@ function ResetPasswordContent() {
               if (mounted) {
                 setSessionReady(true);
                 setUserEmail(data.session.user?.email || null);
+                setErrorMessage('');
                 setVerifyingSession(false);
+                // Hash'i temizle ki sayfa yenilenirse tekrar hata vermesin
+                window.history.replaceState(null, '', window.location.pathname);
               }
               return;
             }
           }
         }
 
-        // 4. Mevcut oturumu kontrol et (/auth/callback üzerinden gelindiyse oturum zaten açılmıştır)
+        // 2. URL'de ?token_hash=...&type=... varsa (OTP / Recovery token akışı)
+        const token_hash = searchParams?.get('token_hash');
+        const type = (searchParams?.get('type') as any) || 'recovery';
+        if (token_hash) {
+          const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
+          if (!error && data?.session) {
+            if (mounted) {
+              setSessionReady(true);
+              setUserEmail(data.session.user?.email || null);
+              setErrorMessage('');
+              setVerifyingSession(false);
+            }
+            return;
+          }
+        }
+
+        // 3. URL'de ?code=... varsa (PKCE akışı)
+        const code = searchParams?.get('code');
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error && data?.session) {
+            if (mounted) {
+              setSessionReady(true);
+              setUserEmail(data.session.user?.email || null);
+              setErrorMessage('');
+              setVerifyingSession(false);
+            }
+            return;
+          }
+        }
+
+        // 4. URL'de ?error=expired varsa
+        const urlError = searchParams?.get('error');
+        if (urlError === 'expired' || urlError === 'access_denied') {
+          if (mounted) {
+            setErrorMessage(
+              'Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş (eski bir e-postaya tıklamış olabilirsiniz). Lütfen aşağıdan yeni bir bağlantı isteyin ve gelen EN SON e-postaya tıklayın.'
+            );
+            setVerifyingSession(false);
+          }
+          return;
+        }
+
+        // 5. Mevcut oturumu kontrol et
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -140,11 +155,11 @@ function ResetPasswordContent() {
             setUserEmail(retrySession.user.email || null);
           } else {
             setErrorMessage(
-              'Oturum doğrulanamadı veya bağlantının süresi doldu. Lütfen e-posta adresinize yeni bir şifre sıfırlama bağlantısı gönderin.'
+              'Bağlantı doğrulanamadı veya süresi doldu. Lütfen aşağıya e-posta adresinizi yazarak yeni bir şifre sıfırlama bağlantısı gönderin.'
             );
           }
           setVerifyingSession(false);
-        }, 800);
+        }, 700);
       } catch (err: any) {
         if (mounted) {
           setErrorMessage(err.message || 'Bağlantı doğrulanırken bir hata oluştu.');
@@ -171,6 +186,46 @@ function ResetPasswordContent() {
       authListener.subscription.unsubscribe();
     };
   }, [searchParams]);
+
+  const handleInlineResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResendSuccess('');
+    const cleanEmail = resendEmail.trim().toLowerCase();
+    if (!cleanEmail) return;
+    if (!canResend) return;
+
+    setResending(true);
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const recoveryClient = createSupabaseJsClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          flowType: 'implicit',
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      });
+
+      const { error } = await recoveryClient.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        setErrorMessage('E-posta gönderim sınırı aşıldı veya bir hata oluştu. Lütfen 1 dakika bekleyip tekrar deneyin.');
+      } else {
+        startCooldown();
+        setErrorMessage('');
+        setResendSuccess(
+          `${cleanEmail} adresine yeni bağlantı gönderildi! Lütfen Gmail gelen kutunuzdaki EN SON gelen e-postayı açıp "Reset password" bağlantısına tıklayın.`
+        );
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Bağlantı gönderilemedi.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +260,10 @@ function ResetPasswordContent() {
       });
 
       if (error) {
-        if (error.message.toLowerCase().includes('same_password') || error.message.toLowerCase().includes('different from the old')) {
+        if (
+          error.message.toLowerCase().includes('same_password') ||
+          error.message.toLowerCase().includes('different from the old')
+        ) {
           setErrorMessage('Yeni şifreniz eski şifrenizden farklı olmalıdır.');
         } else {
           setErrorMessage(error.message || 'Şifre güncellenirken bir hata oluştu.');
@@ -217,7 +275,6 @@ function ResetPasswordContent() {
       setSuccessMessage('Şifreniz başarıyla güncellendi! Hesabınıza yönlendiriliyorsunuz...');
       setLoading(false);
 
-      // Kullanıcının işletmesi var mı kontrol et
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -269,21 +326,16 @@ function ResetPasswordContent() {
           ) : (
             <>
               {errorMessage && (
-                <div className="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs space-y-3">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{errorMessage}</span>
-                  </div>
-                  {!sessionReady && (
-                    <div className="pt-1">
-                      <Link
-                        href="/forgot-password"
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 text-white font-semibold text-xs hover:bg-rose-700 transition-colors"
-                      >
-                        Yeni Sıfırlama Bağlantısı İste <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  )}
+                <div className="mb-5 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {resendSuccess && (
+                <div className="mb-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{resendSuccess}</span>
                 </div>
               )}
 
@@ -294,7 +346,44 @@ function ResetPasswordContent() {
                 </div>
               )}
 
-              {sessionReady && (
+              {!sessionReady ? (
+                <form onSubmit={handleInlineResend} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Yeni Bağlantı İçin E-posta Adresiniz
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="ornek@isletme.com"
+                        value={resendEmail}
+                        onChange={(e) => setResendEmail(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={resending || !canResend}
+                    className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {resending ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Gönderiliyor...
+                      </>
+                    ) : cooldown > 0 ? (
+                      `Yeni Sıfırlama Bağlantısı Gönder (${cooldown}s)`
+                    ) : (
+                      <>
+                        Yeni Sıfırlama Bağlantısı Gönder <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
                 <form onSubmit={handleUpdatePassword} className="space-y-4 text-xs">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">

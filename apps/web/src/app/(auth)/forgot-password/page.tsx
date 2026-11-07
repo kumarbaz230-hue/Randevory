@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { useResendCooldown } from '@/lib/use-resend-cooldown';
 import { BrandLogo } from '@/components/brand-logo';
 import { ArrowLeft, Mail, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
@@ -44,9 +45,22 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      // PKCE code_verifier çerez uyuşmazlığını (bad_code_verifier) tamamen önlemek için
+      // şifre sıfırlama isteğini implicit flow ile gönderiyoruz. Böylece farklı sekme,
+      // www / non-www veya farklı cihazdan tıklandığında bile %100 sorunsuz açılır.
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const recoveryClient = createSupabaseJsClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          flowType: 'implicit',
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      });
+
+      const { error } = await recoveryClient.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
@@ -66,7 +80,9 @@ export default function ForgotPasswordPage() {
       }
 
       startCooldown();
-      setSuccessMessage('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.');
+      setSuccessMessage(
+        'Yeni şifre sıfırlama bağlantısı e-posta adresinize gönderildi! Lütfen gelen kutunuzdaki EN SON gelen e-postadaki bağlantıya tıklayın.'
+      );
       setLoading(false);
     } catch (err: any) {
       setErrorMessage(err.message || 'Bir hata meydana geldi.');
@@ -82,7 +98,7 @@ export default function ForgotPasswordPage() {
           Şifrenizi mi Unuttunuz?
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          Kayıtlı e-posta adresinizi girin, size şifre yenileme linki gönderelim
+          Kayıtlı e-posta adresinizi girin, size şifre yenileme bağlantısı gönderelim
         </p>
       </div>
 

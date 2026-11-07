@@ -250,7 +250,7 @@ export default function RegisterPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Örn: Mustafa Sakallı"
+                  placeholder="Adınız ve Soyadınız"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"

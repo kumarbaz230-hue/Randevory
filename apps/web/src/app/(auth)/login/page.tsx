@@ -37,11 +37,12 @@ function LoginForm() {
     const confirmedParam = searchParams.get('confirmed');
 
     if (errorParam === 'auth-code-error') {
-      setErrorMessage('Doğrulama bağlantısı geçersiz veya süresi dolmuş. Lütfen tekrar giriş yapmayı deneyin.');
+      router.replace('/reset-password?error=expired');
+      return;
     } else if (confirmedParam === 'true') {
       setSuccessMessage('E-posta adresiniz başarıyla doğrulandı! Şimdi şifrenizle giriş yapabilirsiniz.');
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const mapSupabaseError = (msg: string) => {
     const lower = msg.toLowerCase();
@@ -136,7 +137,6 @@ function LoginForm() {
 
       setSuccessMessage('Giriş başarılı! Yönlendiriliyorsunuz...');
 
-      // Kullanıcının kayıtlı bir işletmesi var mı kontrol et
       if (data.user) {
         const { data: member } = await supabase
           .from('business_members')
