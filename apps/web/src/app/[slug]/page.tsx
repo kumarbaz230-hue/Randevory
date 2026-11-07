@@ -298,6 +298,43 @@ export default function BusinessPublicPage() {
 
       saveCustomerIdentity(customerName, customerPhone);
       setCreatedAppointment(newApt);
+
+      // 1. Otomatik Sistem Sohbet Bildirimi + 2. Otomatik SMS Tetikleme (İşletme & Müşteri)
+      const aptTimeFormatted = new Date(newApt.start_time).toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      repo
+        .sendChatMessage({
+          business_id: business.id,
+          customer_phone: customerPhone.trim(),
+          customer_name: customerName.trim(),
+          sender_type: 'customer',
+          appointment_id: newApt.id,
+          message: `📅 [YENİ RANDEVU BİLDİRİMİ] ${aptTimeFormatted} için "${selectedService.name}" (${selectedService.price} ₺) randevusu oluşturuldu.${
+            customerNotes.trim() ? ` Not: ${customerNotes.trim()}` : ''
+          }`,
+        })
+        .catch(() => {});
+
+      fetch('/api/notifications/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'appointment_created',
+          businessName: business.name,
+          businessPhone: business.phone,
+          businessSlug: business.slug,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          serviceName: selectedService.name,
+          startTime: newApt.start_time,
+          totalPrice: selectedService.price,
+        }),
+      }).catch(() => {});
+
       await loadBusinessData();
       setStep(5); // Confirmation screen
     } catch (err: any) {
@@ -356,6 +393,22 @@ export default function BusinessPublicPage() {
           type: 'success',
           text: 'Randevunuz başarıyla iptal edildi ve saat dilimi boşa çıkarıldı.',
         });
+
+        fetch('/api/notifications/sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'appointment_cancelled',
+            businessName: business.name,
+            businessPhone: business.phone,
+            businessSlug: business.slug,
+            customerName: cancellingApt.customer_name,
+            customerPhone: cancellingApt.customer_phone,
+            startTime: cancellingApt.start_time,
+            cancelReason,
+          }),
+        }).catch(() => {});
+
         setCancellingApt(null);
         await loadBusinessData();
         const updated = await repo.getCustomerAppointmentsByPhone(
