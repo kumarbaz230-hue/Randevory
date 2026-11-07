@@ -16,6 +16,7 @@ import {
   ChatMessage,
 } from '@/types';
 import { BusinessQrModal } from '@/components/business-qr-modal';
+import { createCustomerToBusinessWhatsAppUrl } from '@/lib/whatsapp-helper';
 import Link from 'next/link';
 import {
   Clock,
@@ -1074,7 +1075,32 @@ export default function BusinessPublicPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {createdAppointment.status !== 'cancelled' && (
+                    <div className="mt-5">
+                      <a
+                        href={createCustomerToBusinessWhatsAppUrl({
+                          businessPhone: business.phone,
+                          businessName: business.name,
+                          customerName: createdAppointment.customer_name,
+                          customerPhone: createdAppointment.customer_phone,
+                          serviceName: selectedService?.name || 'Randevu',
+                          staffName: selectedSlot?.staff_name,
+                          startTime: createdAppointment.start_time,
+                          totalPrice: createdAppointment.total_price,
+                          appointmentId: createdAppointment.id,
+                          notes: createdAppointment.customer_notes,
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+                      >
+                        <Phone className="w-4 h-4" />
+                        Randevu Bilgisini İşletmeye WhatsApp&apos;tan İlet
+                      </a>
+                    </div>
+                  )}
+
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setActiveTab('chat')}

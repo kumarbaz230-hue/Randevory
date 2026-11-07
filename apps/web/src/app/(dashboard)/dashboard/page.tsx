@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
 import { BusinessShareAndQrCard } from '@/components/business-qr-modal';
+import { createBusinessToCustomerWhatsAppUrl } from '@/lib/whatsapp-helper';
 import {
   Calendar,
   Clock,
@@ -232,6 +233,26 @@ export default function DashboardOverviewPage() {
 
                     {/* Action buttons */}
                     <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-end sm:self-center">
+                      <a
+                        href={createBusinessToCustomerWhatsAppUrl({
+                          customerPhone: apt.customer_phone,
+                          customerName: apt.customer_name,
+                          businessName: business?.name || 'İşletme',
+                          businessSlug: publicSlug,
+                          businessAddress: business?.address,
+                          serviceName: service?.name || 'Randevu Hizmeti',
+                          staffName: staffMember?.name,
+                          startTime: apt.start_time,
+                          totalPrice: apt.total_price,
+                          type: apt.status === 'cancelled' ? 'cancelled' : 'confirmed',
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 flex items-center gap-1"
+                        title="Müşteriye WhatsApp Onay / Bilgilendirme Gönder"
+                      >
+                        <Phone className="w-3.5 h-3.5" /> WhatsApp
+                      </a>
                       <Link
                         href={`/dashboard/messages?phone=${encodeURIComponent(apt.customer_phone)}&name=${encodeURIComponent(apt.customer_name)}`}
                         className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 flex items-center gap-1"

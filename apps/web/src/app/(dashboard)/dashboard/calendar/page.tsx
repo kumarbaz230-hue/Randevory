@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
+import { createBusinessToCustomerWhatsAppUrl } from '@/lib/whatsapp-helper';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -370,6 +371,25 @@ export default function DashboardCalendarPage() {
                 >
                   <MessageSquare className="w-3.5 h-3.5" /> Mesaj Gönder
                 </Link>
+                <a
+                  href={createBusinessToCustomerWhatsAppUrl({
+                    customerPhone: selectedAptDetail.customer_phone,
+                    customerName: selectedAptDetail.customer_name,
+                    businessName: business?.name || 'İşletme',
+                    businessSlug: business?.slug || 'salon-prestij',
+                    businessAddress: business?.address,
+                    serviceName: services.find((s) => s.id === selectedAptDetail.service_id)?.name || 'Randevu',
+                    staffName: staffList.find((st) => st.id === selectedAptDetail.staff_id)?.name,
+                    startTime: selectedAptDetail.start_time,
+                    totalPrice: selectedAptDetail.total_price,
+                    type: selectedAptDetail.status === 'cancelled' ? 'cancelled' : 'confirmed',
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 flex items-center gap-1.5"
+                >
+                  <Phone className="w-3.5 h-3.5" /> WhatsApp Onay
+                </a>
               </div>
               <div className="flex gap-2">
                 {selectedAptDetail.status !== 'completed' && selectedAptDetail.status !== 'cancelled' && (

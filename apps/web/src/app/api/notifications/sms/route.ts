@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * RANDEVORY Otomatik SMS Bildirim Servisi
+ * RANDEVORY Otomatik SMS & WhatsApp Bildirim Servisi
  * Desteklenen Sağlayıcılar:
- * 1. Netgsm (NETGSM_USERCODE, NETGSM_PASSWORD, NETGSM_MSGHEADER)
- * 2. İleti Merkezi (ILETIMERKEZI_API_KEY, ILETIMERKEZI_HASH, ILETIMERKEZI_SENDER)
- * 3. Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)
+ * 1. VatanSMS (VATANSMS_API_ID, VATANSMS_API_KEY, VATANSMS_SENDER)
+ * 2. Netgsm (NETGSM_USERCODE, NETGSM_PASSWORD, NETGSM_MSGHEADER)
+ * 3. İleti Merkezi (ILETIMERKEZI_API_KEY, ILETIMERKEZI_HASH, ILETIMERKEZI_SENDER)
+ * 4. Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)
+ * 5. Otomatik WhatsApp API (ULTRAMSG_INSTANCE_ID + ULTRAMSG_TOKEN veya CALLMEBOT_API_KEY)
  */
 
 function formatTrPhoneForSms(raw: string): string {
@@ -13,6 +15,30 @@ function formatTrPhoneForSms(raw: string): string {
   const last10 = digits.slice(-10);
   if (last10.length !== 10) return '';
   return `90${last10}`; // 905XXXXXXXXX
+}
+
+async function sendViaVatanSms(phone90: string, message: string) {
+  const apiId = process.env.VATANSMS_API_ID;
+  const apiKey = process.env.VATANSMS_API_KEY;
+  const sender = process.env.VATANSMS_SENDER || 'RANDEVORY';
+
+  if (!apiId || !apiKey) return { sent: false, provider: 'vatansms_unconfigured' };
+
+  const res = await fetch('https://api.vatansms.net/api/v1/1toN', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_id: apiId,
+      api_key: apiKey,
+      sender,
+      message_type: 'turkce',
+      message,
+      phones: [phone90.slice(-10)],
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return { sent: res.ok && data?.status === 'success', provider: 'vatansms', response: data };
 }
 
 async function sendViaNetgsm(phone90: string, message: string) {
@@ -32,7 +58,6 @@ async function sendViaNetgsm(phone90: string, message: string) {
 
   const res = await fetch(url.toString(), { method: 'GET' });
   const text = await res.text();
-  // Netgsm success codes start with "00"
   const ok = text.trim().startsWith('00');
   return { sent: ok, provider: 'netgsm', response: text.trim() };
 }
@@ -98,6 +123,37 @@ async function sendViaTwilio(phone90: string, message: string) {
   return { sent: res.ok, provider: 'twilio', response: data?.sid };
 }
 
+async function sendViaWhatsAppApi(phone90: string, message: string) {
+  // 1. UltraMsg / Green-API style WhatsApp Gateway
+  const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
+  const token = process.env.ULTRAMSG_TOKEN;
+  if (instanceId && token) {
+    const res = await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        to: `+${phone90}`,
+        body: message,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { sent: res.ok, provider: 'whatsapp_ultramsg', response: data };
+  }
+
+  // 2. CallMeBot Free WhatsApp Notification for Business Owner
+  const callMeBotKey = process.env.CALLMEBOT_API_KEY;
+  if (callMeBotKey) {
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${phone90}&text=${encodeURIComponent(
+      message
+    )}&apikey=${callMeBotKey}`;
+    const res = await fetch(url);
+    return { sent: res.ok, provider: 'whatsapp_callmebot' };
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -127,13 +183,11 @@ export async function POST(req: NextRequest) {
     const bizPhone90 = formatTrPhoneForSms(businessPhone);
     const custPhone90 = formatTrPhoneForSms(customerPhone);
 
-    // 1. İşletme Sahibine Gidecek SMS Metni
     const businessSmsText =
       event === 'appointment_cancelled'
         ? `[RANDEVORY] RANDEVU IPTALI: ${customerName} (${customerPhone}), ${dateFormatted} tarihli randevusunu iptal etti. Neden: ${cancelReason || 'Belirtilmedi'}`
         : `[RANDEVORY] YENI RANDEVU! Musteri: ${customerName} (${customerPhone}), Hizmet: ${serviceName || 'Randevu'} (${totalPrice || 0} TL), Tarih: ${dateFormatted}. Panel: randevory.com/dashboard`;
 
-    // 2. Müşteriye Gidecek SMS Metni
     const customerSmsText =
       event === 'appointment_cancelled'
         ? `[${businessName}] Sayin ${customerName}, ${dateFormatted} tarihli randevunuz iptal edilmistir. Yeni randevu icin: randevory.com/${businessSlug || ''}`
@@ -141,10 +195,17 @@ export async function POST(req: NextRequest) {
 
     const results: any[] = [];
 
-    // Sırasıyla yapılandırılmış SMS sağlayıcısını dene (Netgsm -> İleti Merkezi -> Twilio)
-    const dispatchSms = async (targetPhone90: string, text: string) => {
+    const dispatchNotification = async (targetPhone90: string, text: string) => {
       if (!targetPhone90) return { sent: false, reason: 'invalid_phone' };
 
+      // Check WhatsApp API first if configured
+      const waResult = await sendViaWhatsAppApi(targetPhone90, text);
+      if (waResult) return waResult;
+
+      // Check SMS Providers (VatanSMS -> Netgsm -> İleti Merkezi -> Twilio)
+      if (process.env.VATANSMS_API_ID && process.env.VATANSMS_API_KEY) {
+        return sendViaVatanSms(targetPhone90, text);
+      }
       if (process.env.NETGSM_USERCODE && process.env.NETGSM_PASSWORD) {
         return sendViaNetgsm(targetPhone90, text);
       }
@@ -164,11 +225,11 @@ export async function POST(req: NextRequest) {
     };
 
     if (bizPhone90) {
-      results.push({ target: 'business', ...(await dispatchSms(bizPhone90, businessSmsText)) });
+      results.push({ target: 'business', ...(await dispatchNotification(bizPhone90, businessSmsText)) });
     }
 
     if (custPhone90) {
-      results.push({ target: 'customer', ...(await dispatchSms(custPhone90, customerSmsText)) });
+      results.push({ target: 'customer', ...(await dispatchNotification(custPhone90, customerSmsText)) });
     }
 
     return NextResponse.json({
@@ -177,7 +238,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     return NextResponse.json(
-      { success: false, error: err.message || 'SMS tetiklenemedi' },
+      { success: false, error: err.message || 'Bildirim tetiklenemedi' },
       { status: 500 }
     );
   }
