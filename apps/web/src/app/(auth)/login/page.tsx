@@ -22,6 +22,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
@@ -33,6 +34,15 @@ function LoginForm() {
   const { cooldown, canResend, startCooldown } = useResendCooldown('login_resend', 60);
 
   useEffect(() => {
+    // Kayıtlı "Beni Hatırla" e-postasını yükle
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('randevory_remember_email');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }
+
     const errorParam = searchParams.get('error');
     const confirmedParam = searchParams.get('confirmed');
 
@@ -41,6 +51,17 @@ function LoginForm() {
       return;
     } else if (confirmedParam === 'true') {
       setSuccessMessage('E-posta adresiniz başarıyla doğrulandı! Şimdi şifrenizle giriş yapabilirsiniz.');
+    }
+
+    // Kullanıcı zaten giriş yapmışsa otomatik olarak Yönetim Paneline yönlendir
+    if (isSupabaseConfigured()) {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+          router.replace(redirectTo);
+        }
+      });
     }
   }, [searchParams, router]);
 
@@ -114,6 +135,16 @@ function LoginForm() {
 
     const cleanEmail = email.trim().toLowerCase();
 
+    if (typeof window !== 'undefined') {
+      if (rememberMe) {
+        localStorage.setItem('randevory_remember_email', cleanEmail);
+        localStorage.setItem('randevory_remember_me', 'true');
+      } else {
+        localStorage.removeItem('randevory_remember_email');
+        localStorage.setItem('randevory_remember_me', 'false');
+      }
+    }
+
     if (!isSupabaseConfigured()) {
       setTimeout(() => {
         setLoading(false);
@@ -153,11 +184,11 @@ function LoginForm() {
           } else {
             router.push('/create-business');
           }
-        }, 800);
+        }, 600);
       } else {
         setTimeout(() => {
           router.push('/dashboard');
-        }, 800);
+        }, 600);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Bir hata meydana geldi.');
@@ -218,6 +249,7 @@ function LoginForm() {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="ornek@isletme.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -241,6 +273,7 @@ function LoginForm() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -256,19 +289,36 @@ function LoginForm() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Beni Hatırla Seçeneği */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span className="text-xs font-medium text-slate-700">
+                  Beni Hatırla (Oturumumu açık tut)
+                </span>
+              </label>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition-colors shadow-md shadow-brand-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-500">
+          <div className="mt-6 pt-6 border-t border-slate-200 text-center text-xs text-slate-500">
             Henüz bir işletme hesabınız yok mu?{' '}
-            <Link href="/register" className="font-bold text-brand-600 hover:underline">
+            <Link href="/register" className="font-bold text-brand-600 hover:text-brand-700">
               Hemen Kaydolun
             </Link>
           </div>
@@ -280,7 +330,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-xs text-slate-500">Yükleniyor...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-sm text-slate-500">Yükleniyor...</div>}>
       <LoginForm />
     </Suspense>
   );

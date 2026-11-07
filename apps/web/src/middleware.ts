@@ -26,7 +26,12 @@ export async function middleware(request: NextRequest) {
           request,
         });
         cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options)
+          response.cookies.set(name, value, {
+            ...options,
+            ...(value ? { maxAge: options?.maxAge ?? 60 * 60 * 24 * 365 } : {}),
+            path: '/',
+            sameSite: 'lax',
+          })
         );
       },
     },
@@ -36,14 +41,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+
   const isProtected =
-    request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/create-business');
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/create-business');
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
-    url.searchParams.set('redirectTo', request.nextUrl.pathname);
+    url.searchParams.set('redirectTo', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Kullanıcı zaten giriş yapmışsa ve /login sayfasına gittiyse otomatik panele yönlendir
+  if (pathname === '/login' && user && !request.nextUrl.searchParams.get('error')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 
@@ -52,6 +66,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
+    '/login',
+    '/register',
     '/dashboard/:path*',
     '/create-business',
   ],

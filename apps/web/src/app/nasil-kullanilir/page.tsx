@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
+import { HomeNavbarAuth } from '@/components/home-navbar-auth';
 import {
   BookOpen,
   Calendar,
@@ -104,24 +105,12 @@ export default function HowItWorksGuidePage() {
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
             <Link href="/#features" className="hover:text-slate-900 transition-colors">Özellikler</Link>
             <Link href="/#sectors" className="hover:text-slate-900 transition-colors">Sektörler</Link>
+            <Link href="/#yorumlar" className="hover:text-slate-900 transition-colors">Yorumlar</Link>
             <Link href="/#plans" className="hover:text-slate-900 transition-colors">Paketler</Link>
             <Link href="/nasil-kullanilir" className="text-brand-600 font-bold">Nasıl Kullanılır?</Link>
           </nav>
 
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-slate-700 hover:text-brand-600 px-3 py-2 transition-colors"
-            >
-              Giriş Yap
-            </Link>
-            <Link
-              href="/register"
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition-all flex items-center gap-2"
-            >
-              Ücretsiz Başla <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+          <HomeNavbarAuth />
         </div>
       </header>
 

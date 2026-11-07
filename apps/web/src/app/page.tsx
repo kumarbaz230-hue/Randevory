@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
+import { HomeNavbarAuth } from '@/components/home-navbar-auth';
+import { ReviewsSection } from '@/components/reviews-section';
 import {
   Calendar,
   Clock,
@@ -16,6 +18,9 @@ import {
   Laptop,
   CheckCircle2,
   BookOpen,
+  Star,
+  QrCode,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -34,36 +39,34 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <BrandLogo size="md" showBadge={true} showSlogan={false} />
 
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
+          <nav className="hidden md:flex items-center space-x-7 text-sm font-medium text-slate-600">
             <a href="#features" className="hover:text-slate-900 transition-colors">Özellikler</a>
             <a href="#nasil-calisir" className="hover:text-slate-900 transition-colors">Nasıl Kullanılır?</a>
             <a href="#sectors" className="hover:text-slate-900 transition-colors">Sektörler</a>
+            <a href="#yorumlar" className="hover:text-slate-900 transition-colors flex items-center gap-1">
+              Yorumlar
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> 4.7
+              </span>
+            </a>
             <a href="#plans" className="hover:text-slate-900 transition-colors">Paketler</a>
           </nav>
 
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-slate-700 hover:text-brand-600 px-3 py-2 transition-colors"
-            >
-              Giriş Yap
-            </Link>
-            <Link
-              href="/register"
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition-all flex items-center gap-2"
-            >
-              Kayıt Ol <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+          <HomeNavbarAuth />
         </div>
       </header>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-32 bg-gradient-to-b from-white via-slate-50 to-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold mb-8 animate-fade-in shadow-sm">
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold mb-8 animate-fade-in shadow-sm">
             <Sparkles className="w-4 h-4 text-brand-600" />
-            Çok Sektörlü & Yeni Nesil Randevu Altyapısı
+            <span>Çok Sektörlü & Yeni Nesil Randevu Altyapısı</span>
+            <span className="text-slate-300">•</span>
+            <a href="#yorumlar" className="inline-flex items-center gap-1 text-amber-700 hover:underline font-bold">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              4.7/5 (108+ Yorum)
+            </a>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 max-w-4xl mx-auto leading-[1.15]">
@@ -71,7 +74,7 @@ export default function HomePage() {
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto font-normal leading-relaxed">
-            Telefon trafiğine ve randevu çakışmalarına son verin. Müşterileriniz 7/24 randevu alsın, siz işinize ve kazancınıza odaklanın.
+            Telefon trafiğine ve randevu çakışmalarına son verin. Müşterileriniz QR kod veya link ile 7/24 randevu alsın, WhatsApp ve canlı sohbet ile anında haberleşin.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -105,8 +108,10 @@ export default function HomePage() {
               <div className="text-xs text-slate-500 mt-1 font-medium">Müşteri Randevu Tamamlama</div>
             </div>
             <div className="bg-white/80 backdrop-blur rounded-xl p-4 border border-slate-200/80 shadow-sm">
-              <div className="text-2xl font-bold text-slate-900">10+</div>
-              <div className="text-xs text-slate-500 mt-1 font-medium">Farklı Sektör Uyumu</div>
+              <div className="text-2xl font-bold text-amber-500 flex items-center justify-center gap-1">
+                4.7 <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+              </div>
+              <div className="text-xs text-slate-500 mt-1 font-medium">1.840+ Beğeni & Memnuniyet</div>
             </div>
           </div>
         </div>
@@ -140,9 +145,9 @@ export default function HomePage() {
               <div className="w-9 h-9 rounded-xl bg-brand-600 text-white font-extrabold text-sm flex items-center justify-center mb-4">
                 2
               </div>
-              <h3 className="font-bold text-slate-900 text-base">Özel Linkinizi Paylaşın</h3>
+              <h3 className="font-bold text-slate-900 text-base">Link veya QR Kod Paylaşın</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Size özel <strong>randevory.com/isletmeniz</strong> linkini Instagram profilinize, WhatsApp mesajınıza veya Google Haritalar&apos;a ekleyin.
+                Size özel <strong>randevory.com/isletmeniz</strong> linkini Instagram profilinize ekleyin veya hazır Vitrin QR Afişini camınıza asın.
               </p>
             </div>
 
@@ -160,9 +165,9 @@ export default function HomePage() {
               <div className="w-9 h-9 rounded-xl bg-brand-600 text-white font-extrabold text-sm flex items-center justify-center mb-4">
                 4
               </div>
-              <h3 className="font-bold text-slate-900 text-base">Takvim ve Ciroyu Yönetin</h3>
+              <h3 className="font-bold text-slate-900 text-base">WhatsApp & Takvim Yönetimi</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Tüm randevuları akıllı takvimde görün, tek tıkla onaylayın, müşteri geçmişini (CRM) ve aylık cironuzu takip edin.
+                Tüm randevuları akıllı takvimde görün, tek tıkla WhatsApp onayı gönderin, canlı sohbet ve aylık cironuzu takip edin.
               </p>
             </div>
           </div>
@@ -232,7 +237,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Akıllı Randevu Takvimi</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                Günlük, haftalık ve personel bazlı görünümler. Randevuları tek tıkla onaylayın, tamamlayın veya iptal edin.
+                Günlük, haftalık ve personel bazlı görünümler. Randevuları tek tıkla onaylayın, tamamlayın veya WhatsApp mesajı gönderin.
               </p>
             </div>
 
@@ -248,21 +253,21 @@ export default function HomePage() {
 
             <div className="bg-slate-50/60 p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-6">
-                <Users className="w-6 h-6" />
+                <QrCode className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Personel & Hizmet Yönetimi</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">QR Kod & Vitrin Afişi</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                Her çalışanın mesai saatlerini, mola aralıklarını ve verebildiği hizmetleri kolayca yönetin.
+                İşletmenize özel yüksek çözünürlüklü QR kod ve baskıya hazır vitrin afişini tek tıkla indirin; müşterileriniz kamerayla okutup randevu alsın.
               </p>
             </div>
 
             <div className="bg-slate-50/60 p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
-                <Smartphone className="w-6 h-6" />
+                <MessageSquare className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Özel Müşteri Sayfası</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Canlı Sohbet & WhatsApp</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                İşletmenize özel bağlantı (randevory.com/salonunuz). Müşterileriniz üyelik zorunluluğu olmadan saniyeler içinde randevu alsın.
+                Müşterileriniz randevu sayfasından size anlık mesaj yazsın, randevu sonrası hazır WhatsApp onay mesajlarıyla iletişimi hızlandırın.
               </p>
             </div>
 
@@ -280,14 +285,17 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center mb-6">
                 <Clock className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">Müşteri Geçmişi & CRM</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Müşteri Sorgulama & CRM</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                Gelen her müşterinin önceki işlemlerini, notlarını, toplam harcamasını ve randevuya katılım sadakatini tek ekranda görün.
+                Müşteriler telefon numarasıyla kendi randevusunu sorgulayıp iptal edebilir; tüm müşteri geçmişi ve harcamaları otomatik kaydedilir.
               </p>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Customer & Business Rating + 108 Reviews Section */}
+      <ReviewsSection />
 
       {/* Subscription Plans Preview */}
       <section id="plans" className="py-24 bg-slate-50 border-t border-slate-200">
@@ -315,7 +323,7 @@ export default function HomePage() {
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 1 Personel</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 5 Hizmet Tanımı</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Aylık 50 Randevu</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Özel Randevu Linki</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Özel Randevu Linki & QR</li>
                 </ul>
               </div>
               <Link href="/register?plan=free" className="mt-8 block text-center py-2.5 px-4 rounded-xl border border-slate-300 font-semibold text-sm hover:bg-slate-50 transition-colors">
@@ -336,7 +344,7 @@ export default function HomePage() {
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 3 Personel</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> 20 Hizmet Tanımı</li>
                   <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> Aylık 300 Randevu</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> SMS / E-posta Hatırlatma</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> WhatsApp & Canlı Mesajlaşma</li>
                 </ul>
               </div>
               <Link href="/register?plan=standard" className="mt-8 block text-center py-2.5 px-4 rounded-xl border border-slate-300 font-semibold text-sm hover:bg-slate-50 transition-colors">
@@ -403,6 +411,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-5 text-xs">
             <Link href="/nasil-kullanilir" className="hover:text-white transition-colors">Nasıl Kullanılır?</Link>
+            <a href="#yorumlar" className="hover:text-white transition-colors">Kullanıcı Yorumları</a>
             <Link href="/yasal#hizmet-sozlesmesi" className="hover:text-white transition-colors">Hizmet Sözleşmesi</Link>
             <Link href="/yasal#iptal-iade" className="hover:text-white transition-colors">İptal & İade Koşulları</Link>
             <Link href="/yasal#kvkk" className="hover:text-white transition-colors">Gizlilik & KVKK</Link>
