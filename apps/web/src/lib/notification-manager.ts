@@ -145,7 +145,10 @@ export async function sendAppNotification({
   try {
     // If Service Worker is ready, use registration.showNotification (works in background on Android/iOS PWA)
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200)),
+      ]);
       if (reg && 'showNotification' in reg) {
         const notifOptions: any = {
           body,

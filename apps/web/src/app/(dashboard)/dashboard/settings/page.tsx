@@ -6,7 +6,7 @@ import { repo } from '@/lib/supabase-repository';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Business, WorkingHour, SubscriptionPlan } from '@/types';
 import { BusinessQrModal } from '@/components/business-qr-modal';
-import { triggerPwaInstall } from '@/components/pwa-install-prompt';
+import { triggerPwaInstall, checkIsPwaStandalone } from '@/components/pwa-install-prompt';
 import {
   requestNotificationPermission,
   getNotificationPermission,
@@ -67,10 +67,12 @@ export default function DashboardSettingsPage() {
   const [passLoading, setPassLoading] = useState(false);
   const [passError, setPassError] = useState('');
   const [passSuccess, setPassSuccess] = useState('');
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const daysTurkish = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
   useEffect(() => {
+    setIsStandalone(checkIsPwaStandalone());
     const load = async () => {
       const b = await repo.getActiveBusiness();
       if (b) {
@@ -817,59 +819,85 @@ export default function DashboardSettingsPage() {
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               RANDEVORY Mobil Uygulamasını Telefona Ekle
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Önerilen</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                isStandalone ? 'bg-emerald-100 text-emerald-800' : 'bg-brand-100 text-brand-800'
+              }`}>
+                {isStandalone ? 'Uygulama Modu Aktif' : 'Önerilen'}
+              </span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Tarayıcı adres çubuğu olmadan tam ekran mobil uygulama hızında randevuları ve mesajları yönetin.
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={triggerPwaInstall}
-          className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
-        >
-          <Download className="w-4 h-4 text-brand-400" />
-          Uygulamayı Kur / Ekle
-        </button>
+        {isStandalone ? (
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Uygulama Cihazınızda Yüklü</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={triggerPwaInstall}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
+          >
+            <Download className="w-4 h-4 text-brand-400" />
+            Uygulamayı Kur / Ekle
+          </button>
+        )}
       </div>
 
       {/* Canlı Telefon Bildirimleri & Sesli Uyarı Ayarları */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-            <Bell className="w-6 h-6" />
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+              <Bell className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                Canlı Telefon Bildirimleri & Sesli Uyarı
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  typeof window !== 'undefined' && getNotificationPermission() === 'granted'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {typeof window !== 'undefined' && getNotificationPermission() === 'granted'
+                    ? '🟢 Bildirimler Aktif'
+                    : '🟡 İzin Gerekli'}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Yeni randevu oluşturulduğunda, iptal edildiğinde veya müşteri mesaj yazdığında telefonunuza sesli ve titreşimli anlık bildirim düşer.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              Canlı Telefon Bildirimleri & Sesli Uyarı
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">Anlık Uyarı</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Yeni randevu oluşturulduğunda, iptal edildiğinde veya müşteri mesaj yazdığında telefonunuza sesli ve titreşimli bildirim gönderilir.
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const perm = await requestNotificationPermission();
+                if (perm === 'granted') {
+                  sendAppNotification({
+                    title: '🗓️ Yeni Randevu Geldi!',
+                    body: 'Test Müşteri (Ahmet Yılmaz) – Saç Kesimi (Bugün 15:30)',
+                    url: '/dashboard/calendar',
+                  });
+                } else {
+                  alert('Tarayıcınızın bildirim izni kapalı veya engellendi. Adres çubuğundaki kilit simgesine dokunup Bildirimlere İzin Ver seçeneğini açabilirsiniz.');
+                }
+              }}
+              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
+            >
+              <Bell className="w-4 h-4 text-white" />
+              Canlı Bildirim & Ses Testi Yap
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={async () => {
-              const perm = await requestNotificationPermission();
-              if (perm === 'granted') {
-                sendAppNotification({
-                  title: '🔔 Test Bildirimi Başarılı!',
-                  body: 'Yeni randevu geldiğinde bu şekilde sesli bildirim alacaksınız.',
-                  url: '/dashboard',
-                });
-              } else {
-                alert('Tarayıcınızın bildirim izni kapalı veya engellendi. Adres çubuğundaki kilit simgesine dokunup Bildirimlere İzin Ver seçeneğini açabilirsiniz.');
-              }
-            }}
-            className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
-          >
-            <Bell className="w-4 h-4 text-white" />
-            Bildirim İznini Aç / Test Et
-          </button>
+
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[11px] leading-relaxed">
+          💡 <strong>Nasıl Çalışır?</strong> Müşteriniz randevu aldığı anda veya mesaj yazdığında telefonunuz zil çalar ve titreşir. 
+          Android cihazlarda bildirimler doğrudan üst çekmecede belirir. iPhone (iOS) kullanıyorsanız bildirimlerin kilit ekranında görünebilmesi için uygulamayı önce <strong>Ana Ekrana Ekle</strong>meniz gerekir.
         </div>
       </div>
 

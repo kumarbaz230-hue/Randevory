@@ -2,7 +2,7 @@
   "name": "RANDEVORY - Randevu ve İşletme Yönetimi",
   "short_name": "RANDEVORY",
   "description": "Berber, kuaför, klinik ve tüm randevulu işletmeler için modern randevu ve yönetim sistemi.",
-  "start_url": "/dashboard",
+  "start_url": "/dashboard?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f172a",

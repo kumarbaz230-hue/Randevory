@@ -618,7 +618,24 @@ export class DataRepository {
     const all = await this.getAppointments(businessId);
     return all
       .filter((apt) => this.normalizePhone(apt.customer_phone) === normInput)
-      .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+      .sort((a, b) => {
+        // Öncelik 1: Aktif ve Onay Bekleyen Randevular EN ÜSTTE
+        // 'pending' (Onay Bekliyor) = 4, 'confirmed' (Onaylandı) = 3
+        // 'completed' (Tamamlandı) = 2, 'cancelled' (İptal Edildi) = 1 (En altta)
+        const getScore = (status: string) => {
+          if (status === 'pending') return 4;
+          if (status === 'confirmed') return 3;
+          if (status === 'completed') return 2;
+          return 1; // cancelled
+        };
+        const scoreDiff = getScore(b.status) - getScore(a.status);
+        if (scoreDiff !== 0) return scoreDiff;
+
+        // Öncelik 2: Aynı durumdaki randevularda EN YENİ oluşturulan veya en yeni tarihli en üstte
+        const timeB = new Date(b.created_at || b.start_time).getTime();
+        const timeA = new Date(a.created_at || a.start_time).getTime();
+        return timeB - timeA;
+      });
   }
 
   async cancelCustomerAppointment(

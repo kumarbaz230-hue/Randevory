@@ -109,10 +109,12 @@ export default function DashboardOverviewPage() {
   const listForFilter = useMemo(() => {
     if (filter === 'pending') return pendingAppointments;
     if (filter === 'upcoming') return upcomingList;
-    // Tümü: en yeni randevu en üstte
-    return [...appointments].sort(
-      (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-    );
+    // Tümü: en yeni düşen randevu en üstte (created_at DESC veya start_time DESC)
+    return [...appointments].sort((a, b) => {
+      const timeB = new Date(b.created_at || b.start_time).getTime();
+      const timeA = new Date(a.created_at || a.start_time).getTime();
+      return timeB - timeA;
+    });
   }, [filter, pendingAppointments, upcomingList, appointments]);
 
   const visibleList = listForFilter.slice(0, visibleCount);

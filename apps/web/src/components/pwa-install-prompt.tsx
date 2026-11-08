@@ -4,6 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { Smartphone, Download, X, Share2, PlusSquare, Check, Sparkles, CheckCircle2 } from 'lucide-react';
 
 /**
+ * Global helper to check if running as an installed PWA / standalone mobile app.
+ */
+export function checkIsPwaStandalone(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isMatchMedia = Boolean(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  const isNavStandalone = (window.navigator as any).standalone === true;
+  const isDocReferrer = Boolean(document.referrer && document.referrer.includes('android-app://'));
+  const isSourceParam = Boolean(window.location.search && (window.location.search.includes('source=pwa') || window.location.search.includes('mode=standalone')));
+  const isLocalStored = localStorage.getItem('randevory_is_pwa') === 'true';
+
+  const result = isMatchMedia || isNavStandalone || isDocReferrer || isSourceParam || isLocalStored;
+  if (result) {
+    try {
+      localStorage.setItem('randevory_is_pwa', 'true');
+    } catch {}
+  }
+  return result;
+}
+
+/**
  * Global trigger function that can be called from any menu, header, button or setting.
  */
 export function triggerPwaInstall() {
@@ -23,10 +43,7 @@ export function PwaInstallPrompt() {
     if (typeof window === 'undefined') return;
 
     // Check if already running as installed standalone PWA
-    const standaloneCheck =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true;
-    setIsStandalone(standaloneCheck);
+    setIsStandalone(checkIsPwaStandalone());
 
     // Check iOS
     const ua = window.navigator.userAgent.toLowerCase();

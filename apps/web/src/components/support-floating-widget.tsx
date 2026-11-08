@@ -146,10 +146,25 @@ function getInitialAiMessage(): SupportChatMessage {
 
 export function SupportFloatingWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
+
+  // Müşteri randevu ekranlarında (/[slug]) işletmenin kendi 'İşletmeye Sor' butonu olduğu için
+  // platform teknik destek ikonunu gizleyerek butonların birbirine girmesini ve çakışmasını engelle
+  const isMerchantBookingPage =
+    Boolean(pathname) &&
+    !pathname.startsWith('/dashboard') &&
+    pathname !== '/' &&
+    pathname !== '/login' &&
+    pathname !== '/register' &&
+    pathname !== '/forgot-password' &&
+    pathname !== '/reset-password' &&
+    pathname !== '/create-business' &&
+    pathname !== '/nasil-kullanilir' &&
+    pathname !== '/yasal';
+
   // Yönetim panelinde telefonda alt sekme çubuğu olduğu için buton onun üstünde durur
-  const inDashboard = (pathname || '').startsWith('/dashboard');
-  const inMessages = (pathname || '').startsWith('/dashboard/messages');
+  const inDashboard = pathname.startsWith('/dashboard');
+  const inMessages = pathname.startsWith('/dashboard/messages');
   const [mobileWidgetDismissed, setMobileWidgetDismissed] = useState(false);
 
   // Global announcement banner from platform_settings
@@ -511,6 +526,10 @@ export function SupportFloatingWidget() {
   const lastMsg = displayedMessages[displayedMessages.length - 1];
   const isWaitingForHumanAdmin =
     Boolean(activeTicket) && activeTicket?.status !== 'closed' && lastMsg?.sender === 'user';
+
+  if (isMerchantBookingPage) {
+    return null;
+  }
 
   return (
     <>
