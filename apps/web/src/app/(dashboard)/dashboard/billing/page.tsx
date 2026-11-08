@@ -108,31 +108,8 @@ function BillingContent() {
   const handleOpenCheckout = async (plan: SubscriptionPlan) => {
     if (!business) return;
 
-    // 1. ÜCRETSİZ PAKET: Kesinlikle kart veya ödeme modalı açılmaz!
+    // Ücretsiz paket satın alınamaz veya manuel seçilemez
     if (plan.tier === 'free' || plan.price_monthly === 0) {
-      if (currentTier === 'free') return;
-
-      const confirmed = window.confirm(
-        'Ücretsiz Başlangıç paketine geçmek istediğinize emin misiniz? Mevcut ücretli lisans haklarınız sona erecektir.'
-      );
-      if (!confirmed) return;
-
-      setIsProcessingPayment(true);
-      try {
-        await repo.downgradeToFree(business.id);
-        await loadData();
-        setCallbackBanner({
-          type: 'success',
-          text: 'İşletmeniz başarıyla Ücretsiz Başlangıç paketine geçirildi.',
-        });
-      } catch (err: any) {
-        setCallbackBanner({
-          type: 'error',
-          text: err.message || 'Paket değiştirilemedi.',
-        });
-      } finally {
-        setIsProcessingPayment(false);
-      }
       return;
     }
 
@@ -525,6 +502,13 @@ function BillingContent() {
                   >
                     Kullandığınız Paket
                   </button>
+                ) : plan.tier === 'free' ? (
+                  <button
+                    disabled
+                    className="w-full py-2.5 rounded-xl font-bold text-xs opacity-40 cursor-not-allowed bg-slate-100 text-slate-400"
+                  >
+                    Aktif Lisansınız Var
+                  </button>
                 ) : (
                   <button
                     onClick={() => handleOpenCheckout(plan)}
@@ -534,7 +518,7 @@ function BillingContent() {
                         : 'bg-slate-900 text-white hover:bg-slate-800'
                     }`}
                   >
-                    {plan.price_monthly === 0 ? 'Ücretsiz Pakete Geç' : 'Shopier ile Satın Al'} <ArrowRight className="w-3.5 h-3.5" />
+                    Shopier ile Satın Al <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
