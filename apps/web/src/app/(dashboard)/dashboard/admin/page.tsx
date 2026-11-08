@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -31,6 +31,7 @@ import {
   Sparkles,
   Copy,
   ChevronLeft,
+  X,
 } from 'lucide-react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp-helper';
 
@@ -548,6 +549,18 @@ export default function SuperAdminDashboardPage() {
     filteredTickets[0] ||
     null;
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeSelectedTicket) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [
+    activeSelectedTicket?.id,
+    activeSelectedTicket?.messages?.length,
+    activeSelectedTicket?.admin_reply,
+  ]);
+
   const openTicketCount = tickets.filter((t) => t.status === 'open').length;
   const bannedBizCount = businesses.filter((b) => !b.is_active).length;
 
@@ -697,12 +710,12 @@ export default function SuperAdminDashboardPage() {
 
       {/* TAB 1: SUPPORT TICKETS (MODERN MASTER-DETAIL INBOX) */}
       {activeTab === 'tickets' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px] max-h-[820px]">
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-[580px] sm:h-[640px]">
           {/* Sol Kolon: Bilet Listesi & Arama (lg:col-span-4) */}
           <div
             className={`${
               activeSelectedTicket && selectedTicketId ? 'hidden lg:flex' : 'flex'
-            } lg:col-span-4 lg:border-r border-slate-200 flex-col min-h-0 bg-slate-50/40`}
+            } lg:col-span-4 lg:border-r border-slate-200 flex-col h-full min-h-0 bg-slate-50/50`}
           >
             {/* Filtre Butonları & Arama Kutusu */}
             <div className="p-3 border-b border-slate-200 space-y-2 bg-white shrink-0">
@@ -712,7 +725,7 @@ export default function SuperAdminDashboardPage() {
                   onClick={() => setTicketFilter('all')}
                   className={`flex-1 py-1.5 px-2 rounded-lg transition-all text-center ${
                     ticketFilter === 'all'
-                      ? 'bg-white text-slate-900 shadow-xs'
+                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -723,7 +736,7 @@ export default function SuperAdminDashboardPage() {
                   onClick={() => setTicketFilter('open')}
                   className={`flex-1 py-1.5 px-2 rounded-lg transition-all text-center ${
                     ticketFilter === 'open'
-                      ? 'bg-white text-slate-900 shadow-xs'
+                      ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -734,7 +747,7 @@ export default function SuperAdminDashboardPage() {
                   onClick={() => setTicketFilter('complaint')}
                   className={`flex-1 py-1.5 px-2 rounded-lg transition-all text-center ${
                     ticketFilter === 'complaint'
-                      ? 'bg-rose-600 text-white shadow-xs'
+                      ? 'bg-rose-600 text-white shadow-2xs font-extrabold'
                       : 'text-rose-700 hover:text-rose-900'
                   }`}
                 >
@@ -749,8 +762,18 @@ export default function SuperAdminDashboardPage() {
                   placeholder="İsim, telefon veya konu ara..."
                   value={ticketSearch}
                   onChange={(e) => setTicketSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full pl-8 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                 />
+                {ticketSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setTicketSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    title="Temizle"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -773,7 +796,7 @@ export default function SuperAdminDashboardPage() {
                       onClick={() => setSelectedTicketId(ticket.id)}
                       className={`w-full p-3.5 text-left transition-all flex items-start gap-3 hover:bg-slate-100/70 ${
                         isSelected
-                          ? 'bg-brand-50/70 border-l-4 border-l-brand-600'
+                          ? 'bg-brand-50/70 border-l-4 border-l-brand-600 shadow-2xs'
                           : isComplaint
                           ? 'bg-rose-50/30'
                           : 'bg-white'
@@ -781,7 +804,7 @@ export default function SuperAdminDashboardPage() {
                     >
                       <div className="relative shrink-0">
                         <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-2xs ${
                             isComplaint
                               ? 'bg-rose-100 text-rose-700'
                               : isWaiting
@@ -791,6 +814,9 @@ export default function SuperAdminDashboardPage() {
                         >
                           {isComplaint ? '🚨' : ticket.sender_name.charAt(0).toUpperCase()}
                         </div>
+                        {isWaiting && (
+                          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full ring-2 ring-white animate-pulse" />
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
@@ -802,7 +828,7 @@ export default function SuperAdminDashboardPage() {
                           >
                             {ticket.sender_name}
                           </span>
-                          <span className="text-[10px] text-slate-400 shrink-0">
+                          <span className="text-[10px] text-slate-400 shrink-0 font-medium">
                             {new Date(ticket.created_at).toLocaleDateString('tr-TR', {
                               day: 'numeric',
                               month: 'short',
@@ -818,7 +844,7 @@ export default function SuperAdminDashboardPage() {
                           {ticket.message}
                         </p>
 
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-1.5 mt-2">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               isComplaint
@@ -863,7 +889,7 @@ export default function SuperAdminDashboardPage() {
           <div
             className={`${
               !activeSelectedTicket || !selectedTicketId ? 'hidden lg:flex' : 'flex'
-            } lg:col-span-8 flex-col min-h-0 bg-white`}
+            } lg:col-span-8 flex-col h-full min-h-0 bg-white`}
           >
             {!activeSelectedTicket ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
@@ -879,19 +905,23 @@ export default function SuperAdminDashboardPage() {
                 const isComplaint = ticket.category === 'complaint';
 
                 return (
-                  <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 flex flex-col h-full min-h-0">
                     {/* Sohbet Başlığı (Header) */}
-                    <div className="p-3.5 lg:p-4 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-3 lg:px-4 lg:py-3 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-2 shrink-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         {/* Mobil Geri Dön Butonu */}
                         <button
                           type="button"
                           onClick={() => setSelectedTicketId(null)}
-                          className="lg:hidden p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
+                          className="lg:hidden p-1.5 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
                           title="Listeye Dön"
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
+
+                        <div className="w-9 h-9 rounded-xl bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center shrink-0">
+                          {ticket.sender_name.charAt(0).toUpperCase()}
+                        </div>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -908,15 +938,30 @@ export default function SuperAdminDashboardPage() {
                               {ticket.subject}
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-3 mt-0.5">
-                            <span>📞 {ticket.sender_contact}</span>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 truncate">
+                            <span className="font-medium text-slate-600">{ticket.sender_contact}</span>
                             <span>•</span>
                             <span>{new Date(ticket.created_at).toLocaleString('tr-TR')}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Hızlı Araçlar Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickTools((prev) => !prev)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            showQuickTools
+                              ? 'bg-indigo-600 text-white shadow-2xs'
+                              : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                          }`}
+                          title="Hızlı İşlemler & Linkler"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Hızlı Araçlar</span>
+                        </button>
+
                         {/* WhatsApp Butonu */}
                         {/\d{10,}/.test(ticket.sender_contact.replace(/\D/g, '')) && (
                           <a
@@ -926,10 +971,10 @@ export default function SuperAdminDashboardPage() {
                             )}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors"
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-colors"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
-                            WhatsApp
+                            <span className="hidden sm:inline">WhatsApp</span>
                           </a>
                         )}
 
@@ -941,11 +986,11 @@ export default function SuperAdminDashboardPage() {
                             onClick={() => handleCloseTicket(ticket)}
                             className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
                           >
-                            ✓ Görüşmeyi Kapat
+                            ✓ Kapat
                           </button>
                         ) : (
-                          <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
-                            🔒 Kapatıldı
+                          <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold">
+                            🔒 Kapalı
                           </span>
                         )}
                       </div>
@@ -953,10 +998,10 @@ export default function SuperAdminDashboardPage() {
 
                     {/* Şikayet Bildirimi (varsa) */}
                     {ticket.reported_business_slug && (
-                      <div className="p-3 bg-rose-50 border-b border-rose-200 flex items-center justify-between gap-3 text-xs text-rose-900 shrink-0">
-                        <div className="flex items-center gap-2">
+                      <div className="px-4 py-2 bg-rose-50 border-b border-rose-200 flex items-center justify-between gap-3 text-xs text-rose-900 shrink-0">
+                        <div className="flex items-center gap-2 truncate">
                           <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                          <span>
+                          <span className="truncate">
                             Şikayet Edilen İşletme: <strong>{ticket.reported_business_slug}</strong>
                           </span>
                         </div>
@@ -964,7 +1009,7 @@ export default function SuperAdminDashboardPage() {
                           href={`/${ticket.reported_business_slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px] hover:bg-rose-700 shrink-0"
+                          className="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[11px] hover:bg-rose-700 shrink-0"
                         >
                           İşletmeyi Aç &rarr;
                         </a>
@@ -972,7 +1017,7 @@ export default function SuperAdminDashboardPage() {
                     )}
 
                     {/* Canlı Mesajlaşma Akışı */}
-                    <div className="flex-1 p-4 lg:p-5 overflow-y-auto space-y-3 bg-slate-50/60 min-h-0">
+                    <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#f8fafc] min-h-0">
                       {(Array.isArray(ticket.messages) && ticket.messages.length > 0
                         ? ticket.messages
                         : [
@@ -1003,16 +1048,16 @@ export default function SuperAdminDashboardPage() {
                             className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
                           >
                             <div
-                              className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-2xs ${
+                              className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-2xs ${
                                 isAdmin
                                   ? 'bg-brand-600 text-white rounded-tr-xs'
                                   : isAi
-                                  ? 'bg-indigo-50 border border-indigo-200 text-indigo-950 rounded-tl-xs'
+                                  ? 'bg-indigo-50/90 border border-indigo-200 text-indigo-950 rounded-tl-xs'
                                   : 'bg-white border border-slate-200 text-slate-900 rounded-tl-xs'
                               }`}
                             >
                               <div
-                                className={`text-[10px] font-bold mb-1 ${
+                                className={`text-[10px] font-bold mb-1 flex items-center gap-1 ${
                                   isAdmin
                                     ? 'text-brand-100'
                                     : isAi
@@ -1021,7 +1066,7 @@ export default function SuperAdminDashboardPage() {
                                 }`}
                               >
                                 {isAdmin
-                                  ? '🛡️ Siz (RANDEVORY Destek)'
+                                  ? '🛡️ Siz (Yönetici)'
                                   : isAi
                                   ? '🤖 Yapay Zeka Asistanı'
                                   : `👤 ${ticket.sender_name}`}
@@ -1033,7 +1078,7 @@ export default function SuperAdminDashboardPage() {
                                     src={msg.image_url}
                                     alt="Ekran Görüntüsü"
                                     onClick={() => setLightboxImage(msg.image_url || null)}
-                                    className="rounded-xl max-h-56 w-auto object-cover border border-black/10 cursor-zoom-in hover:opacity-95"
+                                    className="rounded-xl max-h-52 w-auto object-cover border border-black/10 cursor-zoom-in hover:opacity-95"
                                   />
                                 </div>
                               )}
@@ -1041,7 +1086,7 @@ export default function SuperAdminDashboardPage() {
                               <p className="whitespace-pre-wrap">{msg.text}</p>
 
                               <div
-                                className={`text-[10px] mt-1 text-right ${
+                                className={`text-[10px] mt-1 text-right font-medium ${
                                   isAdmin ? 'text-brand-200' : 'text-slate-400'
                                 }`}
                               >
@@ -1054,38 +1099,37 @@ export default function SuperAdminDashboardPage() {
                           </div>
                         );
                       })}
+                      <div ref={messagesEndRef} />
                     </div>
 
                     {/* Hızlı İşlem Araçları & Link Gönderme Menüsü (Açılır/Kapanır) */}
                     {showQuickTools && (
-                      <div className="p-3.5 bg-indigo-50/90 border-t border-indigo-200 space-y-2.5 animate-in slide-in-from-bottom-2 shrink-0">
+                      <div className="p-3 bg-indigo-50/90 border-t border-indigo-200 space-y-2 shrink-0 max-h-48 overflow-y-auto">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-[11px] font-extrabold text-indigo-950 flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                            İşletme Seç & Hızlı İşlem Gönder:
+                            İşletme Seçimi & Hızlı Eylemler:
                           </span>
 
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <select
-                              value={matchedBiz?.id || ''}
-                              onChange={(e) =>
-                                setSelectedBizForTicket((prev) => ({
-                                  ...prev,
-                                  [ticket.id]: e.target.value,
-                                }))
-                              }
-                              className="px-2.5 py-1 rounded-lg border border-indigo-300 bg-white font-bold text-slate-800 text-xs"
-                            >
-                              {businesses.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.name} (/{b.slug})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <select
+                            value={matchedBiz?.id || ''}
+                            onChange={(e) =>
+                              setSelectedBizForTicket((prev) => ({
+                                ...prev,
+                                [ticket.id]: e.target.value,
+                              }))
+                            }
+                            className="px-2 py-1 rounded-lg border border-indigo-300 bg-white font-bold text-slate-800 text-xs"
+                          >
+                            {businesses.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name} (/{b.slug})
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           {matchedBiz && (
                             <button
                               type="button"
@@ -1096,10 +1140,10 @@ export default function SuperAdminDashboardPage() {
                                   `🔗 İşletmenizin (${matchedBiz.name}) güncel ve aktif randevu bağlantısı:\n👉 https://www.randevory.com/${matchedBiz.slug}\n\nMüşterileriniz bu bağlantıya tıklayarak 7/24 randevu alabilir.`
                                 )
                               }
-                              className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-2xs transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-colors"
                             >
-                              <Link2 className="w-3.5 h-3.5" />
-                              🔗 Link Gönder (/{matchedBiz.slug})
+                              <Link2 className="w-3 h-3" />
+                              Link Gönder (/{matchedBiz.slug})
                             </button>
                           )}
 
@@ -1108,10 +1152,10 @@ export default function SuperAdminDashboardPage() {
                               type="button"
                               disabled={actionBusyId === matchedBiz.id}
                               onClick={() => handleQuickAssistBusiness(matchedBiz, 'fix_slug', ticket)}
-                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
                             >
-                              <Wrench className="w-3.5 h-3.5 text-indigo-600" />
-                              🔧 Linki Onar
+                              <Wrench className="w-3 h-3 text-indigo-600" />
+                              Linki Onar
                             </button>
                           )}
 
@@ -1124,10 +1168,10 @@ export default function SuperAdminDashboardPage() {
                                 `🔑 Şifrenizi yenilemek için aşağıdaki resmi şifre sıfırlama bağlantımıza tıklayın:\n👉 https://www.randevory.com/forgot-password\n\nKayıtlı e-posta adresinizi (${ticket.sender_contact}) yazarak yeni şifrenizi hemen belirleyebilirsiniz.`
                               )
                             }
-                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
                           >
-                            <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                            🔑 Şifre Sıfırlama Linki
+                            <KeyRound className="w-3 h-3 text-amber-600" />
+                            Şifre Sıfırlama Linki
                           </button>
 
                           {matchedBiz && (
@@ -1135,10 +1179,10 @@ export default function SuperAdminDashboardPage() {
                               type="button"
                               disabled={actionBusyId === matchedBiz.id}
                               onClick={() => handleQuickAssistBusiness(matchedBiz, 'reset_hours', ticket)}
-                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
                             >
-                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                              🕒 Çalışma Saatlerini Aç (09-19)
+                              <Clock className="w-3 h-3 text-emerald-600" />
+                              Saatleri Aç (09-19)
                             </button>
                           )}
 
@@ -1147,27 +1191,27 @@ export default function SuperAdminDashboardPage() {
                               type="button"
                               disabled={actionBusyId === matchedBiz.id}
                               onClick={() => handleQuickAssistBusiness(matchedBiz, 'gift_pro', ticket)}
-                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
                             >
-                              <Gift className="w-3.5 h-3.5 text-purple-600" />
-                              🎁 Pro Paket Tanımla
+                              <Gift className="w-3 h-3 text-purple-600" />
+                              Pro Paket Hediye Et
                             </button>
                           )}
                         </div>
                       </div>
                     )}
 
-                    {/* Mesaj Gönderme Çubuğu */}
-                    <div className="p-3 bg-white border-t border-slate-200 shrink-0 space-y-2">
+                    {/* Mesaj Gönderme Çubuğu (HER ZAMAN SABİT VE GÖRÜNÜR) */}
+                    <div className="p-2.5 sm:p-3 bg-white border-t border-slate-200 shrink-0 space-y-2">
                       {replyImages[ticket.id] && (
-                        <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-between">
+                        <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <img
                               src={replyImages[ticket.id]}
                               alt="Önizleme"
-                              className="w-9 h-9 rounded-lg object-cover border border-slate-300"
+                              className="w-8 h-8 rounded-lg object-cover border border-slate-300"
                             />
-                            <span className="text-xs font-semibold text-slate-700">Fotoğraf eklendi</span>
+                            <span className="text-xs font-semibold text-slate-700">Fotoğraf seçildi</span>
                           </div>
                           <button
                             type="button"
@@ -1186,25 +1230,10 @@ export default function SuperAdminDashboardPage() {
                       )}
 
                       <div className="flex items-center gap-2">
-                        {/* Hızlı Araçları Aç/Kapat Butonu */}
-                        <button
-                          type="button"
-                          onClick={() => setShowQuickTools((prev) => !prev)}
-                          className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
-                            showQuickTools
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                              : 'bg-slate-50 text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                          }`}
-                          title="Tek Tıkla Bağlantı & Yardım Araçları"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          <span className="hidden sm:inline">Hızlı Araçlar</span>
-                        </button>
-
                         {/* Fotoğraf Ekle Butonu */}
                         <label
                           title="Fotoğraf / Ekran Görüntüsü Ekle"
-                          className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer flex items-center justify-center shrink-0 transition-colors"
+                          className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer flex items-center justify-center shrink-0 transition-colors"
                         >
                           <ImagePlus className="w-4 h-4 text-brand-600" />
                           <input
@@ -1218,7 +1247,7 @@ export default function SuperAdminDashboardPage() {
                         {/* Mesaj Input */}
                         <input
                           type="text"
-                          placeholder="Karşı tarafa mesajınızı yazın (Enter ile gönder)..."
+                          placeholder="Mesajınızı yazın... (Enter ile gönder)"
                           value={replyDrafts[ticket.id] ?? ''}
                           onChange={(e) =>
                             setReplyDrafts((prev) => ({ ...prev, [ticket.id]: e.target.value }))
@@ -1229,7 +1258,7 @@ export default function SuperAdminDashboardPage() {
                               sendAdminMessageToTicket(ticket);
                             }
                           }}
-                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                         />
 
                         {/* Gönder Butonu */}
@@ -1237,7 +1266,7 @@ export default function SuperAdminDashboardPage() {
                           type="button"
                           disabled={actionBusyId === ticket.id}
                           onClick={() => sendAdminMessageToTicket(ticket)}
-                          className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-sm transition-colors"
+                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-2xs transition-all"
                         >
                           <Send className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Gönder</span>
