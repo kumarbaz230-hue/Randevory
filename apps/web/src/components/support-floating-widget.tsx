@@ -150,6 +150,7 @@ export function SupportFloatingWidget() {
   // Yönetim panelinde telefonda alt sekme çubuğu olduğu için buton onun üstünde durur
   const inDashboard = (pathname || '').startsWith('/dashboard');
   const inMessages = (pathname || '').startsWith('/dashboard/messages');
+  const [mobileWidgetDismissed, setMobileWidgetDismissed] = useState(false);
 
   // Global announcement banner from platform_settings
   const [announcementActive, setAnnouncementActive] = useState(false);
@@ -559,7 +560,7 @@ export function SupportFloatingWidget() {
       {/* Floating Support Trigger Button */}
       <div
         className={`fixed z-50 flex flex-col items-end ${
-          inMessages ? 'hidden md:flex' : ''
+          inMessages || mobileWidgetDismissed ? 'hidden md:flex' : ''
         } ${
           isOpen
             ? 'inset-x-2 bottom-2 sm:inset-x-auto sm:right-5 sm:bottom-5'
@@ -567,25 +568,40 @@ export function SupportFloatingWidget() {
         }`}
       >
         {!isOpen && (
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            aria-label="Canlı Destek"
-            className="group flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/30 border border-slate-700/80 transition-all hover:scale-105"
-          >
-            <div className="relative flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
-              <Headset className="w-4 h-4" />
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
-            </div>
-            <div className="text-left hidden sm:block">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
-                AI Asistan & Canlı Destek
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              aria-label="Canlı Destek"
+              className="flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/30 border border-slate-700/80 transition-all hover:scale-105"
+            >
+              <div className="relative flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
+                <Headset className="w-4 h-4" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
               </div>
-              <div className="text-xs font-extrabold leading-tight mt-0.5">
-                Canlı Destek / Bildir
+              <div className="text-left hidden sm:block">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
+                  AI Asistan & Canlı Destek
+                </div>
+                <div className="text-xs font-extrabold leading-tight mt-0.5">
+                  Canlı Destek / Bildir
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+            {inDashboard && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMobileWidgetDismissed(true);
+                }}
+                title="Destek butonunu gizle"
+                className="md:hidden absolute -top-1 -left-1 w-5 h-5 rounded-full bg-slate-800 text-slate-300 border border-slate-600 flex items-center justify-center text-[10px] font-bold shadow-md hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         )}
 
         {/* Unified Single Support Chat Window */}

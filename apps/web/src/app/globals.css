@@ -51,9 +51,10 @@ img, video, canvas, svg {
     min-height: 40px;
   }
 
-  /* Uzun metin/e-posta/link satırları kutudan taşmasın */
-  h1, h2, h3, p, span, a, label {
-    overflow-wrap: anywhere;
+  /* Uzun metin/e-posta/link satırları kutudan taşmasın, ancak kelimeleri dikey bölmesin */
+  p, h1, h2, h3, .break-text {
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   /* Modal ve açılır pencereler ekrana sığsın */

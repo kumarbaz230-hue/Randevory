@@ -577,49 +577,143 @@ export default function DashboardSettingsPage() {
         </div>
 
         {/* Weekly Working Hours */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-brand-600" />
-            Haftalık Çalışma ve Mesai Saatleri
-          </h2>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-brand-600" />
+                Haftalık Çalışma ve Mesai Saatleri
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Müşterilerinizin randevu alabileceği açık günleri ve mesai saatlerini belirleyin.
+              </p>
+            </div>
 
-          <div className="divide-y divide-slate-100 text-xs">
+            {/* Hızlı Şablonlar */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400 mr-1 hidden sm:inline">Hızlı Ayarla:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkingHours((prev) =>
+                    prev.map((wh) => {
+                      const isWk = wh.day_of_week >= 1 && wh.day_of_week <= 5;
+                      return {
+                        ...wh,
+                        is_open: isWk,
+                        open_time: isWk ? '09:00' : wh.open_time,
+                        close_time: isWk ? '19:00' : wh.close_time,
+                      };
+                    })
+                  );
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-colors"
+              >
+                Hafta İçi (09-19)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkingHours((prev) =>
+                    prev.map((wh) => ({ ...wh, is_open: true, open_time: '09:00', close_time: '19:00' }))
+                  );
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-colors"
+              >
+                7 Gün Açık
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkingHours((prev) =>
+                    prev.map((wh) => (wh.day_of_week === 0 ? { ...wh, is_open: false } : wh))
+                  );
+                }}
+                className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-semibold transition-colors"
+              >
+                Pazarı Kapat
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             {workingHours.map((wh) => (
-              <div key={wh.day_of_week} className="py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-3 w-32">
-                  <input
-                    type="checkbox"
-                    checked={wh.is_open}
-                    onChange={() => handleWorkingHourToggle(wh.day_of_week)}
-                    className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500"
-                  />
-                  <span className={`font-semibold ${wh.is_open ? 'text-slate-900' : 'text-slate-400'}`}>
-                    {daysTurkish[wh.day_of_week]}
-                  </span>
+              <div
+                key={wh.day_of_week}
+                className={`p-3.5 rounded-2xl border transition-all ${
+                  wh.is_open
+                    ? 'bg-white border-slate-200 shadow-xs'
+                    : 'bg-slate-50 border-slate-100 opacity-70'
+                }`}
+              >
+                {/* Üst Satır: Checkbox + Gün Adı + Açık/Kapalı Butonu */}
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-2.5 cursor-pointer min-w-0 select-none">
+                    <input
+                      type="checkbox"
+                      checked={wh.is_open}
+                      onChange={() => handleWorkingHourToggle(wh.day_of_week)}
+                      className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 shrink-0 cursor-pointer"
+                    />
+                    <span
+                      className={`font-bold text-sm whitespace-nowrap ${
+                        wh.is_open ? 'text-slate-900' : 'text-slate-400'
+                      }`}
+                    >
+                      {daysTurkish[wh.day_of_week]}
+                    </span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => handleWorkingHourToggle(wh.day_of_week)}
+                    className={`px-3 py-1 rounded-full text-[11px] font-extrabold transition-colors shrink-0 ${
+                      wh.is_open
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {wh.is_open ? '✓ Açık' : '✕ Kapalı'}
+                  </button>
                 </div>
 
+                {/* Alt Satır: Saat Girişleri (Sadece gün açıkken görünür) */}
                 {wh.is_open ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      value={wh.open_time}
-                      onChange={(e) =>
-                        handleWorkingHourChange(wh.day_of_week, 'open_time', e.target.value)
-                      }
-                      className="px-2.5 py-1 rounded-lg border border-slate-300 text-xs"
-                    />
-                    <span className="text-slate-400">-</span>
-                    <input
-                      type="time"
-                      value={wh.close_time}
-                      onChange={(e) =>
-                        handleWorkingHourChange(wh.day_of_week, 'close_time', e.target.value)
-                      }
-                      className="px-2.5 py-1 rounded-lg border border-slate-300 text-xs"
-                    />
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                        Açılış
+                      </span>
+                      <input
+                        type="time"
+                        value={wh.open_time}
+                        onChange={(e) =>
+                          handleWorkingHourChange(wh.day_of_week, 'open_time', e.target.value)
+                        }
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
+
+                    <span className="text-slate-400 font-bold self-end pb-2 px-0.5">-</span>
+
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                        Kapanış
+                      </span>
+                      <input
+                        type="time"
+                        value={wh.close_time}
+                        onChange={(e) =>
+                          handleWorkingHourChange(wh.day_of_week, 'close_time', e.target.value)
+                        }
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500"
+                      />
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-slate-400 italic">Kapalı</span>
+                  <div className="mt-2 text-[11px] text-slate-400 italic">
+                    Tüm gün kapalı (Randevu alınamaz)
+                  </div>
                 )}
               </div>
             ))}
