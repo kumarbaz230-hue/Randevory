@@ -8,6 +8,7 @@ import { repo } from '@/lib/supabase-repository';
 import { Business } from '@/types';
 import { BrandLogo } from '@/components/brand-logo';
 import { BusinessQrModal } from '@/components/business-qr-modal';
+import { triggerPwaInstall } from '@/components/pwa-install-prompt';
 import {
   Calendar,
   LayoutDashboard,
@@ -25,6 +26,8 @@ import {
   MessageSquare,
   QrCode,
   ShieldCheck,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -221,6 +224,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
+        {/* PWA Install Button for Desktop / Tablet */}
+        <div className="px-4 py-2 border-t border-slate-800/80">
+          <button
+            type="button"
+            onClick={triggerPwaInstall}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-medium transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Smartphone className="w-3.5 h-3.5 text-brand-400" />
+              Uygulamayı Yükle
+            </span>
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+        </div>
+
         {/* Bottom User info */}
         <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2.5">
@@ -291,6 +309,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   Sayfayı Gör <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               </div>
+
+              {/* Install PWA Mobile Action */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  triggerPwaInstall();
+                }}
+                className="w-full mt-2.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand-600/30 to-blue-600/20 border border-brand-500/40 text-left flex items-center justify-between transition-colors active:scale-98"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-brand-600 text-white flex items-center justify-center shrink-0">
+                    <Smartphone className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      Uygulama Olarak Ekle
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-500 text-white font-semibold">Tavsiye</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400">Ana ekrandan tek tıkla hızlı açın</div>
+                  </div>
+                </div>
+                <Download className="w-4 h-4 text-brand-400 shrink-0" />
+              </button>
             </div>
 
             {navigation.map((item: any) => {

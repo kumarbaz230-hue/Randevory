@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { triggerPwaInstall } from '@/components/pwa-install-prompt';
 import {
   Menu,
   X,
@@ -18,6 +19,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Scissors,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 
 export function HomeHeader() {
@@ -114,6 +117,17 @@ export function HomeHeader() {
 
         {/* Right Actions (Auth & Mobile Toggle) */}
         <div className="flex items-center gap-2">
+          {/* Mobile/Desktop PWA Install Button */}
+          <button
+            type="button"
+            onClick={triggerPwaInstall}
+            title="RANDEVORY'yi telefonunuza veya bilgisayarınıza uygulama olarak yükleyin"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors shadow-2xs active:scale-95"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-brand-600" />
+            <span>Uygulama Yükle</span>
+          </button>
+
           {/* User Auth Info (Desktop / Tablet) */}
           {user && (
             <span className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
@@ -164,6 +178,16 @@ export function HomeHeader() {
       {/* Mobile Horizontal Quick-Jump Pill Bar (Always visible on mobile right below the header) */}
       <div className="md:hidden border-t border-slate-200/80 bg-slate-50/95 backdrop-blur-md px-3 py-2 overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Hızlı Git:</span>
+
+        {/* Uygulamayı Yükle Pill */}
+        <button
+          type="button"
+          onClick={triggerPwaInstall}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold shrink-0 shadow-2xs active:scale-95 transition-transform"
+        >
+          <Smartphone className="w-3.5 h-3.5 text-brand-400" />
+          Uygulama Yükle
+        </button>
 
         {/* 1. Yorumlar Pill (Highlighted) */}
         <a
@@ -268,6 +292,30 @@ export function HomeHeader() {
               </div>
               <ChevronRight className="w-4 h-4 text-brand-400" />
             </Link>
+
+            {/* Official App Install Card in Mobile Menu */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                triggerPwaInstall();
+              }}
+              className="w-full mt-2 flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-brand-50 to-blue-50 border border-brand-200/80 text-left transition-all active:scale-98 shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    Uygulama Olarak Yükle
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-brand-600 text-white font-semibold">Önerilen</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">Ana ekrandan tek tıkla hızlı açın</div>
+                </div>
+              </div>
+              <Download className="w-4 h-4 text-brand-600 shrink-0 mr-1" />
+            </button>
           </div>
 
           {/* User profile / Auth in mobile drawer */}

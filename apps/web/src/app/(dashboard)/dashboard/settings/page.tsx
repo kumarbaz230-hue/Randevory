@@ -6,6 +6,7 @@ import { repo } from '@/lib/supabase-repository';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Business, WorkingHour, SubscriptionPlan } from '@/types';
 import { BusinessQrModal } from '@/components/business-qr-modal';
+import { triggerPwaInstall } from '@/components/pwa-install-prompt';
 import {
   Clock,
   Building,
@@ -22,6 +23,8 @@ import {
   QrCode,
   Gift,
   Sparkles,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
@@ -798,6 +801,32 @@ export default function DashboardSettingsPage() {
           </div>
         </div>
       </form>
+
+      {/* Mobil Uygulama & Ana Ekran Kartı */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 shrink-0">
+            <Smartphone className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              RANDEVORY Mobil Uygulamasını Telefona Ekle
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Önerilen</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Tarayıcı adres çubuğu olmadan tam ekran mobil uygulama hızında randevuları ve mesajları yönetin.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={triggerPwaInstall}
+          className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
+        >
+          <Download className="w-4 h-4 text-brand-400" />
+          Uygulamayı Kur / Ekle
+        </button>
+      </div>
 
       {/* Account Security & Password Change Form */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
