@@ -98,10 +98,16 @@ export async function POST(request: Request) {
       return new NextResponse('success', { status: 200 });
     }
 
+    // Durum C: Shopier Bağlantı ve Ping Testi
+    const acceptHeader = request.headers.get('accept') || '';
+    if (acceptHeader.includes('application/json') || acceptHeader.includes('text/plain') || !acceptHeader.includes('text/html')) {
+      return new NextResponse('OK', { status: 200 });
+    }
+
     return NextResponse.redirect(`${origin}/dashboard/billing`);
   } catch (err) {
     console.error('Shopier callback error:', err);
-    return NextResponse.redirect(`${origin}/dashboard/billing?payment=error`);
+    return new NextResponse('OK', { status: 200 });
   }
 }
 
@@ -131,7 +137,7 @@ async function activateBusinessLicense(
   const { data: planRow } = await supabase
     .from('subscription_plans')
     .select('id')
-    .eq('code', tier)
+    .eq('tier', tier)
     .maybeSingle();
 
   if (planRow?.id) {
@@ -147,10 +153,10 @@ async function activateBusinessLicense(
         .update({
           plan_id: planRow.id,
           status: 'active',
-          billing_cycle: billingCycle,
           current_period_start: now.toISOString(),
           current_period_end: periodEnd.toISOString(),
-          external_subscription_id: paymentId ? `shopier_${paymentId}` : undefined,
+          cancel_at_period_end: false,
+          updated_at: now.toISOString(),
         })
         .eq('id', existingSub.id);
     } else {
@@ -158,11 +164,14 @@ async function activateBusinessLicense(
         business_id: businessId,
         plan_id: planRow.id,
         status: 'active',
-        billing_cycle: billingCycle,
         current_period_start: now.toISOString(),
         current_period_end: periodEnd.toISOString(),
-        external_subscription_id: paymentId ? `shopier_${paymentId}` : undefined,
+        cancel_at_period_end: false,
       });
     }
   }
+}
+
+export async function GET() {
+  return new NextResponse('OK', { status: 200 });
 }
