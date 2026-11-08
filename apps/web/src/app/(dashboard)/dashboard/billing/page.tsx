@@ -468,12 +468,17 @@ function BillingContent() {
                     </span>
                   </div>
 
-                  {plan.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <CheckCircle2 className={`w-4 h-4 shrink-0 ${isPro ? 'text-brand-400' : 'text-emerald-500'}`} />
-                      <span>{feat}</span>
-                    </div>
-                  ))}
+                  {plan.features
+                    .filter((feat) => {
+                      const lower = feat.toLowerCase();
+                      return !lower.includes('personel') && !lower.includes('hizmet tanım') && !lower.includes('randevu/ay');
+                    })
+                    .map((feat, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${isPro ? 'text-brand-400' : 'text-emerald-500'}`} />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
                 </div>
               </div>
 

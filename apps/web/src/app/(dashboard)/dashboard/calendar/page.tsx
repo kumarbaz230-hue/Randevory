@@ -6,6 +6,7 @@ import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
 import { createBusinessToCustomerWhatsAppUrl } from '@/lib/whatsapp-helper';
+import { getBusinessMapsUrl } from '@/lib/location-helper';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -431,6 +432,7 @@ export default function DashboardCalendarPage() {
                     businessName: business?.name || 'İşletme',
                     businessSlug: business?.slug || 'salon-prestij',
                     businessAddress: business?.address,
+                    mapsUrl: getBusinessMapsUrl(business),
                     serviceName: services.find((s) => s.id === selectedAptDetail.service_id)?.name || 'Randevu',
                     staffName: staffList.find((st) => st.id === selectedAptDetail.staff_id)?.name,
                     startTime: selectedAptDetail.start_time,

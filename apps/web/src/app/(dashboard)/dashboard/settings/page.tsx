@@ -12,6 +12,7 @@ import {
   getNotificationPermission,
   sendAppNotification,
 } from '@/lib/notification-manager';
+import { getDeviceGpsCoordinates, getBusinessMapsUrl } from '@/lib/location-helper';
 import {
   Clock,
   Building,
@@ -31,6 +32,9 @@ import {
   Smartphone,
   Download,
   Bell,
+  MapPin,
+  Navigation,
+  Compass,
 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
@@ -49,6 +53,11 @@ export default function DashboardSettingsPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [mapsUrl, setMapsUrl] = useState('');
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
+  const [isGettingGps, setIsGettingGps] = useState(false);
+  const [gpsFeedback, setGpsFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [slotInterval, setSlotInterval] = useState(30);
   const [autoConfirm, setAutoConfirm] = useState(true);
   const [cancelHours, setCancelHours] = useState(2);
@@ -82,6 +91,9 @@ export default function DashboardSettingsPage() {
         setPhone(b.phone);
         setEmail(b.email);
         setAddress(b.address);
+        setMapsUrl(b.settings?.maps_url || '');
+        setLatitude(b.settings?.latitude);
+        setLongitude(b.settings?.longitude);
         setSlotInterval(b.settings.slot_interval_minutes ?? 30);
         setAutoConfirm(b.settings.auto_confirm_appointments !== false);
         setCancelHours(b.settings.cancellation_deadline_hours ?? 2);
@@ -133,6 +145,28 @@ export default function DashboardSettingsPage() {
     );
   };
 
+  const handleGetGpsLocation = async () => {
+    setIsGettingGps(true);
+    setGpsFeedback(null);
+    try {
+      const res = await getDeviceGpsCoordinates();
+      setLatitude(res.latitude);
+      setLongitude(res.longitude);
+      setMapsUrl(res.mapsUrl);
+      setGpsFeedback({
+        type: 'success',
+        text: `📍 GPS Konumunuz Başarıyla Alındı! Enlem: ${res.latitude.toFixed(5)}, Boylam: ${res.longitude.toFixed(5)}`,
+      });
+    } catch (err: any) {
+      setGpsFeedback({
+        type: 'error',
+        text: err?.message || 'Konum bilgisi alınamadı.',
+      });
+    } finally {
+      setIsGettingGps(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveError('');
@@ -179,6 +213,9 @@ export default function DashboardSettingsPage() {
           slot_interval_minutes: Number(slotInterval),
           auto_confirm_appointments: autoConfirm,
           cancellation_deadline_hours: Number(cancelHours),
+          maps_url: mapsUrl.trim() || undefined,
+          latitude: latitude || undefined,
+          longitude: longitude || undefined,
           loyalty_program: {
             enabled: loyaltyEnabled,
             target_appointments: Number(loyaltyTarget),
@@ -398,6 +435,60 @@ export default function DashboardSettingsPage() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            {/* Canlı Konum & Google Haritalar Entegrasyonu */}
+            <div className="sm:col-span-2 pt-3 border-t border-slate-100 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block font-semibold text-slate-800 text-xs flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-brand-600" />
+                    Harita & Canlı Konum (Google Maps / Navigasyon)
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Müşterilerinizin tek tıkla dükkanınıza yol tarifi alabilmesi için Google Haritalar linkinizi ekleyin veya canlı GPS konumunuzu kaydedin.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleGetGpsLocation}
+                    disabled={isGettingGps}
+                    className="px-3 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 text-xs font-bold flex items-center gap-1.5 transition-colors active:scale-95 disabled:opacity-50"
+                  >
+                    <Compass className={`w-3.5 h-3.5 ${isGettingGps ? 'animate-spin' : 'text-brand-600'}`} />
+                    {isGettingGps ? 'Konum Alınıyor...' : '📍 GPS Konumumu Al'}
+                  </button>
+                  {mapsUrl && (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-slate-600" />
+                      Haritada Aç
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {gpsFeedback && (
+                <div className={`p-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                  gpsFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}>
+                  {gpsFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  <span>{gpsFeedback.text}</span>
+                </div>
+              )}
+
+              <input
+                type="url"
+                placeholder="Örn: https://maps.app.goo.gl/... veya Google Harita Bağlantısı (Boş bırakılırsa yukarıdaki adresten otomatik üretilir)"
+                value={mapsUrl}
+                onChange={(e) => setMapsUrl(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-xs"
               />
             </div>
           </div>

@@ -25,6 +25,9 @@ export interface BusinessSettings {
   auto_confirm_appointments: boolean;
   cancellation_deadline_hours: number;
   currency: string;
+  maps_url?: string;
+  latitude?: number;
+  longitude?: number;
   loyalty_program?: {
     enabled: boolean;
     target_appointments: number;

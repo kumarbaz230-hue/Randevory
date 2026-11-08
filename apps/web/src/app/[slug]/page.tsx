@@ -17,6 +17,7 @@ import {
 } from '@/types';
 import { BusinessQrModal } from '@/components/business-qr-modal';
 import { createCustomerToBusinessWhatsAppUrl } from '@/lib/whatsapp-helper';
+import { getBusinessMapsUrl, hasMapLink, extractUrl } from '@/lib/location-helper';
 import Link from 'next/link';
 import {
   Clock,
@@ -40,6 +41,7 @@ import {
   XCircle,
   Gift,
   Sparkles,
+  Navigation,
 } from 'lucide-react';
 
 export default function BusinessPublicPage() {
@@ -510,6 +512,16 @@ export default function BusinessPublicPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <a
+                href={getBusinessMapsUrl(business)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="İşletmeye Yol Tarifi Al"
+                className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 text-xs bg-brand-600 hover:bg-brand-500 text-white px-3.5 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-brand-600/30 active:scale-95"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                Yol Tarifi Al
+              </a>
               <button
                 type="button"
                 onClick={() => setShowQrModal(true)}
@@ -1156,7 +1168,7 @@ export default function BusinessPublicPage() {
                   </div>
 
                   {createdAppointment.status !== 'cancelled' && (
-                    <div className="mt-5">
+                    <div className="mt-5 space-y-2.5">
                       <a
                         href={createCustomerToBusinessWhatsAppUrl({
                           businessPhone: business.phone,
@@ -1176,6 +1188,16 @@ export default function BusinessPublicPage() {
                       >
                         <Phone className="w-4 h-4" />
                         Randevu Bilgisini İşletmeye WhatsApp&apos;tan İlet
+                      </a>
+
+                      <a
+                        href={getBusinessMapsUrl(business)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors flex items-center justify-center gap-2 border border-slate-300"
+                      >
+                        <Navigation className="w-4 h-4 text-brand-600" />
+                        İşletme Adresine Yol Tarifi Al (Haritada Aç)
                       </a>
                     </div>
                   )}
@@ -1529,6 +1551,7 @@ export default function BusinessPublicPage() {
                       </p>
                       <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
                         {[
+                          'Dükkanınızın tam konumu nerede? (Yol Tarifi)',
                           'Merhaba, randevu saatimi değiştirebilir miyim?',
                           'Hizmet ve fiyatlar hakkında bilgi alabilir miyim?',
                           'Bugün için boş yeriniz var mı?',
@@ -1565,6 +1588,26 @@ export default function BusinessPublicPage() {
                               </div>
                             )}
                             <div className="leading-relaxed whitespace-pre-wrap">{msg.message}</div>
+
+                            {/* Harita / Konum Kartı */}
+                            {hasMapLink(msg.message) && (
+                              <div className="mt-2.5 pt-2 border-t border-black/10">
+                                <a
+                                  href={extractUrl(msg.message) || getBusinessMapsUrl(business)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                                    isMe
+                                      ? 'bg-white text-brand-700 hover:bg-slate-100'
+                                      : 'bg-brand-600 text-white hover:bg-brand-700'
+                                  }`}
+                                >
+                                  <Navigation className="w-3.5 h-3.5" />
+                                  Haritada Aç / Yol Tarifi Al &rarr;
+                                </a>
+                              </div>
+                            )}
+
                             <div
                               className={`text-[10px] mt-1 text-right ${
                                 isMe ? 'text-brand-100' : 'text-slate-400'

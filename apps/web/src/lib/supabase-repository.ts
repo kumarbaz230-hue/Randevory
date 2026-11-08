@@ -966,7 +966,7 @@ export class DataRepository {
           max_staff: 3,
           max_services: 20,
           max_appointments_per_month: 300,
-          features: ['3 Personel Yönetimi', 'SMS & E-posta Hatırlatma', 'Gelişmiş Takvim', 'Öncelikli Destek'],
+          features: ['Gelişmiş Randevu Takvimi', 'Otomatik SMS & E-posta Hatırlatma', 'Müşteri Geçmişi & Not Kaydı', 'Öncelikli Destek'],
         },
         {
           id: 'p-pro',
@@ -977,7 +977,7 @@ export class DataRepository {
           max_staff: 10,
           max_services: 100,
           max_appointments_per_month: 1500,
-          features: ['10 Personel', 'Finans & Gelir Raporları', 'Çoklu Şube Altyapısı', 'Özelleştirilebilir Bildirimler'],
+          features: ['Gelişmiş Finans & Ciro Raporları', 'Çoklu Şube & Ekip Yönetimi', 'Özelleştirilebilir Hatırlatma Şablonları', '7/24 Öncelikli Canlı Destek'],
         },
         {
           id: 'p-enterprise',
@@ -988,7 +988,7 @@ export class DataRepository {
           max_staff: 999,
           max_services: 999,
           max_appointments_per_month: 999999,
-          features: ['Sınırsız Personel ve Hizmet', 'Özel Entegrasyonlar', 'Özel Müşteri Temsilcisi', 'VIP API Erişimi'],
+          features: ['Özel Entegrasyonlar & Webhook', 'Özel Müşteri Temsilcisi', 'VIP API Erişimi & Gelişmiş SLA', 'Özel Alan Adı Desteği'],
         },
       ];
     }

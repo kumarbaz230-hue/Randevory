@@ -63,6 +63,7 @@ export function createBusinessToCustomerWhatsAppUrl(params: {
   businessName: string;
   businessSlug: string;
   businessAddress?: string;
+  mapsUrl?: string;
   serviceName: string;
   staffName?: string;
   startTime: string;
@@ -93,6 +94,7 @@ export function createBusinessToCustomerWhatsAppUrl(params: {
       `✨ *Hizmet:* ${params.serviceName} (${params.totalPrice} ₺)`,
       params.staffName ? `👤 *Uzman:* ${params.staffName}` : '',
       params.businessAddress ? `📍 *Adres:* ${params.businessAddress}` : '',
+      params.mapsUrl ? `🗺️ *Harita & Yol Tarifi:* ${params.mapsUrl}` : '',
       ``,
       `🔗 Randevu Sorgulama / İptal: ${manageUrl}`,
       `Sizi bekliyoruz, sağlıklı günler dileriz!`,

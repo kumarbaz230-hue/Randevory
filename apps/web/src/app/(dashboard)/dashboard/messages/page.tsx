@@ -23,7 +23,10 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
+import { getBusinessMapsUrl, hasMapLink, extractUrl } from '@/lib/location-helper';
 
 const isDesktop = () =>
   typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
@@ -275,6 +278,13 @@ function DashboardMessagesContent() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleShareLocation = async () => {
+    if (!business || !activeConversation) return;
+    const mapsUrl = getBusinessMapsUrl(business);
+    const locMsg = `📍 İşletme Konumumuz:\n${business.name} – ${business.address}${business.city ? ', ' + business.city : ''}\n🗺️ Yol Tarifi Al: ${mapsUrl}`;
+    await handleSendReply(undefined, locMsg);
   };
 
   const handleStartNewChat = (e: React.FormEvent) => {
@@ -532,6 +542,26 @@ function DashboardMessagesContent() {
                           }`}
                         >
                           <div className="leading-relaxed whitespace-pre-wrap break-words">{msg.message}</div>
+
+                          {/* Harita / Konum Kartı */}
+                          {hasMapLink(msg.message) && (
+                            <div className="mt-2.5 pt-2 border-t border-black/10">
+                              <a
+                                href={extractUrl(msg.message) || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                                  isBiz
+                                    ? 'bg-white text-brand-700 hover:bg-slate-100'
+                                    : 'bg-brand-600 text-white hover:bg-brand-700'
+                                }`}
+                              >
+                                <Navigation className="w-3.5 h-3.5" />
+                                Haritada Aç / Yol Tarifi Al &rarr;
+                              </a>
+                            </div>
+                          )}
+
                           <div
                             className={`text-[10px] mt-0.5 flex items-center justify-end gap-1 ${
                               isBiz ? 'text-brand-100' : 'text-slate-400'
@@ -585,6 +615,14 @@ function DashboardMessagesContent() {
                   }`}
                 >
                   <Sparkles className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareLocation}
+                  title="Müşteriye İşletme Konumunu Gönder"
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border border-slate-200 bg-slate-50 text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                >
+                  <MapPin className="w-4 h-4" />
                 </button>
                 <input
                   type="text"

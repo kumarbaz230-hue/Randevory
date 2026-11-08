@@ -6,6 +6,7 @@ import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
 import { BusinessShareAndQrCard } from '@/components/business-qr-modal';
 import { createBusinessToCustomerWhatsAppUrl } from '@/lib/whatsapp-helper';
+import { getBusinessMapsUrl } from '@/lib/location-helper';
 import {
   Calendar,
   Clock,
@@ -377,6 +378,7 @@ export default function DashboardOverviewPage() {
                               businessName: business?.name || 'İşletme',
                               businessSlug: publicSlug,
                               businessAddress: business?.address,
+                              mapsUrl: getBusinessMapsUrl(business),
                               serviceName: service?.name || 'Randevu Hizmeti',
                               staffName: staffMember?.name,
                               startTime: apt.start_time,
