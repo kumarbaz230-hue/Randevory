@@ -84,3 +84,23 @@ img, video, canvas, svg {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Kayan Canlı Duyuru Bandı (Marquee Ticker) */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 32s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

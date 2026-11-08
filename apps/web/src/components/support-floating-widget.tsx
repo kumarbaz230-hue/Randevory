@@ -533,21 +533,53 @@ export function SupportFloatingWidget() {
 
   return (
     <>
-      {/* Global Top Announcement Banner */}
+      {/* Global Top Announcement Banner (Kayan Akıcı Şerit - Marquee) */}
       {announcementActive && announcementText && !bannerDismissed && (
-        <div className="bg-gradient-to-r from-brand-700 via-indigo-700 to-slate-900 text-white px-4 py-2 text-xs font-medium relative z-[60] shadow-sm">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 mx-auto text-center">
-              <Megaphone className="w-4 h-4 text-amber-300 shrink-0 animate-pulse" />
-              <span>{announcementText}</span>
+        <div className="bg-gradient-to-r from-slate-950 via-brand-900 to-indigo-950 text-white border-b border-indigo-500/30 py-2 px-3 text-xs font-semibold relative z-[60] shadow-md overflow-hidden flex items-center justify-between gap-3">
+          {/* Sol Kampanya Rozeti */}
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] tracking-wide shrink-0 shadow-xs uppercase">
+            <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping inline-block" />
+            🔥 FIRSAT
+          </div>
+
+          {/* Kayan Yazı Akışı (Marquee Ticker) */}
+          <div
+            className="flex-1 overflow-hidden relative cursor-pointer select-none"
+            onClick={() => setIsOpen(true)}
+            title="Detaylar ve fırsattan yararlanmak için tıklayın"
+          >
+            <div className="animate-marquee inline-flex items-center gap-16 font-bold tracking-wide text-[11px] sm:text-xs text-white/95">
+              <span className="inline-flex items-center gap-2">
+                <span>{announcementText}</span>
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/30 text-amber-300 border border-amber-400/30 text-[10px] font-bold">
+                  👉 Destekle İletişime Geçin &rarr;
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span>{announcementText}</span>
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/30 text-amber-300 border border-amber-400/30 text-[10px] font-bold">
+                  👉 Destekle İletişime Geçin &rarr;
+                </span>
+              </span>
             </div>
+          </div>
+
+          {/* Sağ Butonlar: Canlı Destek & Kapat */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-extrabold transition-all shadow-xs"
+            >
+              Destek Al
+            </button>
             <button
               type="button"
               onClick={() => setBannerDismissed(true)}
-              className="text-white/70 hover:text-white p-0.5 shrink-0"
+              className="text-white/60 hover:text-white p-1 rounded-md transition-colors"
               title="Duyuruyu Kapat"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

@@ -45,6 +45,8 @@ interface AdminBusinessRow {
   phone: string;
   email: string | null;
   subscription_plan: 'free' | 'standard' | 'pro' | 'enterprise';
+  subscription_end?: string | null;
+  subscription_status?: string | null;
   is_active: boolean;
   ban_reason: string | null;
   created_at: string;
@@ -124,6 +126,12 @@ export default function SuperAdminDashboardPage() {
   const [banReasonInput, setBanReasonInput] = useState(
     'Güvenilir olmayan içerik veya kullanım koşulları ihlali nedeniyle RANDEVORY Destek Ekibi tarafından askıya alınmıştır.'
   );
+
+  // License grant modal state
+  const [licenseModalBiz, setLicenseModalBiz] = useState<AdminBusinessRow | null>(null);
+  const [selectedGrantTier, setSelectedGrantTier] = useState<'standard' | 'pro' | 'enterprise' | 'free'>('standard');
+  const [selectedGrantMonths, setSelectedGrantMonths] = useState<number>(1);
+  const [licenseTicketReply, setLicenseTicketReply] = useState<AdminTicketRow | null>(null);
 
   // Global Platform Settings
   const [announcementActive, setAnnouncementActive] = useState(false);
@@ -318,6 +326,58 @@ export default function SuperAdminDashboardPage() {
       }
     } catch (err: any) {
       alert(err?.message || 'Hızlı yardım işlemi başarısız oldu.');
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleGrantLicense = async () => {
+    if (!licenseModalBiz) return;
+    setActionBusyId(licenseModalBiz.id);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('admin_grant_license', {
+        p_business_id: licenseModalBiz.id,
+        p_tier: selectedGrantTier,
+        p_months: selectedGrantMonths,
+      });
+
+      if (error) throw error;
+      const res = data as any;
+
+      setBusinesses((prev) =>
+        prev.map((b) =>
+          b.id === licenseModalBiz.id
+            ? {
+                ...b,
+                subscription_plan: selectedGrantTier,
+                subscription_end: res?.period_end,
+                is_active: true,
+              }
+            : b
+        )
+      );
+
+      if (licenseTicketReply) {
+        const tierNames: Record<string, string> = {
+          free: 'Ücretsiz Başlangıç',
+          standard: 'Standart Paket (149 ₺/ay)',
+          pro: 'Profesyonel Paket (299 ₺/ay)',
+          enterprise: 'Kurumsal Paket (599 ₺/ay)',
+        };
+        const dateStr = res?.period_end
+          ? new Date(res.period_end).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+          : `${selectedGrantMonths} Ay`;
+
+        const replyMsg = `🎉 Tebrikler! "${licenseModalBiz.name}" işletmenize ${selectedGrantMonths} ay süreyle **${tierNames[selectedGrantTier] || selectedGrantTier}** lisansı başarıyla tanımlanmıştır.\n\n📅 Yeni Paket Bitiş Tarihiniz: ${dateStr}\n\nKampanyamıza katıldığınız için teşekkür eder, RANDEVORY ile bol kazançlar ve randevular dileriz! 🚀`;
+        await sendAdminMessageToTicket(licenseTicketReply, replyMsg, 'answered');
+      }
+
+      showToast(`👑 ${res?.message || 'Lisans başarıyla tanımlandı!'}`);
+      setLicenseModalBiz(null);
+      setLicenseTicketReply(null);
+    } catch (err: any) {
+      alert(err?.message || 'Lisans tanımlanırken bir hata oluştu.');
     } finally {
       setActionBusyId(null);
     }
@@ -1188,12 +1248,17 @@ export default function SuperAdminDashboardPage() {
                           {matchedBiz && (
                             <button
                               type="button"
-                              disabled={actionBusyId === matchedBiz.id}
-                              onClick={() => handleQuickAssistBusiness(matchedBiz, 'gift_pro', ticket)}
-                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] flex items-center gap-1 transition-colors"
+                              onClick={() => {
+                                setLicenseModalBiz(matchedBiz);
+                                setLicenseTicketReply(ticket);
+                                setSelectedGrantTier(matchedBiz.subscription_plan === 'free' ? 'standard' : matchedBiz.subscription_plan);
+                                setSelectedGrantMonths(1);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-all"
+                              title="İşletmeye 1 ay / istenen sürede Standart, Pro veya Kurumsal lisans tanımla"
                             >
-                              <Gift className="w-3 h-3 text-purple-600" />
-                              Pro Paket Hediye Et
+                              <Crown className="w-3 h-3 text-amber-200" />
+                              👑 Aylık Lisans Tanımla (+1 Ay Standart / Pro)
                             </button>
                           )}
                         </div>
@@ -1395,20 +1460,34 @@ export default function SuperAdminDashboardPage() {
                       Linki Onar
                     </button>
 
-                    {/* Package Selector */}
-                    <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200">
-                      <Crown className="w-3.5 h-3.5 text-amber-500" />
-                      <select
-                        value={biz.subscription_plan}
-                        disabled={actionBusyId === biz.id}
-                        onChange={(e) => handleChangePlan(biz.id, e.target.value)}
-                        className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800"
+                    {/* Active Plan Badge & Grant Button */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200">
+                        <Crown className={`w-3.5 h-3.5 ${biz.subscription_plan !== 'free' ? 'text-amber-500' : 'text-slate-400'}`} />
+                        <span className="text-xs font-bold text-slate-800 capitalize">
+                          {biz.subscription_plan === 'free' ? 'Ücretsiz' : biz.subscription_plan === 'standard' ? 'Standart' : biz.subscription_plan === 'pro' ? 'Profesyonel' : 'Kurumsal'}
+                        </span>
+                        {biz.subscription_end && (
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            ({new Date(biz.subscription_end).toLocaleDateString('tr-TR')})
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLicenseModalBiz(biz);
+                          setLicenseTicketReply(null);
+                          setSelectedGrantTier(biz.subscription_plan === 'free' ? 'standard' : biz.subscription_plan);
+                          setSelectedGrantMonths(1);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                        title="İşletmeye 1 ay veya istenen sürede paket lisansı ekle/uzat"
                       >
-                        <option value="free">Ücretsiz</option>
-                        <option value="standard">Standart</option>
-                        <option value="pro">Profesyonel</option>
-                        <option value="enterprise">Kurumsal</option>
-                      </select>
+                        <Crown className="w-3.5 h-3.5 text-amber-200" />
+                        Lisans Ekle / Uzat
+                      </button>
                     </div>
 
                     {/* Ban / Unban Button */}
@@ -1629,6 +1708,186 @@ export default function SuperAdminDashboardPage() {
                 className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
               >
                 İşletmeyi Şimdi Yasakla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LICENSE GRANT / EXTENSION MODAL */}
+      {licenseModalBiz && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
+                  <Crown className="w-5 h-5 text-amber-200" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    Aylık Lisans & Paket Tanımla
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    İşletmeye hediye veya satın alım bonusu olarak lisans tanımlayın
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLicenseModalBiz(null);
+                  setLicenseTicketReply(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Hedef İşletme Bilgisi */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-slate-900 block">{licenseModalBiz.name}</span>
+                <span className="text-slate-500">/{licenseModalBiz.slug} • {licenseModalBiz.owner_email || licenseModalBiz.phone}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-500 block">Mevcut Durum:</span>
+                <span className="font-extrabold text-brand-600 capitalize">
+                  {licenseModalBiz.subscription_plan} {licenseModalBiz.subscription_end ? `(${new Date(licenseModalBiz.subscription_end).toLocaleDateString('tr-TR')})` : ''}
+                </span>
+              </div>
+            </div>
+
+            {/* Paket Seçimi */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">
+                1. Tanımlanacak Paket Türünü Seçin:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    tier: 'standard' as const,
+                    name: 'Standart Paket',
+                    price: '149 ₺/ay',
+                    desc: '3 Personel, 20 Hizmet, 300 Randevu, SMS',
+                    border: 'border-blue-300',
+                    badge: 'bg-blue-100 text-blue-800',
+                  },
+                  {
+                    tier: 'pro' as const,
+                    name: 'Profesyonel',
+                    price: '299 ₺/ay',
+                    desc: '10 Personel, 100 Hizmet, 1500 Randevu, Raporlar',
+                    border: 'border-purple-300',
+                    badge: 'bg-purple-100 text-purple-800',
+                  },
+                  {
+                    tier: 'enterprise' as const,
+                    name: 'Kurumsal',
+                    price: '599 ₺/ay',
+                    desc: 'Sınırsız Personel & Hizmet, VIP API, Destek',
+                    border: 'border-amber-300',
+                    badge: 'bg-amber-100 text-amber-800',
+                  },
+                  {
+                    tier: 'free' as const,
+                    name: 'Ücretsiz Başlangıç',
+                    price: '0 ₺',
+                    desc: 'Temel plan (1 Personel, 5 Hizmet)',
+                    border: 'border-slate-300',
+                    badge: 'bg-slate-100 text-slate-700',
+                  },
+                ].map((plan) => {
+                  const isSelected = selectedGrantTier === plan.tier;
+                  return (
+                    <button
+                      key={plan.tier}
+                      type="button"
+                      onClick={() => setSelectedGrantTier(plan.tier)}
+                      className={`p-3 rounded-xl border text-left transition-all relative ${
+                        isSelected
+                          ? 'border-brand-600 bg-brand-50/60 ring-2 ring-brand-500 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-extrabold text-xs text-slate-900">{plan.name}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${plan.badge}`}>
+                          {plan.price}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-tight">{plan.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Süre Seçimi */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">
+                2. Eklenecek / Tanımlanacak Süreyi Seçin:
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { months: 1, label: '1 Ay', bonus: 'Standart/Hediye' },
+                  { months: 3, label: '3 Ay', bonus: 'Çeyrek Yıl' },
+                  { months: 6, label: '6 Ay', bonus: 'Yarım Yıl' },
+                  { months: 12, label: '12 Ay', bonus: '1 Tam Yıl' },
+                ].map((dur) => {
+                  const isSelected = selectedGrantMonths === dur.months;
+                  return (
+                    <button
+                      key={dur.months}
+                      type="button"
+                      onClick={() => setSelectedGrantMonths(dur.months)}
+                      className={`py-2 px-2 rounded-xl border text-center transition-all ${
+                        isSelected
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs font-black'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 font-bold'
+                      }`}
+                    >
+                      <div className="text-xs">{dur.label}</div>
+                      <div className={`text-[9px] ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                        {dur.bonus}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bilgilendirme Notu */}
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+              💡 <strong>Nasıl Çalışır?</strong> Eğer işletmenin mevcut aktif bir lisansı varsa, seçtiğiniz <strong>{selectedGrantMonths} ay</strong> mevcut sürenin sonuna eklenir (uzatılır). Lisansı yoksa bugünden itibaren başlatılır.
+              {licenseTicketReply && (
+                <div className="mt-1 font-semibold text-indigo-900">
+                  📩 İşlem tamamlandığında karşı tarafa canlı destek üzerinden tebrik ve onay mesajı otomatik iletilecektir.
+                </div>
+              )}
+            </div>
+
+            {/* Aksiyon Butonları */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setLicenseModalBiz(null);
+                  setLicenseTicketReply(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50"
+              >
+                Vazgeç
+              </button>
+
+              <button
+                type="button"
+                disabled={actionBusyId === licenseModalBiz.id}
+                onClick={handleGrantLicense}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+              >
+                <Crown className="w-4 h-4 text-amber-200" />
+                {actionBusyId === licenseModalBiz.id ? 'Tanımlanıyor...' : `${selectedGrantMonths} Ay Lisansı Tanımla ve Aktif Et`}
               </button>
             </div>
           </div>
