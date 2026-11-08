@@ -168,28 +168,10 @@ function LoginForm() {
 
       setSuccessMessage('Giriş başarılı! Yönlendiriliyorsunuz...');
 
-      if (data.user) {
-        const { data: member } = await supabase
-          .from('business_members')
-          .select('business_id')
-          .eq('user_id', data.user.id)
-          .maybeSingle();
-
-        const redirectTo = searchParams.get('redirectTo');
-        setTimeout(() => {
-          if (redirectTo) {
-            router.push(redirectTo);
-          } else if (member) {
-            router.push('/dashboard');
-          } else {
-            router.push('/create-business');
-          }
-        }, 600);
-      } else {
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 600);
-      }
+      const targetUrl = searchParams.get('redirectTo') || '/dashboard';
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 350);
     } catch (err: any) {
       setErrorMessage(err.message || 'Bir hata meydana geldi.');
       setLoading(false);

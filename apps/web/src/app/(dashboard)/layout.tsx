@@ -97,11 +97,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [activeBiz]);
 
   const handleLogout = async () => {
-    if (isSupabaseConfigured()) {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+    try {
+      if (isSupabaseConfigured()) {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      repo.invalidateActiveBusinessCache();
+      window.location.href = '/login';
     }
-    router.push('/login');
   };
 
   const navigation = [
