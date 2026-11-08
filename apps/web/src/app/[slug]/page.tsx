@@ -488,35 +488,35 @@ export default function BusinessPublicPage() {
       {/* Business Header / Hero */}
       <div className="bg-slate-900 text-white">
         <div className="max-w-4xl mx-auto px-4 py-10 sm:py-12">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-md shadow-brand-500/20 shrink-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-blue-500 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-md shadow-brand-500/20 shrink-0">
                 {business.name.charAt(0)}
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-xs uppercase tracking-wider text-brand-300 font-semibold">
                   {business.sector === 'barber' ? 'Berber & Kuaför' : business.sector}
                 </span>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-0.5 text-white">
+                <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight mt-0.5 text-white break-words">
                   {business.name}
                 </h1>
-                <p className="text-sm text-slate-300 mt-1 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-brand-400 shrink-0" />
-                  {business.address}, {business.district} / {business.city}
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-brand-400 shrink-0 mt-0.5" />
+                  <span className="break-words min-w-0">{business.address}, {business.district} / {business.city}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowQrModal(true)}
-                className="flex items-center gap-1.5 text-xs bg-slate-800/90 hover:bg-slate-800 px-3.5 py-2.5 rounded-xl border border-slate-700 font-semibold text-brand-300 transition-colors"
+                className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 text-xs bg-slate-800/90 hover:bg-slate-800 px-3.5 py-2.5 rounded-xl border border-slate-700 font-semibold text-brand-300 transition-colors"
               >
                 <QrCode className="w-4 h-4" />
                 QR Kod
               </button>
-              <div className="flex items-center gap-2 text-xs bg-slate-800/90 px-3.5 py-2.5 rounded-xl border border-slate-700">
+              <div className="flex-1 sm:flex-none justify-center flex items-center gap-2 text-xs bg-slate-800/90 px-3.5 py-2.5 rounded-xl border border-slate-700">
                 <Phone className="w-4 h-4 text-brand-400" />
                 <a href={`tel:${business.phone}`} className="hover:underline font-medium">
                   {business.phone}
@@ -534,7 +534,7 @@ export default function BusinessPublicPage() {
           <button
             type="button"
             onClick={() => setActiveTab('book')}
-            className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`py-3 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center leading-tight ${
               activeTab === 'book'
                 ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -547,27 +547,33 @@ export default function BusinessPublicPage() {
           <button
             type="button"
             onClick={() => setActiveTab('manage')}
-            className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`py-3 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center leading-tight ${
               activeTab === 'manage'
                 ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             <Search className="w-4 h-4 shrink-0" />
-            <span>Randevu Sorgula / İptal</span>
+            <span>
+              <span className="sm:hidden">Sorgula</span>
+              <span className="hidden sm:inline">Randevu Sorgula / İptal</span>
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('chat')}
-            className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 relative ${
+            className={`py-3 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-center leading-tight relative ${
               activeTab === 'chat'
                 ? 'bg-brand-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             <MessageSquare className="w-4 h-4 shrink-0" />
-            <span>İşletmeye Mesaj Yaz</span>
+            <span>
+              <span className="sm:hidden">Mesaj</span>
+              <span className="hidden sm:inline">İşletmeye Mesaj Yaz</span>
+            </span>
             {unreadFromBusiness > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold">
                 {unreadFromBusiness}
@@ -581,32 +587,34 @@ export default function BusinessPublicPage() {
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
             {/* Booking Progress Tracker */}
             {step < 5 && (
-              <div className="border-b border-slate-200 bg-slate-50/50 px-6 py-4">
+              <div className="border-b border-slate-200 bg-slate-50/50 px-4 sm:px-6 py-3 sm:py-4">
                 <div className="flex items-center justify-between max-w-xl mx-auto text-xs font-semibold text-slate-500">
-                  <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-brand-600' : ''}`}>
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-600'}`}>1</span>
-                    Hizmet
-                  </div>
-                  <div className="w-8 h-0.5 bg-slate-200"></div>
-                  <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-brand-600' : ''}`}>
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-600'}`}>2</span>
-                    Personel
-                  </div>
-                  <div className="w-8 h-0.5 bg-slate-200"></div>
-                  <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-brand-600' : ''}`}>
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-600'}`}>3</span>
-                    Tarih & Saat
-                  </div>
-                  <div className="w-8 h-0.5 bg-slate-200"></div>
-                  <div className={`flex items-center gap-1.5 ${step >= 4 ? 'text-brand-600' : ''}`}>
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 4 ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-600'}`}>4</span>
-                    Onay
-                  </div>
+                  {[
+                    { n: 1, label: 'Hizmet' },
+                    { n: 2, label: 'Personel' },
+                    { n: 3, label: 'Tarih & Saat' },
+                    { n: 4, label: 'Onay' },
+                  ].map((s, i) => (
+                    <React.Fragment key={s.n}>
+                      {i > 0 && <div className="flex-1 min-w-2 max-w-8 h-0.5 bg-slate-200 mx-1"></div>}
+                      <div className={`flex items-center gap-1.5 ${step >= s.n ? 'text-brand-600' : ''}`}>
+                        <span
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 ${
+                            step >= s.n ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {s.n}
+                        </span>
+                        {/* Telefonda sadece aktif adımın adı görünür, kalan adımlar sadece numara */}
+                        <span className={step === s.n ? 'inline' : 'hidden sm:inline'}>{s.label}</span>
+                      </div>
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             )}
 
-            <div className="p-6 sm:p-8">
+            <div className="p-4 sm:p-8">
               {/* STEP 1: SERVICE SELECTION */}
               {step === 1 && (
                 <div>

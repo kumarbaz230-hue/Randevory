@@ -27,6 +27,45 @@ body {
   color: rgb(var(--foreground-rgb));
   background: #f8fafc;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---- Mobil uyum: tüm telefonlarda düzenli ve taşmasız görünüm ---- */
+img, video, canvas, svg {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  /* iOS/Android'de input'a tıklayınca sayfanın yakınlaşıp kaymasını engeller */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Rahat dokunma alanı */
+  button,
+  [role="button"],
+  select {
+    min-height: 40px;
+  }
+
+  /* Uzun metin/e-posta/link satırları kutudan taşmasın */
+  h1, h2, h3, p, span, a, label {
+    overflow-wrap: anywhere;
+  }
+
+  /* Modal ve açılır pencereler ekrana sığsın */
+  .fixed.inset-0 > div {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* Alt gezinme çubuğu için güvenli alan (çentikli telefonlar) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Custom scrollbar */

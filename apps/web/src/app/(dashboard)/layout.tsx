@@ -239,37 +239,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Mobile Header */}
-      <header className="md:hidden bg-slate-900 text-white h-16 px-4 flex items-center justify-between sticky top-0 z-40 border-b border-slate-800">
-        <BrandLogo size="sm" variant="dark" showBadge={false} showSlogan={false} />
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowQrModal(true)}
-            className="text-xs bg-slate-800 text-brand-300 px-2.5 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1"
-          >
-            <QrCode className="w-3.5 h-3.5" /> QR
-          </button>
-          <Link
-            href={publicBookingUrl}
-            target="_blank"
-            className="text-xs bg-slate-800 text-brand-300 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1"
-          >
-            Sayfayı Gör <ExternalLink className="w-3 h-3" />
-          </Link>
+      {/* Mobile Header (sade: logo + sayfa başlığı + menü) */}
+      <header className="md:hidden bg-slate-900 text-white h-14 px-3 flex items-center justify-between sticky top-0 z-40 border-b border-slate-800">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <BrandLogo size="sm" variant="dark" showBadge={false} showSlogan={false} />
+        </div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-semibold text-slate-300 truncate max-w-[120px]">{activeNavTitle}</span>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg bg-slate-800 text-slate-300"
+            aria-label="Menü"
+            className="p-2 rounded-lg bg-slate-800 text-slate-200 shrink-0"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </header>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer (tam ekran, kaydırılabilir) */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm pt-16">
-          <nav className="p-4 bg-slate-900 border-b border-slate-800 space-y-1">
+        <div className="md:hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm pt-14 pb-16">
+          <nav className="h-full overflow-y-auto p-4 bg-slate-900 space-y-1">
+            {/* Aktif işletme + hızlı işlemler */}
+            <div className="p-3 mb-3 rounded-2xl bg-slate-800/70 border border-slate-700/60">
+              <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Aktif İşletme</div>
+              <div className="font-bold text-white text-sm truncate mt-0.5">{activeBiz?.name || 'Salon Prestij'}</div>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setShowQrModal(true);
+                  }}
+                  className="py-2.5 rounded-xl bg-brand-500/20 text-brand-300 text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  <QrCode className="w-4 h-4" /> QR Kod
+                </button>
+                <Link
+                  href={publicBookingUrl}
+                  target="_blank"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2.5 rounded-xl bg-slate-700/70 text-slate-100 text-xs font-bold flex items-center justify-center gap-1.5"
+                >
+                  Sayfayı Gör <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
             {navigation.map((item: any) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -278,8 +294,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium ${
-                    isActive ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium ${
+                    isActive
+                      ? 'bg-brand-600 text-white'
+                      : item.highlightAdmin
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
                   }`}
                 >
                   <span className="flex items-center gap-3">
@@ -294,11 +314,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               );
             })}
-            <div className="pt-3 mt-3 border-t border-slate-800 flex items-center justify-between px-3.5 py-2">
-              <div className="text-xs text-slate-300 truncate">{currentUser?.email}</div>
+            <div className="pt-3 mt-3 border-t border-slate-800 flex items-center justify-between gap-3 px-3.5 py-2">
+              <div className="text-xs text-slate-300 truncate min-w-0">{currentUser?.email}</div>
               <button
                 onClick={handleLogout}
-                className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1.5"
+                className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1.5 shrink-0"
               >
                 <LogOut className="w-4 h-4" /> Çıkış Yap
               </button>
@@ -307,8 +327,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       )}
 
+      {/* Mobile Bottom Tab Bar (en sık kullanılan 4 sayfa + Menü) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] safe-bottom">
+        <div className="grid grid-cols-5">
+          {[
+            { name: 'Genel', href: '/dashboard', icon: LayoutDashboard },
+            { name: 'Takvim', href: '/dashboard/calendar', icon: Calendar },
+            { name: 'Mesajlar', href: '/dashboard/messages', icon: MessageSquare, badge: unreadMessages },
+            { name: 'Hizmetler', href: '/dashboard/services', icon: Scissors },
+          ].map((tab) => {
+            const TabIcon = tab.icon;
+            const active = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold ${
+                  active ? 'text-brand-600' : 'text-slate-500'
+                }`}
+              >
+                <span className="relative">
+                  <TabIcon className="w-5 h-5" />
+                  {tab.badge && tab.badge > 0 ? (
+                    <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+                      {tab.badge > 9 ? '9+' : tab.badge}
+                    </span>
+                  ) : null}
+                </span>
+                {tab.name}
+                {active && <span className="absolute top-0 inset-x-4 h-0.5 rounded-full bg-brand-600" />}
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold ${
+              mobileMenuOpen ? 'text-brand-600' : 'text-slate-500'
+            }`}
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            Menü
+          </button>
+        </div>
+      </nav>
+
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-x-hidden min-h-screen">
+      <div className="flex-1 min-w-0 flex flex-col overflow-x-hidden min-h-screen">
         {/* Top Navbar */}
         <header className="hidden md:flex h-16 bg-white border-b border-slate-200 px-8 items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3 text-sm text-slate-500">
@@ -362,7 +428,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto flex-1">
+        <main className="p-3 pb-24 sm:p-6 md:pb-6 lg:p-8 max-w-7xl w-full min-w-0 mx-auto flex-1">
           {activeBiz && activeBiz.is_active === false && (
             <div className="mb-6 p-4 rounded-2xl bg-rose-600 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="text-xs sm:text-sm font-bold">

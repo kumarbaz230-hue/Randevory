@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   Headset,
@@ -145,6 +146,9 @@ function getInitialAiMessage(): SupportChatMessage {
 
 export function SupportFloatingWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  // Yönetim panelinde telefonda alt sekme çubuğu olduğu için buton onun üstünde durur
+  const inDashboard = (pathname || '').startsWith('/dashboard');
 
   // Global announcement banner from platform_settings
   const [announcementActive, setAnnouncementActive] = useState(false);
@@ -552,18 +556,25 @@ export function SupportFloatingWidget() {
       )}
 
       {/* Floating Support Trigger Button */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+      <div
+        className={`fixed z-50 flex flex-col items-end ${
+          isOpen
+            ? 'inset-x-2 bottom-2 sm:inset-x-auto sm:right-5 sm:bottom-5'
+            : `right-3 sm:right-5 ${inDashboard ? 'bottom-20 md:bottom-5' : 'bottom-4 sm:bottom-5'}`
+        }`}
+      >
         {!isOpen && (
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="group flex items-center gap-2.5 pl-4 pr-5 py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/30 border border-slate-700/80 transition-all hover:scale-105"
+            aria-label="Canlı Destek"
+            className="group flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/30 border border-slate-700/80 transition-all hover:scale-105"
           >
-            <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
+            <div className="relative flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
               <Headset className="w-4 h-4" />
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
             </div>
-            <div className="text-left">
+            <div className="text-left hidden sm:block">
               <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
                 AI Asistan & Canlı Destek
               </div>
@@ -576,7 +587,7 @@ export function SupportFloatingWidget() {
 
         {/* Unified Single Support Chat Window */}
         {isOpen && (
-          <div className="w-[370px] sm:w-[425px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
+          <div className="w-full sm:w-[425px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
@@ -620,7 +631,7 @@ export function SupportFloatingWidget() {
             </div>
 
             {/* Unified Chat Scroll Area */}
-            <div className="flex flex-col h-[475px]">
+            <div className="flex flex-col h-[min(475px,calc(100dvh-8rem))]">
               <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50">
                 {/* Sender & Status Pill Bar */}
                 <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between shadow-2xs">

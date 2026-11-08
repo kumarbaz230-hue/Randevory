@@ -1,7 +1,13 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthRecoveryListener } from '@/components/auth-recovery-listener';
 import { SupportFloatingWidget } from '@/components/support-floating-widget';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'RANDEVORY – Profesyonel Randevu ve Hizmet Yönetim Platformu',
