@@ -8,6 +8,11 @@ import { Business, WorkingHour, SubscriptionPlan } from '@/types';
 import { BusinessQrModal } from '@/components/business-qr-modal';
 import { triggerPwaInstall } from '@/components/pwa-install-prompt';
 import {
+  requestNotificationPermission,
+  getNotificationPermission,
+  sendAppNotification,
+} from '@/lib/notification-manager';
+import {
   Clock,
   Building,
   CreditCard,
@@ -25,6 +30,7 @@ import {
   Sparkles,
   Smartphone,
   Download,
+  Bell,
 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
@@ -826,6 +832,45 @@ export default function DashboardSettingsPage() {
           <Download className="w-4 h-4 text-brand-400" />
           Uygulamayı Kur / Ekle
         </button>
+      </div>
+
+      {/* Canlı Telefon Bildirimleri & Sesli Uyarı Ayarları */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+            <Bell className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              Canlı Telefon Bildirimleri & Sesli Uyarı
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">Anlık Uyarı</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Yeni randevu oluşturulduğunda, iptal edildiğinde veya müşteri mesaj yazdığında telefonunuza sesli ve titreşimli bildirim gönderilir.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              const perm = await requestNotificationPermission();
+              if (perm === 'granted') {
+                sendAppNotification({
+                  title: '🔔 Test Bildirimi Başarılı!',
+                  body: 'Yeni randevu geldiğinde bu şekilde sesli bildirim alacaksınız.',
+                  url: '/dashboard',
+                });
+              } else {
+                alert('Tarayıcınızın bildirim izni kapalı veya engellendi. Adres çubuğundaki kilit simgesine dokunup Bildirimlere İzin Ver seçeneğini açabilirsiniz.');
+              }
+            }}
+            className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition-colors flex items-center justify-center gap-2 shrink-0 shadow-sm active:scale-95"
+          >
+            <Bell className="w-4 h-4 text-white" />
+            Bildirim İznini Aç / Test Et
+          </button>
+        </div>
       </div>
 
       {/* Account Security & Password Change Form */}

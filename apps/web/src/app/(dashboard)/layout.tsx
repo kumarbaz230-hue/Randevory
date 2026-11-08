@@ -10,6 +10,12 @@ import { BrandLogo } from '@/components/brand-logo';
 import { BusinessQrModal } from '@/components/business-qr-modal';
 import { triggerPwaInstall } from '@/components/pwa-install-prompt';
 import {
+  registerServiceWorker,
+  requestNotificationPermission,
+  getNotificationPermission,
+  sendAppNotification,
+} from '@/lib/notification-manager';
+import {
   Calendar,
   LayoutDashboard,
   Users,
@@ -40,6 +46,97 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeBiz, setActiveBiz] = useState<Business | null>(null);
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
+  const [inAppToast, setInAppToast] = useState<{ title: string; body: string; url?: string } | null>(null);
+
+  // Initialize Service Worker & check Notification Permission
+  useEffect(() => {
+    registerServiceWorker();
+    setNotifPermission(getNotificationPermission());
+
+    const handleInAppAlert = (e: any) => {
+      if (e.detail) {
+        setInAppToast(e.detail);
+        setTimeout(() => setInAppToast(null), 7000);
+      }
+    };
+    window.addEventListener('randevory-inapp-alert', handleInAppAlert);
+    return () => window.removeEventListener('randevory-inapp-alert', handleInAppAlert);
+  }, []);
+
+  const handleRequestNotifs = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+  };
+
+  // Real-time Supabase Web Push listener for Appointments & Messages
+  useEffect(() => {
+    if (!activeBiz || !isSupabaseConfigured()) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`biz-live-alerts-${activeBiz.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `business_id=eq.${activeBiz.id}`,
+        },
+        (payload: any) => {
+          if (payload.eventType === 'INSERT') {
+            const appt = payload.new;
+            const timeStr = appt.start_time
+              ? new Date(appt.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+              : '';
+            sendAppNotification({
+              title: '🗓️ Yeni Randevu Geldi!',
+              body: `${appt.customer_name || 'Müşteri'} – ${timeStr}`,
+              url: '/dashboard/calendar',
+              tag: `appt-${appt.id}`,
+            });
+            window.dispatchEvent(new CustomEvent('randevory-appointment-updated'));
+          } else if (payload.eventType === 'UPDATE' && payload.new?.status === 'cancelled') {
+            const appt = payload.new;
+            sendAppNotification({
+              title: '❌ Randevu İptali',
+              body: `${appt.customer_name || 'Müşteri'} randevusunu iptal etti.`,
+              url: '/dashboard/calendar',
+              tag: `appt-cancel-${appt.id}`,
+            });
+            window.dispatchEvent(new CustomEvent('randevory-appointment-updated'));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `business_id=eq.${activeBiz.id}`,
+        },
+        (payload: any) => {
+          const msg = payload.new;
+          if (msg && msg.sender_type === 'customer') {
+            setUnreadMessages((prev) => prev + 1);
+            sendAppNotification({
+              title: `💬 Yeni Müşteri Mesajı: ${msg.customer_name || 'Müşteri'}`,
+              body: msg.message || 'Yeni bir mesaj aldınız.',
+              url: '/dashboard/messages',
+              tag: `chat-${msg.id}`,
+            });
+            window.dispatchEvent(new CustomEvent('randevory-message-received', { detail: msg }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeBiz]);
 
   useEffect(() => {
     repo.getActiveBusiness().then((b) => {
@@ -285,6 +382,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm pt-14 pb-16">
           <nav className="h-full overflow-y-auto p-4 bg-slate-900 space-y-1">
+            {/* Notification Permission Quick Card on Mobile */}
+            {notifPermission !== 'granted' && (
+              <button
+                type="button"
+                onClick={handleRequestNotifs}
+                className="w-full mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-600/30 to-amber-500/20 border border-amber-400/50 text-left flex items-center justify-between text-amber-200 transition-colors animate-pulse"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500 text-slate-900 flex items-center justify-center shrink-0">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Telefon Bildirimlerini Aç</div>
+                    <div className="text-[10px] text-amber-300">Yeni randevular anında cebinize gelsin</div>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-amber-400 text-slate-900 font-extrabold px-2.5 py-1 rounded-lg shrink-0">
+                  Aç
+                </span>
+              </button>
+            )}
+
             {/* Aktif işletme + hızlı işlemler */}
             <div className="p-3 mb-3 rounded-2xl bg-slate-800/70 border border-slate-700/60">
               <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Aktif İşletme</div>
@@ -433,6 +552,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Notification Permission Toggle */}
+            {notifPermission !== 'granted' ? (
+              <button
+                type="button"
+                onClick={handleRequestNotifs}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 flex items-center gap-1.5 transition-colors border border-amber-300 shadow-2xs animate-pulse"
+                title="Yeni randevu ve mesajları kaçırmamak için bildirimleri açın"
+              >
+                <Bell className="w-3.5 h-3.5 text-amber-600" /> Bildirimleri Aç
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRequestNotifs}
+                title="Bildirimler Aktif - Test bildirimi almak için tıklayın"
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 flex items-center gap-1.5 border border-emerald-200 transition-colors"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[11px]">Bildirimler Açık</span>
+              </button>
+            )}
+
             {isSuperAdmin && (
               <Link
                 href="/dashboard/admin"
@@ -491,6 +632,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* In-App Real-Time Floating Notification Toast */}
+      {inAppToast && (
+        <div className="fixed top-4 inset-x-4 sm:inset-x-auto sm:right-6 z-50 max-w-sm w-full bg-slate-900/95 backdrop-blur text-white rounded-2xl p-4 shadow-2xl border border-slate-700 animate-in slide-in-from-top-4 fade-in">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                <Bell className="w-4 h-4 animate-bounce" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-white truncate">{inAppToast.title}</div>
+                <div className="text-[11px] text-slate-300 line-clamp-2 mt-0.5">{inAppToast.body}</div>
+                {inAppToast.url && (
+                  <Link
+                    href={inAppToast.url}
+                    onClick={() => setInAppToast(null)}
+                    className="inline-flex items-center gap-1 text-[11px] text-brand-400 font-semibold hover:underline mt-1.5"
+                  >
+                    Görüntüle &rarr;
+                  </Link>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setInAppToast(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-white shrink-0"
+              aria-label="Kapat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <BusinessQrModal
         businessName={activeBiz?.name || 'Salon Prestij'}
