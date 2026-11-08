@@ -25,6 +25,13 @@ export interface BusinessSettings {
   auto_confirm_appointments: boolean;
   cancellation_deadline_hours: number;
   currency: string;
+  loyalty_program?: {
+    enabled: boolean;
+    target_appointments: number;
+    reward_type: 'discount_percent' | 'free_service' | 'custom_gift';
+    discount_percent?: number;
+    reward_title?: string;
+  };
 }
 
 export interface Business {

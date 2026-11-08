@@ -20,6 +20,8 @@ import {
   ArrowRight,
   ShieldCheck,
   QrCode,
+  Gift,
+  Sparkles,
 } from 'lucide-react';
 
 export default function DashboardSettingsPage() {
@@ -41,6 +43,13 @@ export default function DashboardSettingsPage() {
   const [slotInterval, setSlotInterval] = useState(30);
   const [autoConfirm, setAutoConfirm] = useState(true);
   const [cancelHours, setCancelHours] = useState(2);
+
+  // Loyalty Program State (İsteğe bağlı pazarlama)
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
+  const [loyaltyTarget, setLoyaltyTarget] = useState(5);
+  const [loyaltyRewardType, setLoyaltyRewardType] = useState<'discount_percent' | 'free_service' | 'custom_gift'>('discount_percent');
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(20);
+  const [loyaltyTitle, setLoyaltyTitle] = useState('Her 5. randevunuzda %20 İndirim!');
 
   // Password Change State
   const [newPassword, setNewPassword] = useState('');
@@ -65,6 +74,15 @@ export default function DashboardSettingsPage() {
         setSlotInterval(b.settings.slot_interval_minutes ?? 30);
         setAutoConfirm(b.settings.auto_confirm_appointments !== false);
         setCancelHours(b.settings.cancellation_deadline_hours ?? 2);
+
+        const lp = b.settings?.loyalty_program;
+        if (lp) {
+          setLoyaltyEnabled(Boolean(lp.enabled));
+          setLoyaltyTarget(lp.target_appointments ?? 5);
+          setLoyaltyRewardType(lp.reward_type ?? 'discount_percent');
+          setLoyaltyDiscount(lp.discount_percent ?? 20);
+          setLoyaltyTitle(lp.reward_title ?? 'Her 5. randevunuzda %20 İndirim!');
+        }
 
         const [wh, plans] = await Promise.all([
           repo.getWorkingHours(b.id),
@@ -150,6 +168,13 @@ export default function DashboardSettingsPage() {
           slot_interval_minutes: Number(slotInterval),
           auto_confirm_appointments: autoConfirm,
           cancellation_deadline_hours: Number(cancelHours),
+          loyalty_program: {
+            enabled: loyaltyEnabled,
+            target_appointments: Number(loyaltyTarget),
+            reward_type: loyaltyRewardType,
+            discount_percent: Number(loyaltyDiscount),
+            reward_title: loyaltyTitle.trim(),
+          },
         },
       });
 
@@ -409,6 +434,146 @@ export default function DashboardSettingsPage() {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Marketing & Loyalty Program (İsteğe Bağlı Gel-Kazan) */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-amber-500" />
+                <h2 className="text-base font-bold text-slate-900">
+                  Müşteri Sadakat Programı (Gel-Kazan)
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+                  İsteğe Bağlı Pazarlama
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 max-w-xl">
+                Sürekli gelen sadık müşterilerinizi ödüllendirmek için kampanya açabilirsiniz. Açıp kapatmak ve ödülü belirlemek tamamen sizin kontrolünüzdedir.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-xs font-semibold text-slate-600">
+                {loyaltyEnabled ? 'Program Aktif' : 'Program Kapalı'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setLoyaltyEnabled(!loyaltyEnabled)}
+                className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${
+                  loyaltyEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
+                    loyaltyEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {loyaltyEnabled ? (
+            <div className="space-y-4 animate-in fade-in duration-200 pt-1 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Kaçıncı Randevuda Ödül Verilsin?
+                  </label>
+                  <select
+                    value={loyaltyTarget}
+                    onChange={(e) => setLoyaltyTarget(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value={3}>Her 3. Randevuda</option>
+                    <option value={5}>Her 5. Randevuda (Önerilen)</option>
+                    <option value={7}>Her 7. Randevuda</option>
+                    <option value={10}>Her 10. Randevuda</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Ödül Türü</label>
+                  <select
+                    value={loyaltyRewardType}
+                    onChange={(e) => setLoyaltyRewardType(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="discount_percent">% İndirim</option>
+                    <option value="free_service">Ücretsiz Hizmet / İkram</option>
+                    <option value="custom_gift">Özel Hediye / Sürpriz</option>
+                  </select>
+                </div>
+
+                {loyaltyRewardType === 'discount_percent' ? (
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">İndirim Oranı (%)</label>
+                    <select
+                      value={loyaltyDiscount}
+                      onChange={(e) => setLoyaltyDiscount(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+                    >
+                      <option value={10}>%10 İndirim</option>
+                      <option value={15}>%15 İndirim</option>
+                      <option value={20}>%20 İndirim (Önerilen)</option>
+                      <option value={25}>%25 İndirim</option>
+                      <option value={50}>%50 İndirim (Yarı Fiyatına)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Hediye / İkram Notu</label>
+                    <input
+                      type="text"
+                      placeholder="Örn: Yanında Sakal Tıraşı Hediye"
+                      value={loyaltyTitle}
+                      onChange={(e) => setLoyaltyTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Müşteriye Görünecek Kampanya Başlığı
+                </label>
+                <input
+                  type="text"
+                  value={loyaltyTitle}
+                  onChange={(e) => setLoyaltyTitle(e.target.value)}
+                  placeholder="Örn: Her 5. randevunuzda %20 Sadakat İndirimi!"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              {/* Müşteri Ekranı Canlı Önizleme Kutusu */}
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-xs">Müşteri Randevu Ekranında Şöyle Görünecek:</div>
+                  <div className="text-xs text-amber-800 mt-0.5">
+                    &ldquo;🎁 <strong>{loyaltyTitle || `Her ${loyaltyTarget}. randevunuzda sadakat indirimi!`}</strong>&rdquo;
+                  </div>
+                  <p className="text-[11px] text-amber-700/80 mt-1">
+                    Müşteri telefon numarasını girip randevularını aldıkça sistem kaçıncı randevuda olduğunu otomatik takip eder.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400 bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+              <span>Sadakat programı şu an kapalıdır. Müşterilere herhangi bir kampanya veya indirim yansıtılmaz.</span>
+              <button
+                type="button"
+                onClick={() => setLoyaltyEnabled(true)}
+                className="text-brand-600 font-semibold hover:underline shrink-0 ml-2"
+              >
+                Aktif Et →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Weekly Working Hours */}

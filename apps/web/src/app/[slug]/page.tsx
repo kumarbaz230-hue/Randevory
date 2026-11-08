@@ -38,6 +38,7 @@ import {
   Send,
   QrCode,
   XCircle,
+  Gift,
   Sparkles,
 } from 'lucide-react';
 
@@ -583,6 +584,28 @@ export default function BusinessPublicPage() {
           </button>
         </div>
 
+        {/* Optional Loyalty Program Banner (İşletme açarsa görünür) */}
+        {business.settings?.loyalty_program?.enabled && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-300/80 shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Gift className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-amber-950 truncate">
+                  {business.settings.loyalty_program.reward_title || 'Sadakat Programı Aktif!'}
+                </div>
+                <div className="text-[11px] text-amber-800/80 truncate">
+                  Her {business.settings.loyalty_program.target_appointments}. randevunuzda ödül kazanın!
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 shrink-0">
+              Gel-Kazan
+            </span>
+          </div>
+        )}
+
         {/* TAB 1: BOOK APPOINTMENT WIZARD */}
         {activeTab === 'book' && (
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
@@ -1121,6 +1144,15 @@ export default function BusinessPublicPage() {
                       <span>Toplam Ücret:</span>
                       <span className="text-brand-600">{createdAppointment.total_price} ₺</span>
                     </div>
+
+                    {business.settings?.loyalty_program?.enabled && (
+                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5 mt-2">
+                        <Gift className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>
+                          Bu işletmenin <strong>Gel-Kazan Sadakat Programı</strong> kapsamındasınız: {business.settings.loyalty_program.reward_title || `Her ${business.settings.loyalty_program.target_appointments}. randevunuzda ödül!`}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {createdAppointment.status !== 'cancelled' && (
