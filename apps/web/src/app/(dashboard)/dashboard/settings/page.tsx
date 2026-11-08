@@ -50,6 +50,7 @@ export default function DashboardSettingsPage() {
   // Form Fields
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [sector, setSector] = useState<string>('barber');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
@@ -88,6 +89,7 @@ export default function DashboardSettingsPage() {
         setBusiness(b);
         setName(b.name);
         setSlug(b.slug);
+        setSector(b.sector || 'barber');
         setPhone(b.phone);
         setEmail(b.email);
         setAddress(b.address);
@@ -205,6 +207,7 @@ export default function DashboardSettingsPage() {
       const updatedBiz = await repo.updateBusiness(business.id, {
         name: name.trim(),
         slug: cleanSlug,
+        sector: sector as any,
         phone: phone.trim(),
         email: email.trim(),
         address: address.trim(),
@@ -426,6 +429,35 @@ export default function DashboardSettingsPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block font-semibold text-slate-700 mb-1">
+                İşletme Sektörü & Faaliyet Alanı (Profil Başlığında Görünür)
+              </label>
+              <select
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 font-medium text-slate-800 bg-white"
+              >
+                <option value="barber">Berber & Erkek Kuaförü</option>
+                <option value="hair_salon">Kadın Kuaförü & Saç Tasarım</option>
+                <option value="beauty_salon">Güzellik & Cilt Bakım Merkezi</option>
+                <option value="cafe_restaurant">Kafe, Restoran & Masa Rezervasyonu</option>
+                <option value="fitness_pilates">Fitness, Pilates & Spor Salonu</option>
+                <option value="activity_gaming">Oyun Salonu, PS & Bilardo</option>
+                <option value="auto_wash_care">Oto Yıkama & Detailing</option>
+                <option value="tutoring_education">Özel Ders & Eğitim Merkezi</option>
+                <option value="tech_service">Teknik Servis & Tamir</option>
+                <option value="phone_repair">Telefon & Cihaz Tamiri</option>
+                <option value="veterinary">Veteriner Kliniği</option>
+                <option value="consulting">Danışmanlık & Randevu</option>
+                <option value="health_clinic">Sağlık & Klinik Hizmeti</option>
+                <option value="other">Diğer Randevulu / Rezervasyonlu Hizmet</option>
+              </select>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Sayfanızın sol üstünde görünecek kategori başlığını buradan istediğiniz zaman değiştirebilirsiniz.
+              </p>
             </div>
 
             <div className="sm:col-span-2">

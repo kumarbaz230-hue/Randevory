@@ -49,6 +49,23 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 
+const SECTOR_LABELS: Record<string, string> = {
+  barber: 'Berber & Erkek Kuaförü',
+  hair_salon: 'Kadın Kuaförü & Saç Tasarım',
+  beauty_salon: 'Güzellik & Cilt Bakım Merkezi',
+  cafe_restaurant: 'Kafe, Restoran & Masa Rezervasyonu',
+  fitness_pilates: 'Fitness, Pilates & Spor Salonu',
+  activity_gaming: 'Oyun Salonu, PS & Etkinlik',
+  auto_wash_care: 'Oto Yıkama & Detailing',
+  tutoring_education: 'Özel Ders & Eğitim Merkezi',
+  tech_service: 'Teknik Servis & Tamir',
+  phone_repair: 'Telefon & Cihaz Tamiri',
+  consulting: 'Danışmanlık & Randevu',
+  veterinary: 'Veteriner Kliniği',
+  health_clinic: 'Sağlık & Klinik Hizmeti',
+  other: 'Randevulu Hizmet & Rezervasyon',
+};
+
 export default function BusinessPublicPage() {
   const params = useParams();
   const slug = params?.slug as string;
@@ -574,7 +591,7 @@ export default function BusinessPublicPage() {
               </div>
               <div className="min-w-0">
                 <span className="text-xs uppercase tracking-wider text-brand-300 font-semibold">
-                  {business.sector === 'barber' ? 'Berber & Kuaför' : business.sector}
+                  {SECTOR_LABELS[business.sector] || business.sector}
                 </span>
                 <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight mt-0.5 text-white break-words">
                   {business.name}

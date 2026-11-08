@@ -22,11 +22,13 @@ import {
   Star,
   QrCode,
   MessageSquare,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 export default function HomePage() {
   const sectors = [
     { name: 'Kuaför & Berberler', icon: Scissors, desc: 'Saç, sakal ve bakım seansları' },
+    { name: 'Kafe & Restoranlar', icon: UtensilsCrossed, desc: 'Masa, loca ve etkinlik rezervasyonu' },
     { name: 'Oto Bakım & Detailing', icon: Wrench, desc: 'Periyodik bakım ve yıkama' },
     { name: 'Özel Ders & Eğitim', icon: GraduationCap, desc: 'Birebir ders ve danışmanlık' },
     { name: 'Veteriner Klinikleri', icon: HeartPulse, desc: 'Muayene ve aşı takvimi' },

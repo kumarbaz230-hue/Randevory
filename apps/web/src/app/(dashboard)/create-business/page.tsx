@@ -126,6 +126,9 @@ export default function CreateBusinessPage() {
                 <option value="barber">Berber & Erkek Kuaförü</option>
                 <option value="hair_salon">Kadın Kuaförü & Saç Tasarım</option>
                 <option value="beauty_salon">Güzellik & Cilt Bakım Merkezi</option>
+                <option value="cafe_restaurant">Kafe, Restoran & Masa Rezervasyonu</option>
+                <option value="fitness_pilates">Fitness, Pilates & Spor Salonu</option>
+                <option value="activity_gaming">Oyun Salonu, PS & Bilardo</option>
                 <option value="auto_wash_care">Oto Yıkama & Detailing</option>
                 <option value="tutoring_education">Özel Ders & Eğitim Merkezi</option>
                 <option value="tech_service">Teknik Servis & Tamir</option>
