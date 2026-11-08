@@ -108,7 +108,7 @@ function BillingContent() {
     // Eğer Shopier API veya Ürün Linki aktifse doğrudan Shopier oturumunu kontrol et
     if (business && plan.price_monthly > 0) {
       try {
-        const amount = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+        const amount = plan.price_monthly;
         const res = await fetch('/api/shopier/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -367,32 +367,10 @@ function BillingContent() {
         </div>
       </div>
 
-      {/* Billing Cycle Toggle */}
+      {/* Heading */}
       <div className="text-center pt-4">
         <h2 className="text-xl font-bold text-slate-900">Tüm Lisans Paketleri</h2>
-        <p className="text-xs text-slate-500 mt-1">İşletmenize en uygun büyüklüğü seçin, dilediğiniz an iptal edin veya yükseltin.</p>
-
-        <div className="inline-flex items-center p-1 bg-slate-200/80 rounded-xl mt-6">
-          <button
-            onClick={() => setBillingCycle('monthly')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-              billingCycle === 'monthly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Aylık Ödeme
-          </button>
-          <button
-            onClick={() => setBillingCycle('yearly')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              billingCycle === 'yearly' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Yıllık Ödeme
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-extrabold">
-              %20 İndirimli
-            </span>
-          </button>
-        </div>
+        <p className="text-xs text-slate-500 mt-1">İşletmenize en uygun paketi seçin, taahhütsüz dilediğiniz an iptal edin veya yükseltin.</p>
       </div>
 
       {/* Pricing Cards Grid */}
@@ -400,7 +378,7 @@ function BillingContent() {
         {plans.map((plan) => {
           const isCurrent = currentTier === plan.tier;
           const isPro = plan.tier === 'pro';
-          const price = billingCycle === 'yearly' ? Math.round(plan.price_yearly / 12) : plan.price_monthly;
+          const price = plan.price_monthly;
 
           return (
             <div
@@ -438,11 +416,9 @@ function BillingContent() {
                     <div>
                       <span className="text-3xl font-black">{formatPrice(price)}</span>
                       <span className={`text-xs ${isPro ? 'text-slate-400' : 'text-slate-500'}`}> / ay</span>
-                      {billingCycle === 'yearly' && (
-                        <div className={`text-[11px] mt-0.5 ${isPro ? 'text-brand-300' : 'text-emerald-600'} font-medium`}>
-                          Yıllık tek çekim {formatPrice(plan.price_yearly)}
-                        </div>
-                      )}
+                      <div className={`text-[11px] mt-0.5 ${isPro ? 'text-brand-300' : 'text-slate-500'} font-medium`}>
+                        Aylık lisans • Taahhütsüz
+                      </div>
                     </div>
                   )}
                 </div>
@@ -603,12 +579,12 @@ function BillingContent() {
                   <div>
                     <div className="font-bold text-slate-900 text-sm">{selectedPlanForUpgrade.name}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      {billingCycle === 'yearly' ? 'Yıllık Lisans (12 Ay)' : 'Aylık Lisans (1 Ay)'}
+                      Aylık Lisans (1 Ay) • Taahhütsüz
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-base font-black text-brand-700">
-                      {formatPrice(billingCycle === 'yearly' ? selectedPlanForUpgrade.price_yearly : selectedPlanForUpgrade.price_monthly)}
+                      {formatPrice(selectedPlanForUpgrade.price_monthly)}
                     </div>
                     <div className="text-[10px] text-slate-400">KDV Dahil</div>
                   </div>
@@ -718,7 +694,7 @@ function BillingContent() {
                   ) : (
                     <>
                       <Lock className="w-3.5 h-3.5" />
-                      {formatPrice(billingCycle === 'yearly' ? selectedPlanForUpgrade.price_yearly : selectedPlanForUpgrade.price_monthly)}{' '}
+                      {formatPrice(selectedPlanForUpgrade.price_monthly)}{' '}
                       Güvenli Ödeme Yap
                     </>
                   )}

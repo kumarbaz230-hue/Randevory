@@ -74,24 +74,51 @@ export async function POST(request: Request) {
       const decodedJson = Buffer.from(resParam, 'base64').toString('utf-8');
       const orderData = JSON.parse(decodedJson);
       const buyerEmail = (orderData?.email || '').trim().toLowerCase();
+      const buyerPhone = (orderData?.phone || '').replace(/\D/g, '').slice(-10);
+      const rawProductId = String(orderData?.productid || orderData?.product_id || orderData?.item_id || '');
+      const rawProductName = String(orderData?.productname || orderData?.product_name || '').toLowerCase();
       const price = Number(orderData?.price || 0);
 
-      // Fiyata göre paketi belirle
-      let detectedTier: 'standard' | 'pro' | 'enterprise' = 'pro';
-      if (price >= 1400) detectedTier = 'enterprise';
-      else if (price >= 700) detectedTier = 'pro';
-      else detectedTier = 'standard';
+      // Fiyata, ürün adına veya Shopier ürün ID'sine göre paketi belirle
+      let detectedTier: 'standard' | 'pro' | 'enterprise' = 'standard';
+      if (rawProductId.includes('52712658') || rawProductName.includes('kurumsal') || price >= 500) {
+        detectedTier = 'enterprise';
+      } else if (rawProductId.includes('52712622') || rawProductName.includes('profesyonel') || price >= 250) {
+        detectedTier = 'pro';
+      } else {
+        detectedTier = 'standard';
+      }
 
-      if (buyerEmail) {
+      if (buyerEmail || buyerPhone) {
         const supabase = await createServerSupabaseClient();
-        const { data: biz } = await supabase
-          .from('businesses')
-          .select('id')
-          .ilike('email', buyerEmail)
-          .maybeSingle();
+        let targetBusinessId: string | null = null;
 
-        if (biz?.id) {
-          await activateBusinessLicense(biz.id, detectedTier, 'monthly', String(orderData?.orderid || ''));
+        // 1. İşletme e-postasına göre ara
+        if (buyerEmail) {
+          const { data: biz } = await supabase
+            .from('businesses')
+            .select('id')
+            .ilike('email', buyerEmail)
+            .maybeSingle();
+
+          if (biz?.id) targetBusinessId = biz.id;
+        }
+
+        // 2. İşletme telefonuna göre ara
+        if (!targetBusinessId && buyerPhone) {
+          const { data: allBiz } = await supabase
+            .from('businesses')
+            .select('id, phone')
+            .limit(100);
+
+          const matchedBiz = allBiz?.find(
+            (b) => b.phone && b.phone.replace(/\D/g, '').slice(-10) === buyerPhone
+          );
+          if (matchedBiz) targetBusinessId = matchedBiz.id;
+        }
+
+        if (targetBusinessId) {
+          await activateBusinessLicense(targetBusinessId, detectedTier, 'monthly', String(orderData?.orderid || ''));
         }
       }
 

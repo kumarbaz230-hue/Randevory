@@ -32,9 +32,9 @@ export async function POST(request: Request) {
 
     // 1. Önce Shopier Ürün Linki tanımlı mı kontrol et
     const linkMap: Record<string, string | undefined> = {
-      standard: process.env.NEXT_PUBLIC_SHOPIER_LINK_STANDARD,
-      pro: process.env.NEXT_PUBLIC_SHOPIER_LINK_PRO,
-      enterprise: process.env.NEXT_PUBLIC_SHOPIER_LINK_ENTERPRISE,
+      standard: process.env.NEXT_PUBLIC_SHOPIER_LINK_STANDARD || 'https://www.shopier.com/randevory/52712584',
+      pro: process.env.NEXT_PUBLIC_SHOPIER_LINK_PRO || 'https://www.shopier.com/randevory/52712622',
+      enterprise: process.env.NEXT_PUBLIC_SHOPIER_LINK_ENTERPRISE || 'https://www.shopier.com/randevory/52712658',
     };
 
     const directProductLink = linkMap[planTier];
