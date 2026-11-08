@@ -121,8 +121,84 @@ export default function DashboardCustomersPage() {
         </div>
       </div>
 
-      {/* Customer List Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Mobile Customer Cards (App-Like Native View) */}
+      <div className="md:hidden space-y-3">
+        {filteredCustomers.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs">
+            Kayıtlı müşteri bulunamadı.
+          </div>
+        ) : (
+          filteredCustomers.map((cust) => {
+            const rawPhone = cust.phone.replace(/\D/g, '');
+            const waNumber = rawPhone.startsWith('0') ? '9' + rawPhone : (rawPhone.startsWith('90') ? rawPhone : '90' + rawPhone);
+            return (
+              <div
+                key={cust.id}
+                className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 font-bold text-sm flex items-center justify-center shrink-0">
+                      {cust.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm">{cust.full_name}</h3>
+                      <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        <span>{cust.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-brand-700">
+                    {cust.total_appointments_count} Seans
+                  </span>
+                </div>
+
+                {cust.notes && (
+                  <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl italic">
+                    "{cust.notes}"
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <div className="text-slate-500">
+                    Toplam: <span className="font-bold text-slate-900">{cust.total_spent} ₺</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={`tel:${cust.phone}`}
+                      className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      title="Ara"
+                    >
+                      <Phone className="w-4 h-4 text-emerald-600" />
+                    </a>
+                    <a
+                      href={`https://wa.me/${waNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 font-semibold text-xs hover:bg-emerald-100 flex items-center gap-1"
+                      title="WhatsApp"
+                    >
+                      WP
+                    </a>
+                    <Link
+                      href={`/dashboard/messages?phone=${encodeURIComponent(cust.phone)}&name=${encodeURIComponent(cust.full_name)}`}
+                      className="px-3 py-1.5 rounded-xl bg-brand-50 text-brand-700 hover:bg-brand-100 font-semibold text-xs flex items-center gap-1"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" /> Mesaj
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Customer List Table */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase border-b border-slate-200">
@@ -203,10 +279,11 @@ export default function DashboardCustomersPage() {
         </div>
       </div>
 
-      {/* Add Customer Modal */}
+      {/* Add Customer Modal (Bottom sheet on mobile) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:zoom-in-95 max-h-[92dvh] overflow-y-auto safe-bottom">
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto mb-3 sm:hidden" />
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <h3 className="font-bold text-base text-slate-900">Yeni Müşteri Kaydı</h3>
               <button

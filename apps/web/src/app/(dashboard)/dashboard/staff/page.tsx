@@ -213,10 +213,11 @@ export default function DashboardStaffPage() {
         ))}
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Add / Edit Modal (Bottom sheet on mobile) */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in slide-in-from-bottom-4 sm:zoom-in-95 max-h-[92dvh] overflow-y-auto safe-bottom">
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto mb-3 sm:hidden" />
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <h3 className="font-bold text-base text-slate-900">
                 {editingStaff ? 'Personeli Düzenle' : 'Yeni Personel Ekle'}

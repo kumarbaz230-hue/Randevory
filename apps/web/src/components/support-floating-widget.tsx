@@ -149,6 +149,7 @@ export function SupportFloatingWidget() {
   const pathname = usePathname();
   // Yönetim panelinde telefonda alt sekme çubuğu olduğu için buton onun üstünde durur
   const inDashboard = (pathname || '').startsWith('/dashboard');
+  const inMessages = (pathname || '').startsWith('/dashboard/messages');
 
   // Global announcement banner from platform_settings
   const [announcementActive, setAnnouncementActive] = useState(false);
@@ -558,6 +559,8 @@ export function SupportFloatingWidget() {
       {/* Floating Support Trigger Button */}
       <div
         className={`fixed z-50 flex flex-col items-end ${
+          inMessages ? 'hidden md:flex' : ''
+        } ${
           isOpen
             ? 'inset-x-2 bottom-2 sm:inset-x-auto sm:right-5 sm:bottom-5'
             : `right-3 sm:right-5 ${inDashboard ? 'bottom-20 md:bottom-5' : 'bottom-4 sm:bottom-5'}`
