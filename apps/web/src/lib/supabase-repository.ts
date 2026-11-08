@@ -113,8 +113,34 @@ export class DataRepository {
           .maybeSingle();
 
         if (member?.businesses) {
-          const bizObj = Array.isArray(member.businesses) ? member.businesses[0] : member.businesses;
+          const bizObj = (Array.isArray(member.businesses) ? member.businesses[0] : member.businesses) as any;
           if (bizObj) {
+            // Lisans süresi kontrolü: Ücretli paketteyse süresi geçmiş mi kontrol et
+            if (bizObj.subscription_plan && bizObj.subscription_plan !== 'free') {
+              const { data: sub } = await supabase
+                .from('subscriptions')
+                .select('id, current_period_end, status')
+                .eq('business_id', bizObj.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (sub && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
+                // Süresi dolmuş -> Free pakete düşür
+                await supabase
+                  .from('businesses')
+                  .update({ subscription_plan: 'free' })
+                  .eq('id', bizObj.id);
+
+                await supabase
+                  .from('subscriptions')
+                  .update({ status: 'past_due' })
+                  .eq('id', sub.id);
+
+                bizObj.subscription_plan = 'free';
+              }
+            }
+
             this.activeBizCache = { uid: user.id, biz: bizObj as unknown as Business, ts: Date.now() };
             return bizObj as unknown as Business;
           }
@@ -1029,6 +1055,22 @@ export class DataRepository {
     }
 
     if (!data) return null;
+
+    // Lisans süresi dolmuşsa status'u past_due ve işletmeyi free yap
+    if (data.current_period_end && new Date(data.current_period_end) < new Date()) {
+      if (data.status === 'active') {
+        data.status = 'past_due' as any;
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'past_due' })
+          .eq('id', data.id);
+
+        await supabase
+          .from('businesses')
+          .update({ subscription_plan: 'free' })
+          .eq('id', businessId);
+      }
+    }
 
     return {
       ...data,

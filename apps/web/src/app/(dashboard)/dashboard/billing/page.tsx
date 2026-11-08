@@ -100,6 +100,11 @@ function BillingContent() {
   const currentTier: SubscriptionTier = business?.subscription_plan || 'free';
   const activePlan = plans.find((p) => p.tier === currentTier) || plans[0];
 
+  const now = new Date();
+  const periodEndDate = currentSub?.current_period_end ? new Date(currentSub.current_period_end) : null;
+  const isPastDue = currentSub?.status === 'past_due' || (periodEndDate ? periodEndDate.getTime() < now.getTime() : false);
+  const daysLeft = periodEndDate && !isPastDue ? Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
   const handleOpenCheckout = async (plan: SubscriptionPlan) => {
     setSelectedPlanForUpgrade(plan);
     setPaymentError('');
@@ -255,14 +260,28 @@ function BillingContent() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Aktif Lisansınız</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Aktif
-                </span>
+                {isPastDue ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    Süresi Doldu (Ücretsiz Mod)
+                  </span>
+                ) : daysLeft !== null && daysLeft <= 5 ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    {daysLeft} Gün Kaldı
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Aktif
+                  </span>
+                )}
               </div>
               <h2 className="text-xl font-black text-slate-900 mt-0.5">{activePlan?.name || 'Ücretsiz Başlangıç'}</h2>
               <p className="text-xs text-slate-500 mt-1">
-                {currentSub?.current_period_end
+                {isPastDue
+                  ? 'Lisans süreniz sona erdiği için işletmeniz Ücretsiz pakete aktarıldı. Özelliklerinizi yeniden açmak için dilediğiniz an lisansınızı yenileyebilirsiniz.'
+                  : currentSub?.current_period_end
                   ? `Lisansınız ${new Date(currentSub.current_period_end).toLocaleDateString('tr-TR')} tarihine kadar geçerlidir.`
                   : 'Ömür boyu ücretsiz başlangıç hakları devrededir.'}
               </p>
