@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
-import { createBusinessToCustomerWhatsAppUrl } from '@/lib/whatsapp-helper';
+import { createBusinessToCustomerWhatsAppUrl, createReviewRequestWhatsAppUrl } from '@/lib/whatsapp-helper';
 import { getBusinessMapsUrl } from '@/lib/location-helper';
 import {
   Calendar as CalendarIcon,
@@ -21,6 +21,7 @@ import {
   Scissors,
   CheckCircle,
   MessageSquare,
+  Star,
 } from 'lucide-react';
 
 export default function DashboardCalendarPage() {
@@ -462,6 +463,24 @@ export default function DashboardCalendarPage() {
                   >
                     Tamamlandı Olarak İşaretle
                   </button>
+                )}
+                {selectedAptDetail.status === 'completed' && (
+                  <a
+                    href={createReviewRequestWhatsAppUrl({
+                      customerPhone: selectedAptDetail.customer_phone,
+                      customerName: selectedAptDetail.customer_name,
+                      businessName: business?.name || 'İşletme',
+                      businessSlug: business?.slug || 'salon-prestij',
+                      serviceName: services.find((s) => s.id === selectedAptDetail.service_id)?.name,
+                      staffName: staffList.find((st) => st.id === selectedAptDetail.staff_id)?.name,
+                      appointmentId: selectedAptDetail.id,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+                  >
+                    <Star className="w-3.5 h-3.5 fill-white" /> WhatsApp ile Puan & Yorum İste
+                  </a>
                 )}
               </div>
             </div>

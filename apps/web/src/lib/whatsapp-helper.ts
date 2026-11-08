@@ -118,3 +118,33 @@ export function createBusinessToCustomerWhatsAppUrl(params: {
   const text = encodeURIComponent(lines.filter(Boolean).join('\n'));
   return targetPhone ? `https://wa.me/${targetPhone}?text=${text}` : `https://wa.me/?text=${text}`;
 }
+
+export function createReviewRequestWhatsAppUrl(params: {
+  customerPhone: string;
+  customerName: string;
+  businessName: string;
+  businessSlug: string;
+  serviceName?: string;
+  staffName?: string;
+  appointmentId?: string;
+}): string {
+  const targetPhone = formatWhatsAppPhone(params.customerPhone);
+  const reviewUrl = `https://www.randevory.com/${params.businessSlug}?review=true${
+    params.appointmentId ? `&apt=${params.appointmentId}` : ''
+  }`;
+
+  const lines = [
+    `Merhaba Sayın *${params.customerName}*! 👋🌟`,
+    `Bugün *${params.businessName}* işletmemizi tercih ettiğiniz için teşekkür ederiz!`,
+    params.serviceName ? `✂️ *Hizmet:* ${params.serviceName}` : '',
+    params.staffName ? `👤 *Uzman:* ${params.staffName}` : '',
+    ``,
+    `Deneyiminizi puanlamak ve 30 saniyede görüşünüzü paylaşmak için tıklayın:`,
+    `⭐ *Puan Ver & Yorum Yaz:* ${reviewUrl}`,
+    ``,
+    `Görüşleriniz bizim için çok kıymetli. Sağlıklı ve güzel günler dileriz! 🙏`,
+  ].filter(Boolean);
+
+  const text = encodeURIComponent(lines.join('\n'));
+  return targetPhone ? `https://wa.me/${targetPhone}?text=${text}` : `https://wa.me/?text=${text}`;
+}

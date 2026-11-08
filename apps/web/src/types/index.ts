@@ -178,3 +178,18 @@ export interface ChatConversation {
   unread_count: number;
   messages: ChatMessage[];
 }
+
+export interface BusinessReview {
+  id: string;
+  business_id: string;
+  appointment_id?: string;
+  customer_name: string;
+  customer_phone?: string;
+  rating: number; // 1-5
+  comment?: string;
+  service_name?: string;
+  staff_name?: string;
+  is_verified: boolean;
+  created_at: string;
+}
+

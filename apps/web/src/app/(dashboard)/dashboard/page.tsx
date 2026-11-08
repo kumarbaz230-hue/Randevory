@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { repo } from '@/lib/supabase-repository';
 import { Appointment, Service, Staff, Business } from '@/types';
 import { BusinessShareAndQrCard } from '@/components/business-qr-modal';
-import { createBusinessToCustomerWhatsAppUrl } from '@/lib/whatsapp-helper';
+import { createBusinessToCustomerWhatsAppUrl, createReviewRequestWhatsAppUrl } from '@/lib/whatsapp-helper';
 import { getBusinessMapsUrl } from '@/lib/location-helper';
 import {
   Calendar,
@@ -21,6 +21,7 @@ import {
   ExternalLink,
   MessageSquare,
   ChevronDown,
+  Star,
 } from 'lucide-react';
 
 type Filter = 'upcoming' | 'pending' | 'all';
@@ -370,6 +371,25 @@ export default function DashboardOverviewPage() {
                             >
                               <CheckCircle className="w-3.5 h-3.5" /> Tamamla
                             </button>
+                          )}
+                          {apt.status === 'completed' && (
+                            <a
+                              href={createReviewRequestWhatsAppUrl({
+                                customerPhone: apt.customer_phone,
+                                customerName: apt.customer_name,
+                                businessName: business?.name || 'İşletme',
+                                businessSlug: publicSlug,
+                                serviceName: service?.name,
+                                staffName: staffMember?.name,
+                                appointmentId: apt.id,
+                              })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold hover:bg-amber-100 flex items-center justify-center gap-1 shadow-2xs"
+                              title="Müşteriden WhatsApp ile 30 saniyelik puan ve yorum isteyin"
+                            >
+                              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Puan İste
+                            </a>
                           )}
                           <a
                             href={createBusinessToCustomerWhatsAppUrl({

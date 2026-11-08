@@ -12,6 +12,7 @@ import {
   Subscription,
   SubscriptionTier,
   ChatMessage,
+  BusinessReview,
 } from '@/types';
 
 /**
@@ -1109,6 +1110,54 @@ export class DataRepository {
     }
 
     return { success: true, plan: selectedPlan };
+  }
+
+  // --- MÜŞTERİ DEĞERLENDİRME VE PUANLAMA (REVIEWS) ---
+  async getBusinessReviews(businessId: string): Promise<BusinessReview[]> {
+    if (!isSupabaseConfigured()) {
+      return [];
+    }
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('business_reviews')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('getBusinessReviews error:', error);
+      return [];
+    }
+    return (data || []) as BusinessReview[];
+  }
+
+  async createBusinessReview(review: Omit<BusinessReview, 'id' | 'created_at'>): Promise<BusinessReview> {
+    if (!isSupabaseConfigured()) {
+      return {
+        id: 'rev-' + Date.now(),
+        ...review,
+        created_at: new Date().toISOString(),
+      };
+    }
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('business_reviews')
+      .insert({
+        business_id: review.business_id,
+        appointment_id: review.appointment_id || null,
+        customer_name: review.customer_name,
+        customer_phone: review.customer_phone ? this.normalizePhone(review.customer_phone) : null,
+        rating: review.rating,
+        comment: review.comment || null,
+        service_name: review.service_name || null,
+        staff_name: review.staff_name || null,
+        is_verified: review.is_verified ?? true,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as BusinessReview;
   }
 }
 
