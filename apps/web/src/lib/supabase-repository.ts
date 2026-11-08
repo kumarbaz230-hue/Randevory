@@ -1154,6 +1154,38 @@ export class DataRepository {
     return { success: true, plan: selectedPlan };
   }
 
+  async downgradeToFree(businessId: string): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      store.updateBusiness(businessId, { subscription_plan: 'free' });
+      return;
+    }
+
+    const supabase = createClient();
+    await supabase
+      .from('businesses')
+      .update({ subscription_plan: 'free' })
+      .eq('id', businessId);
+
+    const { data: existingSub } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('business_id', businessId)
+      .maybeSingle();
+
+    if (existingSub?.id) {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'canceled',
+          cancel_at_period_end: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingSub.id);
+    }
+
+    this.invalidateActiveBusinessCache();
+  }
+
   // --- MÜŞTERİ DEĞERLENDİRME VE PUANLAMA (REVIEWS) ---
   async getBusinessReviews(businessId: string): Promise<BusinessReview[]> {
     if (!isSupabaseConfigured()) {

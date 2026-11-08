@@ -106,58 +106,95 @@ function BillingContent() {
   const daysLeft = periodEndDate && !isPastDue ? Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
   const handleOpenCheckout = async (plan: SubscriptionPlan) => {
+    if (!business) return;
+
+    // 1. ÜCRETSİZ PAKET: Kesinlikle kart veya ödeme modalı açılmaz!
+    if (plan.tier === 'free' || plan.price_monthly === 0) {
+      if (currentTier === 'free') return;
+
+      const confirmed = window.confirm(
+        'Ücretsiz Başlangıç paketine geçmek istediğinize emin misiniz? Mevcut ücretli lisans haklarınız sona erecektir.'
+      );
+      if (!confirmed) return;
+
+      setIsProcessingPayment(true);
+      try {
+        await repo.downgradeToFree(business.id);
+        await loadData();
+        setCallbackBanner({
+          type: 'success',
+          text: 'İşletmeniz başarıyla Ücretsiz Başlangıç paketine geçirildi.',
+        });
+      } catch (err: any) {
+        setCallbackBanner({
+          type: 'error',
+          text: err.message || 'Paket değiştirilemedi.',
+        });
+      } finally {
+        setIsProcessingPayment(false);
+      }
+      return;
+    }
+
+    // 2. ÜCRETLİ PAKETLER: Doğrudan Shopier ürün satın alma sayfasına yönlendir
     setSelectedPlanForUpgrade(plan);
     setPaymentError('');
     setPaymentSuccess(false);
 
-    // Eğer Shopier API veya Ürün Linki aktifse doğrudan Shopier oturumunu kontrol et
-    if (business && plan.price_monthly > 0) {
-      try {
-        const amount = plan.price_monthly;
-        const res = await fetch('/api/shopier/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            businessId: business.id,
-            businessName: business.name,
-            planTier: plan.tier,
-            planName: plan.name,
-            billingCycle,
-            amount,
-            buyerName: business.name,
-            buyerEmail: business.email,
-            buyerPhone: business.phone,
-            buyerAddress: business.address,
-            buyerCity: business.city,
-          }),
+    try {
+      const amount = plan.price_monthly;
+      const res = await fetch('/api/shopier/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: business.id,
+          businessName: business.name,
+          planTier: plan.tier,
+          planName: plan.name,
+          billingCycle,
+          amount,
+          buyerName: business.name,
+          buyerEmail: business.email,
+          buyerPhone: business.phone,
+          buyerAddress: business.address,
+          buyerCity: business.city,
+        }),
+      });
+
+      const data = await res.json();
+
+      // Mod 1: Doğrudan Shopier Ürün Linki yönlendirmesi
+      if (data.mode === 'redirect_link' && data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+
+      // Mod 2: Shopier Özel API İmzalı Form Post
+      if (data.mode === 'form_post' && data.endpoint && data.formFields) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = data.endpoint;
+        Object.entries(data.formFields).forEach(([k, v]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = k;
+          input.value = String(v);
+          form.appendChild(input);
         });
-
-        const data = await res.json();
-
-        // Mod 1: Doğrudan Shopier Ürün Linki yönlendirmesi
-        if (data.mode === 'redirect_link' && data.redirectUrl) {
-          window.location.href = data.redirectUrl;
-          return;
-        }
-
-        // Mod 2: Shopier Özel API İmzalı Form Post
-        if (data.mode === 'form_post' && data.endpoint && data.formFields) {
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = data.endpoint;
-          Object.entries(data.formFields).forEach(([k, v]) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = k;
-            input.value = String(v);
-            form.appendChild(input);
-          });
-          document.body.appendChild(form);
-          form.submit();
-          return;
-        }
-      } catch {
-        // Sandbox moduna devam et
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+    } catch {
+      // Hata durumunda Shopier fallback linkine yönlendir
+      const directLinks: Record<string, string> = {
+        standard: 'https://www.shopier.com/randevory/52712584',
+        pro: 'https://www.shopier.com/randevory/52712622',
+        enterprise: 'https://www.shopier.com/randevory/52712658',
+      };
+      if (directLinks[plan.tier]) {
+        window.location.href = directLinks[plan.tier];
+        return;
       }
     }
 
@@ -497,7 +534,7 @@ function BillingContent() {
                         : 'bg-slate-900 text-white hover:bg-slate-800'
                     }`}
                   >
-                    {plan.price_monthly === 0 ? 'Bu Pakete Geç' : 'Shopier ile Satın Al'} <ArrowRight className="w-3.5 h-3.5" />
+                    {plan.price_monthly === 0 ? 'Ücretsiz Pakete Geç' : 'Shopier ile Satın Al'} <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
