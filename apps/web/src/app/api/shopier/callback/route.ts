@@ -24,7 +24,12 @@ export async function POST(request: Request) {
     const resParam = (formData.get('res') as string) || '';
     const hashParam = (formData.get('hash') as string) || '';
 
-    const apiSecret = process.env.SHOPIER_API_SECRET || process.env.SHOPIER_OSB_SECRET || '';
+    const apiSecret =
+      process.env.SHOPIER_API_SECRET ||
+      process.env.SHOPIER_OSB_SECRET ||
+      '85dc8c8e18a4732b99d005aeef111721';
+    const osbUsername =
+      process.env.SHOPIER_OSB_USERNAME || 'b33b093cc4d9e32cffaa7468ab99ea51';
 
     // Durum A: Shopier API Callback Doğrulaması
     if (platformOrderId && status) {
@@ -59,7 +64,6 @@ export async function POST(request: Request) {
 
     // Durum B: Shopier OSB (Otomatik Sipariş Bildirimi) JSON Base64 Akışı
     if (resParam && hashParam) {
-      const osbUsername = process.env.SHOPIER_OSB_USERNAME || '';
       if (apiSecret) {
         const expectedHash = crypto
           .createHmac('sha256', apiSecret)
@@ -67,17 +71,18 @@ export async function POST(request: Request) {
           .digest('hex');
 
         if (hashParam !== expectedHash) {
+          console.warn('Shopier OSB hash mismatch:', { hashParam, expectedHash });
           return new NextResponse('INVALID_HASH', { status: 400 });
         }
       }
 
       const decodedJson = Buffer.from(resParam, 'base64').toString('utf-8');
       const orderData = JSON.parse(decodedJson);
-      const buyerEmail = (orderData?.email || '').trim().toLowerCase();
-      const buyerPhone = (orderData?.phone || '').replace(/\D/g, '').slice(-10);
+      const buyerEmail = (orderData?.email || orderData?.buyer_email || '').trim().toLowerCase();
+      const buyerPhone = (orderData?.phone || orderData?.buyer_phone || '').replace(/\D/g, '').slice(-10);
       const rawProductId = String(orderData?.productid || orderData?.product_id || orderData?.item_id || '');
       const rawProductName = String(orderData?.productname || orderData?.product_name || '').toLowerCase();
-      const price = Number(orderData?.price || 0);
+      const price = Number(orderData?.price || orderData?.total_price || 0);
 
       // Fiyata, ürün adına veya Shopier ürün ID'sine göre paketi belirle
       let detectedTier: 'standard' | 'pro' | 'enterprise' = 'standard';
@@ -93,8 +98,18 @@ export async function POST(request: Request) {
         const supabase = await createServerSupabaseClient();
         let targetBusinessId: string | null = null;
 
-        // 1. İşletme e-postasına göre ara
-        if (buyerEmail) {
+        // 1. RLS bypass eden find_business_by_contact RPC ile işletmeyi bul
+        const { data: contacts, error: contactErr } = await supabase.rpc('find_business_by_contact', {
+          p_email: buyerEmail,
+          p_phone: buyerPhone,
+        });
+
+        if (contacts && contacts.length > 0 && contacts[0].business_id) {
+          targetBusinessId = contacts[0].business_id;
+        }
+
+        // 2. Doğrudan businesses.email yedek kontrolü
+        if (!targetBusinessId && buyerEmail) {
           const { data: biz } = await supabase
             .from('businesses')
             .select('id')
@@ -102,19 +117,6 @@ export async function POST(request: Request) {
             .maybeSingle();
 
           if (biz?.id) targetBusinessId = biz.id;
-        }
-
-        // 2. İşletme telefonuna göre ara
-        if (!targetBusinessId && buyerPhone) {
-          const { data: allBiz } = await supabase
-            .from('businesses')
-            .select('id, phone')
-            .limit(100);
-
-          const matchedBiz = allBiz?.find(
-            (b) => b.phone && b.phone.replace(/\D/g, '').slice(-10) === buyerPhone
-          );
-          if (matchedBiz) targetBusinessId = matchedBiz.id;
         }
 
         if (targetBusinessId) {
@@ -145,6 +147,24 @@ async function activateBusinessLicense(
   paymentId?: string
 ) {
   const supabase = await createServerSupabaseClient();
+
+  // 1. Önce PostgreSQL SECURITY DEFINER RPC ile RLS engeli olmadan aktifleştir
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    'activate_business_license_admin',
+    {
+      p_business_id: businessId,
+      p_tier: tier,
+      p_billing_cycle: billingCycle,
+      p_order_id: paymentId || null,
+    }
+  );
+
+  if (!rpcError) {
+    console.log('License activated successfully via admin RPC:', rpcData);
+    return;
+  }
+
+  console.error('activate_business_license_admin RPC error, trying direct update fallback:', rpcError);
 
   const now = new Date();
   const periodEnd = new Date(now);
