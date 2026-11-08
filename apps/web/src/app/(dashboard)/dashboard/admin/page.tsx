@@ -30,6 +30,7 @@ import {
   QrCode,
   Sparkles,
   Copy,
+  ChevronLeft,
 } from 'lucide-react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp-helper';
 
@@ -105,6 +106,9 @@ export default function SuperAdminDashboardPage() {
   const [bizSearch, setBizSearch] = useState('');
   const [bizFilter, setBizFilter] = useState<'all' | 'active' | 'banned'>('all');
   const [ticketFilter, setTicketFilter] = useState<'all' | 'open' | 'complaint'>('all');
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [showQuickTools, setShowQuickTools] = useState(false);
 
   // Ticket reply state & selected business per ticket for quick link pulling
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
@@ -528,8 +532,21 @@ export default function SuperAdminDashboardPage() {
   const filteredTickets = tickets.filter((t) => {
     if (ticketFilter === 'open' && t.status === 'closed') return false;
     if (ticketFilter === 'complaint' && t.category !== 'complaint') return false;
+    if (ticketSearch.trim()) {
+      const q = ticketSearch.toLowerCase();
+      const matchName = (t.sender_name || '').toLowerCase().includes(q);
+      const matchContact = (t.sender_contact || '').toLowerCase().includes(q);
+      const matchSubject = (t.subject || '').toLowerCase().includes(q);
+      const matchSlug = (t.reported_business_slug || '').toLowerCase().includes(q);
+      if (!matchName && !matchContact && !matchSubject && !matchSlug) return false;
+    }
     return true;
   });
+
+  const activeSelectedTicket =
+    filteredTickets.find((t) => t.id === selectedTicketId) ||
+    filteredTickets[0] ||
+    null;
 
   const openTicketCount = tickets.filter((t) => t.status === 'open').length;
   const bannedBizCount = businesses.filter((b) => !b.is_active).length;
@@ -678,123 +695,284 @@ export default function SuperAdminDashboardPage() {
         </button>
       </div>
 
-      {/* TAB 1: SUPPORT TICKETS WITH ONE-CLICK ASSIST & LINK SENDING */}
+      {/* TAB 1: SUPPORT TICKETS (MODERN MASTER-DETAIL INBOX) */}
       {activeTab === 'tickets' && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { key: 'all', label: `Tüm Görüşmeler (${tickets.length})` },
-              {
-                key: 'open',
-                label: `Aktif / Açık Görüşmeler (${tickets.filter((t) => t.status !== 'closed').length})`,
-              },
-              {
-                key: 'complaint',
-                label: `🚨 Şikayet & İhbarlar (${tickets.filter((t) => t.category === 'complaint').length})`,
-              },
-            ].map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setTicketFilter(f.key as any)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold ${
-                  ticketFilter === f.key
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px] max-h-[820px]">
+          {/* Sol Kolon: Bilet Listesi & Arama (lg:col-span-4) */}
+          <div
+            className={`${
+              activeSelectedTicket && selectedTicketId ? 'hidden lg:flex' : 'flex'
+            } lg:col-span-4 lg:border-r border-slate-200 flex-col min-h-0 bg-slate-50/40`}
+          >
+            {/* Filtre Butonları & Arama Kutusu */}
+            <div className="p-3 border-b border-slate-200 space-y-2 bg-white shrink-0">
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setTicketFilter('all')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition-all text-center ${
+                    ticketFilter === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Tümü ({tickets.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTicketFilter('open')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition-all text-center ${
+                    ticketFilter === 'open'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Açık ({tickets.filter((t) => t.status !== 'closed').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTicketFilter('complaint')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg transition-all text-center ${
+                    ticketFilter === 'complaint'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-rose-700 hover:text-rose-900'
+                  }`}
+                >
+                  🚨 Şikayet ({tickets.filter((t) => t.category === 'complaint').length})
+                </button>
+              </div>
 
-          {filteredTickets.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-500 text-xs">
-              Henüz bu filtrede destek görüşmesi bulunmuyor.
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="İsim, telefon veya konu ara..."
+                  value={ticketSearch}
+                  onChange={(e) => setTicketSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5">
-              {filteredTickets.map((ticket) => {
-                const matchedBiz = getMatchedBusinessForTicket(ticket);
-                return (
-                  <div
-                    key={ticket.id}
-                    className={`bg-white rounded-2xl border p-5 shadow-sm space-y-4 ${
-                      ticket.category === 'complaint'
-                        ? 'border-rose-300 bg-rose-50/15'
-                        : 'border-slate-200'
-                    }`}
-                  >
-                    {/* Ticket Header */}
-                    <div className="flex flex-wrap items-start justify-between gap-2 pb-3 border-b border-slate-100">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
+
+            {/* Bilet Listesi */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 min-h-0">
+              {filteredTickets.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  Aramanızla eşleşen destek görüşmesi bulunamadı.
+                </div>
+              ) : (
+                filteredTickets.map((ticket) => {
+                  const isSelected = activeSelectedTicket?.id === ticket.id;
+                  const isComplaint = ticket.category === 'complaint';
+                  const isWaiting = ticket.status === 'open';
+
+                  return (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      onClick={() => setSelectedTicketId(ticket.id)}
+                      className={`w-full p-3.5 text-left transition-all flex items-start gap-3 hover:bg-slate-100/70 ${
+                        isSelected
+                          ? 'bg-brand-50/70 border-l-4 border-l-brand-600'
+                          : isComplaint
+                          ? 'bg-rose-50/30'
+                          : 'bg-white'
+                      }`}
+                    >
+                      <div className="relative shrink-0">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                            isComplaint
+                              ? 'bg-rose-100 text-rose-700'
+                              : isWaiting
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-900 text-white'
+                          }`}
+                        >
+                          {isComplaint ? '🚨' : ticket.sender_name.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              ticket.category === 'complaint'
-                                ? 'bg-rose-600 text-white'
+                            className={`text-xs truncate ${
+                              isWaiting ? 'font-black text-slate-900' : 'font-bold text-slate-800'
+                            }`}
+                          >
+                            {ticket.sender_name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            {new Date(ticket.created_at).toLocaleDateString('tr-TR', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                          </span>
+                        </div>
+
+                        <p className="text-xs font-semibold text-slate-900 truncate mt-0.5">
+                          {ticket.subject}
+                        </p>
+
+                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                          {ticket.message}
+                        </p>
+
+                        <div className="flex items-center gap-2 mt-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isComplaint
+                                ? 'bg-rose-100 text-rose-800'
                                 : ticket.category === 'billing'
                                 ? 'bg-purple-100 text-purple-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}
                           >
-                            {ticket.category === 'complaint'
-                              ? '🚨 Şüpheli İşletme Şikayeti'
+                            {isComplaint
+                              ? 'Şikayet'
                               : ticket.category === 'billing'
-                              ? '💳 Paket & Ödeme'
-                              : '🛠️ Canlı Destek'}
+                              ? 'Paket'
+                              : 'Destek'}
                           </span>
-                          <h3 className="font-extrabold text-sm text-slate-900">{ticket.subject}</h3>
+
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              ticket.status === 'answered'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : ticket.status === 'closed'
+                                ? 'bg-slate-100 text-slate-600'
+                                : 'bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            {ticket.status === 'answered'
+                              ? '✓ Yanıtlandı'
+                              : ticket.status === 'closed'
+                              ? 'Kapalı'
+                              : '⏳ Bekliyor'}
+                          </span>
                         </div>
-                        <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-3">
-                          <span>
-                            Gönderen: <strong>{ticket.sender_name}</strong>
-                          </span>
-                          <span>
-                            İletişim: <strong>{ticket.sender_contact}</strong>
-                          </span>
-                          <span>Tarih: {new Date(ticket.created_at).toLocaleString('tr-TR')}</span>
-                        </div>
-                        {ticket.reported_business_slug && (
-                          <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-900 text-xs font-bold">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                            Şikayet Edilen İşletme: {ticket.reported_business_slug}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Sağ Kolon: Seçili Bilet Detayı & Canlı Sohbet (lg:col-span-8) */}
+          <div
+            className={`${
+              !activeSelectedTicket || !selectedTicketId ? 'hidden lg:flex' : 'flex'
+            } lg:col-span-8 flex-col min-h-0 bg-white`}
+          >
+            {!activeSelectedTicket ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <Headset className="w-12 h-12 text-slate-300 mb-3" />
+                <h3 className="font-bold text-sm text-slate-700">Destek Görüşmesi Seçilmedi</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                  Görüşmeyi görüntülemek, yanıtlamak veya işlem yapmak için soldaki listeden bir destek talebi seçin.
+                </p>
+              </div>
+            ) : (() => {
+                const ticket = activeSelectedTicket;
+                const matchedBiz = getMatchedBusinessForTicket(ticket);
+                const isComplaint = ticket.category === 'complaint';
+
+                return (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {/* Sohbet Başlığı (Header) */}
+                    <div className="p-3.5 lg:p-4 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3 shrink-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Mobil Geri Dön Butonu */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTicketId(null)}
+                          className="lg:hidden p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
+                          title="Listeye Dön"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h2 className="font-extrabold text-sm text-slate-900 truncate">
+                              {ticket.sender_name}
+                            </h2>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isComplaint
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}
+                            >
+                              {ticket.subject}
+                            </span>
                           </div>
-                        )}
+                          <div className="text-[11px] text-slate-500 flex items-center gap-3 mt-0.5">
+                            <span>📞 {ticket.sender_contact}</span>
+                            <span>•</span>
+                            <span>{new Date(ticket.created_at).toLocaleString('tr-TR')}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            ticket.status === 'answered'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : ticket.status === 'closed'
-                              ? 'bg-slate-200 text-slate-700'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {ticket.status === 'answered'
-                            ? '✓ Yanıtlandı'
-                            : ticket.status === 'closed'
-                            ? '🔒 Kapatıldı'
-                            : '⏳ Yanıt Bekliyor'}
-                        </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* WhatsApp Butonu */}
+                        {/\d{10,}/.test(ticket.sender_contact.replace(/\D/g, '')) && (
+                          <a
+                            href={buildWhatsAppUrl(
+                              ticket.sender_contact,
+                              `Merhaba ${ticket.sender_name}, RANDEVORY Destek Ekibi'nden ulaşıyoruz. "${ticket.subject}" konulu destek talebiniz hakkında:`
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            WhatsApp
+                          </a>
+                        )}
 
-                        {ticket.status !== 'closed' && (
+                        {/* Kapat / Çözüldü Butonu */}
+                        {ticket.status !== 'closed' ? (
                           <button
                             type="button"
                             disabled={actionBusyId === ticket.id}
                             onClick={() => handleCloseTicket(ticket)}
-                            className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
                           >
-                            Görüşmeyi Kapat
+                            ✓ Görüşmeyi Kapat
                           </button>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                            🔒 Kapatıldı
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Live Conversation Thread (includes AI pre-chat + User + Admin) */}
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 max-h-72 overflow-y-auto">
+                    {/* Şikayet Bildirimi (varsa) */}
+                    {ticket.reported_business_slug && (
+                      <div className="p-3 bg-rose-50 border-b border-rose-200 flex items-center justify-between gap-3 text-xs text-rose-900 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>
+                            Şikayet Edilen İşletme: <strong>{ticket.reported_business_slug}</strong>
+                          </span>
+                        </div>
+                        <a
+                          href={`/${ticket.reported_business_slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px] hover:bg-rose-700 shrink-0"
+                        >
+                          İşletmeyi Aç &rarr;
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Canlı Mesajlaşma Akışı */}
+                    <div className="flex-1 p-4 lg:p-5 overflow-y-auto space-y-3 bg-slate-50/60 min-h-0">
                       {(Array.isArray(ticket.messages) && ticket.messages.length > 0
                         ? ticket.messages
                         : [
@@ -818,22 +996,23 @@ export default function SuperAdminDashboardPage() {
                       ).map((msg, mIdx) => {
                         const isAdmin = msg.sender === 'admin';
                         const isAi = msg.sender === 'ai';
+
                         return (
                           <div
                             key={mIdx}
                             className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
                           >
                             <div
-                              className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${
+                              className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-2xs ${
                                 isAdmin
-                                  ? 'bg-brand-600 text-white rounded-tr-sm'
+                                  ? 'bg-brand-600 text-white rounded-tr-xs'
                                   : isAi
-                                  ? 'bg-indigo-50 border border-indigo-200 text-indigo-950 rounded-tl-sm'
-                                  : 'bg-white border border-slate-200 text-slate-900 rounded-tl-sm'
+                                  ? 'bg-indigo-50 border border-indigo-200 text-indigo-950 rounded-tl-xs'
+                                  : 'bg-white border border-slate-200 text-slate-900 rounded-tl-xs'
                               }`}
                             >
                               <div
-                                className={`text-[10px] font-bold mb-0.5 ${
+                                className={`text-[10px] font-bold mb-1 ${
                                   isAdmin
                                     ? 'text-brand-100'
                                     : isAi
@@ -842,163 +1021,153 @@ export default function SuperAdminDashboardPage() {
                                 }`}
                               >
                                 {isAdmin
-                                  ? '🛡️ Siz (RANDEVORY Destek Ekibi)'
+                                  ? '🛡️ Siz (RANDEVORY Destek)'
                                   : isAi
-                                  ? '🤖 RANDEVORY Yapay Zeka (Ön Yanıt)'
+                                  ? '🤖 Yapay Zeka Asistanı'
                                   : `👤 ${ticket.sender_name}`}
                               </div>
+
                               {msg.image_url && (
-                                <div className="my-1.5">
+                                <div className="my-2">
                                   <img
                                     src={msg.image_url}
-                                    alt="Gönderilen Ekran Görüntüsü"
+                                    alt="Ekran Görüntüsü"
                                     onClick={() => setLightboxImage(msg.image_url || null)}
-                                    className="rounded-xl max-h-52 w-auto object-cover border border-slate-200 cursor-zoom-in hover:opacity-95"
+                                    className="rounded-xl max-h-56 w-auto object-cover border border-black/10 cursor-zoom-in hover:opacity-95"
                                   />
                                 </div>
                               )}
+
                               <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                              <div
+                                className={`text-[10px] mt-1 text-right ${
+                                  isAdmin ? 'text-brand-200' : 'text-slate-400'
+                                }`}
+                              >
+                                {new Date(msg.created_at).toLocaleTimeString('tr-TR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
 
-                    {/* ⚡ QUICK SUPPORT ASSISTANT & LINK PULLING BAR */}
-                    <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200/80 space-y-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[11px] font-extrabold text-indigo-950 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                          ⚡ Tek Tıkla Destek Yardım & Bağlantı Gönderme Araçları:
-                        </span>
+                    {/* Hızlı İşlem Araçları & Link Gönderme Menüsü (Açılır/Kapanır) */}
+                    {showQuickTools && (
+                      <div className="p-3.5 bg-indigo-50/90 border-t border-indigo-200 space-y-2.5 animate-in slide-in-from-bottom-2 shrink-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] font-extrabold text-indigo-950 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-brand-600" />
+                            İşletme Seç & Hızlı İşlem Gönder:
+                          </span>
 
-                        {/* Business Selector for Pulling Link */}
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <span className="text-[11px] font-bold text-slate-600">Seçili İşletme:</span>
-                          <select
-                            value={matchedBiz?.id || ''}
-                            onChange={(e) =>
-                              setSelectedBizForTicket((prev) => ({
-                                ...prev,
-                                [ticket.id]: e.target.value,
-                              }))
-                            }
-                            className="px-2.5 py-1 rounded-lg border border-indigo-300 bg-white font-bold text-slate-800 text-xs"
-                          >
-                            {businesses.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.name} (/{b.slug})
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <select
+                              value={matchedBiz?.id || ''}
+                              onChange={(e) =>
+                                setSelectedBizForTicket((prev) => ({
+                                  ...prev,
+                                  [ticket.id]: e.target.value,
+                                }))
+                              }
+                              className="px-2.5 py-1 rounded-lg border border-indigo-300 bg-white font-bold text-slate-800 text-xs"
+                            >
+                              {businesses.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                  {b.name} (/{b.slug})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {/* 1. Pull Business Link & Send to Chat */}
-                        {matchedBiz && (
+                        <div className="flex flex-wrap gap-2">
+                          {matchedBiz && (
+                            <button
+                              type="button"
+                              disabled={actionBusyId === ticket.id}
+                              onClick={() =>
+                                sendAdminMessageToTicket(
+                                  ticket,
+                                  `🔗 İşletmenizin (${matchedBiz.name}) güncel ve aktif randevu bağlantısı:\n👉 https://www.randevory.com/${matchedBiz.slug}\n\nMüşterileriniz bu bağlantıya tıklayarak 7/24 randevu alabilir.`
+                                )
+                              }
+                              className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-2xs transition-colors"
+                            >
+                              <Link2 className="w-3.5 h-3.5" />
+                              🔗 Link Gönder (/{matchedBiz.slug})
+                            </button>
+                          )}
+
+                          {matchedBiz && (
+                            <button
+                              type="button"
+                              disabled={actionBusyId === matchedBiz.id}
+                              onClick={() => handleQuickAssistBusiness(matchedBiz, 'fix_slug', ticket)}
+                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                            >
+                              <Wrench className="w-3.5 h-3.5 text-indigo-600" />
+                              🔧 Linki Onar
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             disabled={actionBusyId === ticket.id}
                             onClick={() =>
                               sendAdminMessageToTicket(
                                 ticket,
-                                `🔗 İşletmenizin (${matchedBiz.name}) güncel ve aktif randevu bağlantısı:\n👉 https://www.randevory.com/${matchedBiz.slug}\n\nMüşterileriniz bu bağlantıya tıklayarak 7/24 randevu alabilir.`
+                                `🔑 Şifrenizi yenilemek için aşağıdaki resmi şifre sıfırlama bağlantımıza tıklayın:\n👉 https://www.randevory.com/forgot-password\n\nKayıtlı e-posta adresinizi (${ticket.sender_contact}) yazarak yeni şifrenizi hemen belirleyebilirsiniz.`
                               )
                             }
-                            className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-2xs transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
                           >
-                            <Link2 className="w-3.5 h-3.5" />
-                            🔗 İşletme Bağlantısını Çek & Gönder (/{matchedBiz.slug})
+                            <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                            🔑 Şifre Sıfırlama Linki
                           </button>
-                        )}
 
-                        {/* 2. Auto-Repair Business Link & Send */}
-                        {matchedBiz && (
-                          <button
-                            type="button"
-                            disabled={actionBusyId === matchedBiz.id}
-                            onClick={() => handleQuickAssistBusiness(matchedBiz, 'fix_slug', ticket)}
-                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
-                          >
-                            <Wrench className="w-3.5 h-3.5 text-indigo-600" />
-                            🔧 Bozuk Linki Onar & Gönder
-                          </button>
-                        )}
+                          {matchedBiz && (
+                            <button
+                              type="button"
+                              disabled={actionBusyId === matchedBiz.id}
+                              onClick={() => handleQuickAssistBusiness(matchedBiz, 'reset_hours', ticket)}
+                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                              🕒 Çalışma Saatlerini Aç (09-19)
+                            </button>
+                          )}
 
-                        {/* 3. Send Password Reset Link */}
-                        <button
-                          type="button"
-                          disabled={actionBusyId === ticket.id}
-                          onClick={() =>
-                            sendAdminMessageToTicket(
-                              ticket,
-                              `🔑 Şifrenizi yenilemek için aşağıdaki resmi şifre sıfırlama bağlantımıza tıklayın:\n👉 https://www.randevory.com/forgot-password\n\nKayıtlı e-posta adresinizi (${ticket.sender_contact}) yazarak yeni şifrenizi hemen belirleyebilirsiniz.`
-                            )
-                          }
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
-                        >
-                          <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                          🔑 Şifre Yenileme Bağlantısı Gönder
-                        </button>
-
-                        {/* 4. Auto-Open Working Hours (09:00-19:00) & Notify */}
-                        {matchedBiz && (
-                          <button
-                            type="button"
-                            disabled={actionBusyId === matchedBiz.id}
-                            onClick={() => handleQuickAssistBusiness(matchedBiz, 'reset_hours', ticket)}
-                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
-                          >
-                            <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                            🕒 Çalışma Saatlerini Aç (09-19) & Bildir
-                          </button>
-                        )}
-
-                        {/* 5. Send QR & Poster Guide Link */}
-                        <button
-                          type="button"
-                          disabled={actionBusyId === ticket.id}
-                          onClick={() =>
-                            sendAdminMessageToTicket(
-                              ticket,
-                              `📲 İşletmenizin QR Kodunu ve Vitrin Afişini indirmek için Yönetim Panelinize girip sol üstteki **"QR Kod & Afiş İndir"** butonuna tıklayabilirsiniz:\n👉 https://www.randevory.com/dashboard`
-                            )
-                          }
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
-                        >
-                          <QrCode className="w-3.5 h-3.5 text-brand-600" />
-                          📲 QR & Panel Linki Gönder
-                        </button>
-
-                        {/* 6. Gift Pro Package & Notify */}
-                        {matchedBiz && (
-                          <button
-                            type="button"
-                            disabled={actionBusyId === matchedBiz.id}
-                            onClick={() => handleQuickAssistBusiness(matchedBiz, 'gift_pro', ticket)}
-                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
-                          >
-                            <Gift className="w-3.5 h-3.5 text-purple-600" />
-                            🎁 Profesyonel Paket Tanımla & Bildir
-                          </button>
-                        )}
+                          {matchedBiz && (
+                            <button
+                              type="button"
+                              disabled={actionBusyId === matchedBiz.id}
+                              onClick={() => handleQuickAssistBusiness(matchedBiz, 'gift_pro', ticket)}
+                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-purple-900 border border-purple-300 font-bold text-[11px] flex items-center gap-1.5 transition-colors"
+                            >
+                              <Gift className="w-3.5 h-3.5 text-purple-600" />
+                              🎁 Pro Paket Tanımla
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Admin Custom Message & Photo Input Box */}
-                    <div className="space-y-2">
+                    {/* Mesaj Gönderme Çubuğu */}
+                    <div className="p-3 bg-white border-t border-slate-200 shrink-0 space-y-2">
                       {replyImages[ticket.id] && (
                         <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <img
                               src={replyImages[ticket.id]}
                               alt="Önizleme"
-                              className="w-10 h-10 rounded-lg object-cover border border-slate-300"
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-300"
                             />
-                            <span className="text-xs font-semibold text-slate-700">
-                              📷 Fotoğraf eklendi
-                            </span>
+                            <span className="text-xs font-semibold text-slate-700">Fotoğraf eklendi</span>
                           </div>
                           <button
                             type="button"
@@ -1016,10 +1185,26 @@ export default function SuperAdminDashboardPage() {
                         </div>
                       )}
 
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
+                        {/* Hızlı Araçları Aç/Kapat Butonu */}
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickTools((prev) => !prev)}
+                          className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                            showQuickTools
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-slate-50 text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                          }`}
+                          title="Tek Tıkla Bağlantı & Yardım Araçları"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span className="hidden sm:inline">Hızlı Araçlar</span>
+                        </button>
+
+                        {/* Fotoğraf Ekle Butonu */}
                         <label
                           title="Fotoğraf / Ekran Görüntüsü Ekle"
-                          className="px-3 py-2.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer flex items-center justify-center shrink-0"
+                          className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer flex items-center justify-center shrink-0 transition-colors"
                         >
                           <ImagePlus className="w-4 h-4 text-brand-600" />
                           <input
@@ -1029,9 +1214,11 @@ export default function SuperAdminDashboardPage() {
                             className="hidden"
                           />
                         </label>
+
+                        {/* Mesaj Input */}
                         <input
                           type="text"
-                          placeholder="Karşı tarafa mesajınızı yazın (veya yukarıdaki hızlı butonlardan birine basın)..."
+                          placeholder="Karşı tarafa mesajınızı yazın (Enter ile gönder)..."
                           value={replyDrafts[ticket.id] ?? ''}
                           onChange={(e) =>
                             setReplyDrafts((prev) => ({ ...prev, [ticket.id]: e.target.value }))
@@ -1042,54 +1229,25 @@ export default function SuperAdminDashboardPage() {
                               sendAdminMessageToTicket(ticket);
                             }
                           }}
-                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs"
+                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
                         />
+
+                        {/* Gönder Butonu */}
                         <button
                           type="button"
                           disabled={actionBusyId === ticket.id}
                           onClick={() => sendAdminMessageToTicket(ticket)}
-                          className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0"
+                          className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-sm transition-colors"
                         >
                           <Send className="w-3.5 h-3.5" />
-                          Mesaj Gönder
+                          <span className="hidden sm:inline">Gönder</span>
                         </button>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                        <div className="flex items-center gap-2">
-                          {ticket.status !== 'closed' && (
-                            <button
-                              type="button"
-                              disabled={actionBusyId === ticket.id}
-                              onClick={() => handleCloseTicket(ticket)}
-                              className="px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs"
-                            >
-                              ✓ Görüşmeyi Çözüldü Olarak Kapat
-                            </button>
-                          )}
-                        </div>
-
-                        {/\d{10,}/.test(ticket.sender_contact.replace(/\D/g, '')) && (
-                          <a
-                            href={buildWhatsAppUrl(
-                              ticket.sender_contact,
-                              `Merhaba ${ticket.sender_name}, RANDEVORY Destek Ekibi'nden ulaşıyoruz. "${ticket.subject}" konulu destek talebiniz hakkında:`
-                            )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            WhatsApp&apos;tan Yaz
-                          </a>
-                        )}
                       </div>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
+              })()}
+          </div>
         </div>
       )}
 
