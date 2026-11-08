@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
   Star,
   ThumbsUp,
@@ -159,66 +160,208 @@ export function ReviewsSection() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   useEffect(() => {
+    // 1. Yerel beğeni durumunu kontrol et
     if (typeof window !== 'undefined') {
       const savedSiteLike = localStorage.getItem('randevory_site_liked');
       if (savedSiteLike === 'true') {
         setHasLikedSite(true);
-        setSiteLikesCount(1843);
-      }
-
-      const savedCustomReviews = localStorage.getItem('randevory_custom_reviews');
-      if (savedCustomReviews) {
-        try {
-          const parsed = JSON.parse(savedCustomReviews);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setReviews([...parsed, ...INITIAL_REVIEWS]);
-          }
-        } catch {
-          // ignore parse error
-        }
       }
     }
+
+    // 2. Supabase'den gerçek yorumları ve beğeni sayısını çek
+    async function loadPlatformData() {
+      try {
+        const supabase = createClient();
+
+        // Beğeni sayısını veritabanından çek
+        const { data: settings } = await supabase
+          .from('platform_settings')
+          .select('site_likes_count')
+          .eq('id', 'global')
+          .maybeSingle();
+
+        if (settings?.site_likes_count) {
+          setSiteLikesCount(settings.site_likes_count);
+        }
+
+        // Supabase site_reviews tablosundaki tüm gerçek yorumları çek
+        const { data: dbReviews } = await supabase
+          .from('site_reviews')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        let dbMapped: SiteReview[] = [];
+        if (dbReviews && dbReviews.length > 0) {
+          dbMapped = dbReviews.map((r: any) => ({
+            id: r.id,
+            author: r.author,
+            role: r.role || 'İşletme Sahibi',
+            city: r.city || 'Türkiye',
+            rating: (r.rating || 5) as 5 | 4 | 3 | 2 | 1,
+            comment: r.comment,
+            dateLabel: 'Yeni',
+            helpfulCount: r.helpful_count || 1,
+            verified: r.verified ?? true,
+          }));
+        }
+
+        // Eğer tarayıcıda önceden yazılmış ama henüz DB'ye gitmemiş yerel yorum varsa aktar
+        if (typeof window !== 'undefined') {
+          const localCustom = localStorage.getItem('randevory_custom_reviews');
+          if (localCustom) {
+            try {
+              const parsed = JSON.parse(localCustom);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                for (const item of parsed) {
+                  const alreadyInDb = dbMapped.some(
+                    (d) => d.author === item.author && d.comment === item.comment
+                  );
+                  if (!alreadyInDb && item.author && item.comment) {
+                    const { data: inserted } = await supabase
+                      .from('site_reviews')
+                      .insert({
+                        author: item.author,
+                        role: item.role || 'İşletme Sahibi',
+                        city: item.city || 'İstanbul',
+                        rating: item.rating || 5,
+                        comment: item.comment,
+                        helpful_count: item.helpfulCount || 1,
+                        verified: true,
+                      })
+                      .select()
+                      .maybeSingle();
+
+                    if (inserted) {
+                      dbMapped.unshift({
+                        id: inserted.id,
+                        author: inserted.author,
+                        role: inserted.role || 'İşletme Sahibi',
+                        city: inserted.city || 'İstanbul',
+                        rating: inserted.rating as 5 | 4 | 3 | 2 | 1,
+                        comment: inserted.comment,
+                        dateLabel: 'Yeni',
+                        helpfulCount: inserted.helpful_count || 1,
+                        verified: true,
+                      });
+                    }
+                  }
+                }
+              }
+            } catch {}
+          }
+        }
+
+        // Tümünü birleştir: Supabase'deki gerçek yorumlar + 108 başlangıç yorumu
+        setReviews([...dbMapped, ...INITIAL_REVIEWS]);
+      } catch (err) {
+        console.warn('Could not load site reviews from Supabase:', err);
+      }
+    }
+
+    loadPlatformData();
   }, []);
 
-  const handleToggleSiteLike = () => {
+  const handleToggleSiteLike = async () => {
     const nextLiked = !hasLikedSite;
     setHasLikedSite(nextLiked);
     setSiteLikesCount((prev) => (nextLiked ? prev + 1 : prev - 1));
     if (typeof window !== 'undefined') {
       localStorage.setItem('randevory_site_liked', String(nextLiked));
     }
+
+    if (nextLiked) {
+      try {
+        const supabase = createClient();
+        await supabase.rpc('increment_site_likes');
+      } catch (err) {
+        console.warn('Could not increment site likes:', err);
+      }
+    }
   };
 
-  const handleHelpfulClick = (id: string) => {
+  const handleHelpfulClick = async (id: string) => {
     if (likedReviewIds[id]) return;
     setLikedReviewIds((prev) => ({ ...prev, [id]: true }));
     setReviews((prev) =>
       prev.map((r) => (r.id === id ? { ...r, helpfulCount: r.helpfulCount + 1 } : r))
     );
+
+    // Veritabanı yorumuysa helpful_count'u artır
+    if (!id.startsWith('r-') && !id.startsWith('custom-')) {
+      try {
+        const supabase = createClient();
+        const currentReview = reviews.find((r) => r.id === id);
+        const newCount = (currentReview?.helpfulCount || 0) + 1;
+        await supabase
+          .from('site_reviews')
+          .update({ helpful_count: newCount })
+          .eq('id', id);
+      } catch (err) {
+        console.warn('Could not update helpful count:', err);
+      }
+    }
   };
 
-  const handleAddReview = (e: React.FormEvent) => {
+  const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAuthor.trim() || !newComment.trim()) return;
 
+    const authorText = newAuthor.trim();
+    const commentText = newComment.trim();
+    const roleText = newRole.trim() || 'İşletme Sahibi';
+    const cityText = newCity.trim() || 'İstanbul';
+    const ratingVal = newRating;
+
+    // 1. Ekranı beklemeden hemen güncelle (Optimistic UI)
+    const tempId = `custom-${Date.now()}`;
     const created: SiteReview = {
-      id: `custom-${Date.now()}`,
-      author: newAuthor.trim(),
-      role: newRole.trim() || 'Kullanıcı',
-      city: newCity.trim() || 'Türkiye',
-      rating: newRating,
-      comment: newComment.trim(),
+      id: tempId,
+      author: authorText,
+      role: roleText,
+      city: cityText,
+      rating: ratingVal,
+      comment: commentText,
       dateLabel: 'Az önce',
       helpfulCount: 1,
       verified: true,
     };
 
-    const updated = [created, ...reviews];
-    setReviews(updated);
+    setReviews((prev) => [created, ...prev]);
 
+    // 2. Supabase site_reviews tablosuna kalıcı olarak yaz
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('site_reviews')
+        .insert({
+          author: authorText,
+          role: roleText,
+          city: cityText,
+          rating: ratingVal,
+          comment: commentText,
+          helpful_count: 1,
+          verified: true,
+        })
+        .select()
+        .maybeSingle();
+
+      if (data?.id) {
+        setReviews((prev) =>
+          prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to save review to Supabase:', err);
+    }
+
+    // LocalStorage yedeği
     if (typeof window !== 'undefined') {
-      const existingCustom = updated.filter((r) => r.id.startsWith('custom-'));
-      localStorage.setItem('randevory_custom_reviews', JSON.stringify(existingCustom));
+      try {
+        const localCustom = localStorage.getItem('randevory_custom_reviews');
+        const list = localCustom ? JSON.parse(localCustom) : [];
+        list.unshift(created);
+        localStorage.setItem('randevory_custom_reviews', JSON.stringify(list));
+      } catch {}
     }
 
     setSubmitSuccess(true);
