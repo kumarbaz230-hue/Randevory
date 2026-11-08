@@ -445,11 +445,13 @@ function DashboardMessagesContent() {
           </div>
         </div>
 
-        {/* Sağ: Açık sohbet */}
+        {/* Sağ: Açık sohbet (Telefonda WhatsApp/Telegram gibi tam ekran, masaüstünde sağ kolon) */}
         <div
           className={`${
-            chatOpen ? 'flex' : 'hidden lg:flex'
-          } lg:col-span-8 flex-col bg-slate-50/40 min-h-0`}
+            chatOpen
+              ? 'fixed inset-0 z-50 flex lg:relative lg:inset-auto lg:z-auto'
+              : 'hidden lg:flex'
+          } lg:col-span-8 flex-col bg-white min-h-0 animate-in fade-in duration-150`}
         >
           {!activeConversation ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
@@ -468,7 +470,10 @@ function DashboardMessagesContent() {
                 <div className="flex items-center gap-2.5 min-w-0">
                   <button
                     type="button"
-                    onClick={() => setChatOpen(false)}
+                    onClick={() => {
+                      setChatOpen(false);
+                      setSelectedPhone('');
+                    }}
                     aria-label="Sohbet listesine dön"
                     className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 shrink-0"
                   >
@@ -567,7 +572,7 @@ function DashboardMessagesContent() {
               {/* Yazma kutusu */}
               <form
                 onSubmit={(e) => handleSendReply(e)}
-                className="p-2.5 lg:p-4 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0"
+                className="p-2.5 lg:p-4 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0 safe-bottom"
               >
                 <button
                   type="button"

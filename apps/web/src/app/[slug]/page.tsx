@@ -725,12 +725,20 @@ export default function BusinessPublicPage() {
                             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 text-base"
-                          style={{ backgroundColor: st.color_code || '#2563eb' }}
-                        >
-                          {st.name.charAt(0)}
-                        </div>
+                        {st.avatar_url ? (
+                          <img
+                            src={st.avatar_url}
+                            alt={st.name}
+                            className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-xs border border-slate-200"
+                          />
+                        ) : (
+                          <div
+                            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0 text-base shadow-xs"
+                            style={{ backgroundColor: st.color_code || '#2563eb' }}
+                          >
+                            {st.name.charAt(0)}
+                          </div>
+                        )}
                         <div>
                           <div className="font-semibold text-slate-900">{st.name}</div>
                           <p className="text-xs text-slate-500 mt-0.5">{st.title || 'Uzman Personel'}</p>
@@ -900,7 +908,15 @@ export default function BusinessPublicPage() {
                     </div>
                     <div>
                       <span className="text-slate-500">Uzman</span>
-                      <p className="font-bold text-slate-900 text-sm mt-0.5">{selectedSlot?.staff_name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {(() => {
+                          const stf = staffList.find((s) => s.id === selectedSlot?.staff_id);
+                          return stf?.avatar_url ? (
+                            <img src={stf.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                          ) : null;
+                        })()}
+                        <p className="font-bold text-slate-900 text-sm truncate">{selectedSlot?.staff_name}</p>
+                      </div>
                     </div>
                     <div>
                       <span className="text-slate-500">Tarih & Saat</span>

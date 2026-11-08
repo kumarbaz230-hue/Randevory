@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Staff, Service, Business } from '@/types';
+import { compressImageToDataUrl } from '@/lib/image-helper';
 import {
   UserCheck,
   Plus,
@@ -14,6 +15,9 @@ import {
   Check,
   X,
   Palette,
+  Camera,
+  Upload,
+  User,
 } from 'lucide-react';
 
 export default function DashboardStaffPage() {
@@ -28,8 +32,11 @@ export default function DashboardStaffPage() {
   const [title, setTitle] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [colorCode, setColorCode] = useState('#2563eb');
   const [assignedServiceIds, setAssignedServiceIds] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
     const b = await repo.getActiveBusiness();
@@ -54,6 +61,7 @@ export default function DashboardStaffPage() {
     setTitle('Uzman');
     setPhone('');
     setEmail('');
+    setAvatarUrl('');
     setColorCode('#2563eb');
     setAssignedServiceIds(services.map((s) => s.id)); // Varsayılan tüm hizmetler
     setShowModal(true);
@@ -65,9 +73,28 @@ export default function DashboardStaffPage() {
     setTitle(st.title);
     setPhone(st.phone);
     setEmail(st.email || '');
+    setAvatarUrl(st.avatar_url || '');
     setColorCode(st.color_code);
     setAssignedServiceIds(st.assigned_service_ids || []);
     setShowModal(true);
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen geçerli bir fotoğraf seçin (JPG veya PNG).');
+      return;
+    }
+    setIsUploadingPhoto(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file, 360, 0.85);
+      setAvatarUrl(dataUrl);
+    } catch {
+      alert('Fotoğraf yüklenemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const toggleService = (srvId: string) => {
@@ -88,6 +115,7 @@ export default function DashboardStaffPage() {
         title,
         phone,
         email: email || undefined,
+        avatar_url: avatarUrl || undefined,
         color_code: colorCode,
         assigned_service_ids: assignedServiceIds,
       });
@@ -98,6 +126,7 @@ export default function DashboardStaffPage() {
         title,
         phone,
         email: email || undefined,
+        avatar_url: avatarUrl || undefined,
         color_code: colorCode,
         is_active: true,
         assigned_service_ids: assignedServiceIds,
@@ -149,12 +178,20 @@ export default function DashboardStaffPage() {
 
             <div className="flex items-start justify-between mt-2">
               <div className="flex items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm"
-                  style={{ backgroundColor: st.color_code || '#2563eb' }}
-                >
-                  {st.name.charAt(0)}
-                </div>
+                {st.avatar_url ? (
+                  <img
+                    src={st.avatar_url}
+                    alt={st.name}
+                    className="w-12 h-12 rounded-xl object-cover shadow-sm border border-slate-200 shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0"
+                    style={{ backgroundColor: st.color_code || '#2563eb' }}
+                  >
+                    {st.name.charAt(0)}
+                  </div>
+                )}
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm">{st.name}</h3>
                   <span className="text-xs text-slate-500">{st.title}</span>
@@ -231,6 +268,68 @@ export default function DashboardStaffPage() {
             </div>
 
             <form onSubmit={handleSave} className="py-4 space-y-4 text-xs">
+              {/* Personel Fotoğrafı (İsteğe bağlı) */}
+              <div className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="relative group shrink-0">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Personel"
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-sm"
+                    />
+                  ) : (
+                    <div
+                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-sm"
+                      style={{ backgroundColor: colorCode }}
+                    >
+                      {name ? name.charAt(0).toUpperCase() : <User className="w-8 h-8 opacity-70" />}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Fotoğraf Değiştir"
+                    className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-brand-600 text-white shadow hover:bg-brand-700"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-slate-900 text-xs">Personel Fotoğrafı (İsteğe Bağlı)</div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Müşteriler randevu alırken personelin fotoğrafını görebilir.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingPhoto}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-[11px] font-semibold flex items-center gap-1 shadow-xs"
+                    >
+                      <Upload className="w-3 h-3" />
+                      {isUploadingPhoto ? 'İşleniyor...' : avatarUrl ? 'Değiştir' : 'Fotoğraf Yükle'}
+                    </button>
+                    {avatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatarUrl('')}
+                        className="px-2 py-1 rounded-lg text-rose-600 hover:bg-rose-50 text-[11px] font-medium"
+                      >
+                        Kaldır
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Ad Soyad *</label>
                 <input

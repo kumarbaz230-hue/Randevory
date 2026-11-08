@@ -40,6 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
+      <head>
+        <link rel="preconnect" href="https://ysxwuiecybnsgbjbcfoa.supabase.co" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://ysxwuiecybnsgbjbcfoa.supabase.co" />
+      </head>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-brand-500 selection:text-white">
         <AuthRecoveryListener />
         <SupportWidgetLazy />
