@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthRecoveryListener } from '@/components/auth-recovery-listener';
-import { SupportFloatingWidget } from '@/components/support-floating-widget';
+import { SupportWidgetLazy } from '@/components/support-widget-lazy';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -25,7 +25,7 @@ export default function RootLayout({
     <html lang="tr">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-brand-500 selection:text-white">
         <AuthRecoveryListener />
-        <SupportFloatingWidget />
+        <SupportWidgetLazy />
         {children}
       </body>
     </html>

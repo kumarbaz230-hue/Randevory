@@ -61,16 +61,47 @@ export class DataRepository {
   }
 
   // --- AKTİF İŞLETME YÖNETİMİ ---
+  // Kısa süreli önbellek: her sayfa geçişinde aynı işletme sorgusunun tekrar tekrar
+  // yapılmasını engeller (panel çok daha hızlı hissedilir). Kullanıcı bazlı tutulur.
+  private activeBizCache: { uid: string; biz: Business; ts: number } | null = null;
+  private activeBizInflight: Promise<Business | null> | null = null;
+  private static readonly ACTIVE_BIZ_TTL_MS = 20000;
+
+  invalidateActiveBusinessCache() {
+    this.activeBizCache = null;
+    this.activeBizInflight = null;
+  }
+
   async getActiveBusiness(): Promise<Business | null> {
     if (!isSupabaseConfigured()) {
       return store.getBusinessById('b-1') || store.getBusinessBySlug('salon-prestij') || null;
     }
 
+    if (this.activeBizInflight) return this.activeBizInflight;
+
+    this.activeBizInflight = this.fetchActiveBusiness().finally(() => {
+      this.activeBizInflight = null;
+    });
+    return this.activeBizInflight;
+  }
+
+  private async fetchActiveBusiness(): Promise<Business | null> {
     try {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      // getSession yerel okur (ağ isteği yok); veri erişimi zaten sunucuda RLS ile korunuyor
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
       if (user) {
+        const cached = this.activeBizCache;
+        if (
+          cached &&
+          cached.uid === user.id &&
+          Date.now() - cached.ts < DataRepository.ACTIVE_BIZ_TTL_MS
+        ) {
+          return cached.biz;
+        }
+
         // Oturum açmış kullanıcının sahip olduğu işletmeyi getir
         const { data: member } = await supabase
           .from('business_members')
@@ -82,12 +113,18 @@ export class DataRepository {
 
         if (member?.businesses) {
           const bizObj = Array.isArray(member.businesses) ? member.businesses[0] : member.businesses;
-          if (bizObj) return bizObj as unknown as Business;
+          if (bizObj) {
+            this.activeBizCache = { uid: user.id, biz: bizObj as unknown as Business, ts: Date.now() };
+            return bizObj as unknown as Business;
+          }
         }
 
         // Giriş yapmış kullanıcının henüz bir işletmesi yoksa null döndür
+        this.activeBizCache = null;
         return null;
       }
+
+      this.activeBizCache = null;
 
       // Oturum yoksa (misafir veya demo) varsayılan örnek işletmeyi getir (Salon Prestij)
       const { data: defaultBiz } = await supabase
@@ -164,6 +201,7 @@ export class DataRepository {
       .single();
 
     if (bizErr) throw new Error(bizErr.message);
+    this.invalidateActiveBusinessCache();
 
     // Eğer oturum açmış kullanıcı varsa işletme üyesi/sahibi yap
     if (user) {
@@ -284,6 +322,7 @@ export class DataRepository {
       .select()
       .single();
 
+    this.invalidateActiveBusinessCache();
     if (error) throw new Error(error.message);
     return data as Business;
   }

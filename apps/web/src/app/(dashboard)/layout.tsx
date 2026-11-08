@@ -90,8 +90,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!activeBiz) return;
     const timer = setInterval(() => {
+      if (document.hidden) return; // sekme arka plandaysa sorgu atma
       repo.getUnreadBusinessMessagesCount(activeBiz.id).then((cnt) => setUnreadMessages(cnt));
-    }, 6000);
+    }, 20000);
     return () => clearInterval(timer);
   }, [activeBiz]);
 

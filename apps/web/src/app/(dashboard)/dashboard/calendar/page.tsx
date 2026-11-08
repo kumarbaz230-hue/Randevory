@@ -91,14 +91,18 @@ export default function DashboardCalendarPage() {
     });
   }, [appointments, currentDate, selectedStaffFilter]);
 
-  // Hourly timeline from 08:00 to 23:00 (plus dynamically includes any appointment hour)
+  // Saat çizelgesi: varsayılan sadece randevulu saatler (kısa liste); isteğe bağlı 08:00-23:00 tümü
+  const [showEmptyHours, setShowEmptyHours] = useState(false);
   const hours = useMemo(() => {
-    const baseHours = new Set<number>(Array.from({ length: 16 }, (_, i) => i + 8)); // 08:00 .. 23:00
+    const baseHours = new Set<number>();
+    if (showEmptyHours) {
+      for (let h = 8; h <= 23; h++) baseHours.add(h);
+    }
     dayAppointments.forEach((a) => {
       baseHours.add(new Date(a.start_time).getHours());
     });
     return Array.from(baseHours).sort((a, b) => a - b);
-  }, [dayAppointments]);
+  }, [dayAppointments, showEmptyHours]);
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,10 +212,29 @@ export default function DashboardCalendarPage() {
 
       {/* Daily Time Grid */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs font-semibold text-slate-500">
-          <span>Saat</span>
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
           <span>Bu Güne Ait Randevular ({dayAppointments.length})</span>
+          <button
+            type="button"
+            onClick={() => setShowEmptyHours((v) => !v)}
+            className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-semibold"
+          >
+            {showEmptyHours ? 'Boş saatleri gizle' : 'Tüm saatleri göster'}
+          </button>
         </div>
+
+        {hours.length === 0 && (
+          <div className="py-12 px-4 text-center text-sm text-slate-400">
+            Bu gün için randevu yok.
+            <button
+              type="button"
+              onClick={() => setShowEmptyHours(true)}
+              className="block mx-auto mt-2 text-xs font-semibold text-brand-600 hover:underline"
+            >
+              Tüm saatleri göster
+            </button>
+          </div>
+        )}
 
         <div className="divide-y divide-slate-100">
           {hours.map((hour) => {
@@ -224,9 +247,9 @@ export default function DashboardCalendarPage() {
             });
 
             return (
-              <div key={hour} className="flex min-h-[72px] hover:bg-slate-50/50 transition-colors">
+              <div key={hour} className="flex min-h-[56px] hover:bg-slate-50/50 transition-colors">
                 {/* Time Column */}
-                <div className="w-20 sm:w-24 p-3 text-xs font-semibold text-slate-400 border-r border-slate-100 shrink-0 text-center flex items-start justify-center pt-3">
+                <div className="w-16 sm:w-24 p-3 text-xs font-semibold text-slate-400 border-r border-slate-100 shrink-0 text-center flex items-start justify-center pt-3">
                   {hourFormatted}
                 </div>
 
@@ -248,7 +271,7 @@ export default function DashboardCalendarPage() {
                         <div
                           key={apt.id}
                           onClick={() => setSelectedAptDetail(apt)}
-                          className="cursor-pointer p-3 rounded-xl border text-left shadow-sm hover:shadow transition-all min-w-[220px] max-w-sm"
+                          className="cursor-pointer p-3 rounded-xl border text-left shadow-sm hover:shadow transition-all w-full sm:w-auto sm:min-w-[220px] sm:max-w-sm"
                           style={{
                             borderLeftWidth: '5px',
                             borderLeftColor: staffMember?.color_code || '#2563eb',

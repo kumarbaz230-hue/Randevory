@@ -154,6 +154,7 @@ export default function BusinessPublicPage() {
     if (normPhone.length < 10) return;
 
     const fetchMsgs = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       repo.getChatMessages(business.id, normPhone).then((msgs) => {
         setChatMessages(msgs);
         repo.markMessagesAsRead(business.id, normPhone, 'customer');
@@ -161,7 +162,7 @@ export default function BusinessPublicPage() {
     };
 
     fetchMsgs();
-    const timer = setInterval(fetchMsgs, 4000);
+    const timer = setInterval(fetchMsgs, isSupabaseConfigured() ? 15000 : 5000);
 
     let channel: any = null;
     if (isSupabaseConfigured()) {
