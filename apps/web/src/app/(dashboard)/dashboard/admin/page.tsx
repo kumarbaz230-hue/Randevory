@@ -110,6 +110,7 @@ export default function SuperAdminDashboardPage() {
   const [ticketSearch, setTicketSearch] = useState('');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showQuickTools, setShowQuickTools] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Ticket reply state & selected business per ticket for quick link pulling
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
@@ -183,6 +184,16 @@ export default function SuperAdminDashboardPage() {
     }, 4000);
     return () => clearInterval(timer);
   }, [authorized, activeTab]);
+
+  // Destek mesajı değiştiğinde veya yeni bilet seçildiğinde en alta kaydır
+  useEffect(() => {
+    if (activeTab === 'tickets') {
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, selectedTicketId, tickets]);
 
   // Find matching business for a ticket automatically (by owner_email or name)
   const getMatchedBusinessForTicket = (ticket: AdminTicketRow): AdminBusinessRow | undefined => {
@@ -548,18 +559,6 @@ export default function SuperAdminDashboardPage() {
     filteredTickets.find((t) => t.id === selectedTicketId) ||
     filteredTickets[0] ||
     null;
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (activeSelectedTicket) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [
-    activeSelectedTicket?.id,
-    activeSelectedTicket?.messages?.length,
-    activeSelectedTicket?.admin_reply,
-  ]);
 
   const openTicketCount = tickets.filter((t) => t.status === 'open').length;
   const bannedBizCount = businesses.filter((b) => !b.is_active).length;
