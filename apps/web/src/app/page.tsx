@@ -66,7 +66,7 @@ export default function HomePage() {
               href="/dashboard"
               className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-brand-600 text-white font-semibold shadow-lg shadow-brand-600/25 hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
             >
-              Yönetim Panelini İncele <ArrowRight className="w-4 h-4" />
+              İşletme Tablosunu İncele <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/nasil-kullanilir"
@@ -297,7 +297,7 @@ export default function HomePage() {
             <Link href="/yasal#hizmet-sozlesmesi" className="hover:text-white transition-colors">Hizmet Sözleşmesi</Link>
             <Link href="/yasal#iptal-iade" className="hover:text-white transition-colors">İptal & İade Koşulları</Link>
             <Link href="/yasal#kvkk" className="hover:text-white transition-colors">Gizlilik & KVKK</Link>
-            <Link href="/dashboard" className="hover:text-white transition-colors">Yönetim Paneli</Link>
+            <Link href="/dashboard" className="hover:text-white transition-colors">İşletme Tablosu</Link>
           </div>
         </div>
       </footer>

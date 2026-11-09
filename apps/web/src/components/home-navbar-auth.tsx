@@ -52,7 +52,7 @@ export function HomeNavbarAuth() {
           href="/dashboard"
           className="px-4 py-2 text-sm font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition-all flex items-center gap-2"
         >
-          Yönetim Paneli <ArrowRight className="w-4 h-4" />
+          İşletme Tablosu <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
     );
@@ -70,7 +70,7 @@ export function HomeNavbarAuth() {
           className="px-4 py-2 text-sm font-semibold rounded-xl bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition-all flex items-center gap-2"
         >
           <LayoutDashboard className="w-4 h-4" />
-          Yönetim Paneline Dön
+          İşletme Tablosuna Dön
         </Link>
       </div>
     );

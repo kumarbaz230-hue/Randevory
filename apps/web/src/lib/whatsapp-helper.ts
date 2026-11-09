@@ -46,7 +46,7 @@ export function createCustomerToBusinessWhatsAppUrl(params: {
     ``,
     `📅 *Tarih:* ${dateStr}`,
     `⏰ *Saat:* ${timeStr}`,
-    `✂️ *Hizmet:* ${params.serviceName} (${params.totalPrice} ₺)`,
+    `✨ *Hizmet:* ${params.serviceName} (${params.totalPrice} ₺)`,
     params.staffName ? `👤 *Uzman:* ${params.staffName}` : '',
     `🙋‍♂️ *Müşteri:* ${params.customerName} (${params.customerPhone})`,
     params.notes ? `📝 *Not:* ${params.notes}` : '',
@@ -136,7 +136,7 @@ export function createReviewRequestWhatsAppUrl(params: {
   const lines = [
     `Merhaba Sayın *${params.customerName}*! 👋🌟`,
     `Bugün *${params.businessName}* işletmemizi tercih ettiğiniz için teşekkür ederiz!`,
-    params.serviceName ? `✂️ *Hizmet:* ${params.serviceName}` : '',
+    params.serviceName ? `✨ *Hizmet:* ${params.serviceName}` : '',
     params.staffName ? `👤 *Uzman:* ${params.staffName}` : '',
     ``,
     `Deneyiminizi puanlamak ve 30 saniyede görüşünüzü paylaşmak için tıklayın:`,

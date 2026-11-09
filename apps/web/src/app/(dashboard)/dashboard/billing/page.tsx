@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Zap,
   Users,
-  Scissors,
   Calendar,
   Lock,
   ArrowRight,
@@ -360,7 +359,7 @@ function BillingContent() {
           <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-100">
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                <Scissors className="w-3.5 h-3.5 text-indigo-600" /> Hizmet Tanımları
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Hizmet Tanımları
               </span>
               <span className="font-bold text-slate-900">
                 {servicesCount} / {activePlan?.max_services >= 999 ? 'Sınırsız' : activePlan?.max_services}
@@ -608,7 +607,7 @@ function BillingContent() {
                   onClick={() => setIsModalOpen(false)}
                   className="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-md"
                 >
-                  Panele Dön ve Kullanmaya Başla
+                  İşletme Tablosuna Dön ve Kullanmaya Başla
                 </button>
               </div>
             ) : (

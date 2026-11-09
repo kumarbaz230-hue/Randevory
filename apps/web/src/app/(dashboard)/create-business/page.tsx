@@ -204,7 +204,7 @@ export default function CreateBusinessPage() {
               disabled={loading}
               className="px-6 py-3 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition-all shadow-md shadow-brand-500/20 disabled:opacity-50 flex items-center gap-2"
             >
-              {loading ? 'Oluşturuluyor...' : 'İşletmeyi Oluştur ve Panele Geç'}
+              {loading ? 'Oluşturuluyor...' : 'İşletmeyi Oluştur ve Başla'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

@@ -19,7 +19,8 @@ import {
   Calendar,
   LayoutDashboard,
   Users,
-  Scissors,
+  Sparkles,
+  UtensilsCrossed,
   UserCheck,
   TrendingUp,
   Settings,
@@ -227,7 +228,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Genel Bakış', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Randevu Takvimi', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Müşteri Mesajları', href: '/dashboard/messages', icon: MessageSquare, badge: unreadMessages },
-    { name: 'Hizmetler & Fiyatlar', href: '/dashboard/services', icon: Scissors },
+    { name: 'Hizmetler & Fiyatlar', href: '/dashboard/services', icon: Sparkles },
+    { name: 'Masalar & Alanlar', href: '/dashboard/tables', icon: UtensilsCrossed },
     { name: 'Personel Yönetimi', href: '/dashboard/staff', icon: UserCheck },
     { name: 'Müşteriler (CRM)', href: '/dashboard/customers', icon: Users },
     { name: 'Raporlar & Gelir', href: '/dashboard/reports', icon: TrendingUp },
@@ -508,7 +510,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             { name: 'Genel', href: '/dashboard', icon: LayoutDashboard },
             { name: 'Takvim', href: '/dashboard/calendar', icon: Calendar },
             { name: 'Mesajlar', href: '/dashboard/messages', icon: MessageSquare, badge: unreadMessages },
-            { name: 'Hizmetler', href: '/dashboard/services', icon: Scissors },
+            { name: 'Hizmetler', href: '/dashboard/services', icon: Sparkles },
           ].map((tab) => {
             const TabIcon = tab.icon;
             const active = pathname === tab.href;
@@ -552,7 +554,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Top Navbar */}
         <header className="hidden md:flex h-16 bg-white border-b border-slate-200 px-8 items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span className="font-medium text-slate-800">Yönetim Paneli</span>
+            <span className="font-medium text-slate-800">İşletme Tablosu</span>
             <span>/</span>
             <span className="font-semibold text-brand-600">{activeNavTitle}</span>
           </div>
@@ -586,7 +588,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-300 flex items-center gap-1.5 transition-colors shadow-sm"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Kurucu / Admin Paneli
+                Kurucu Merkezi
                 {openSupportTickets > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px]">
                     {openSupportTickets}

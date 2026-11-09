@@ -80,7 +80,7 @@ const AI_DETAILED_ANSWERS: Record<string, string> = {
   menu_password:
     '🔑 **Şifre Yenileme & Giriş Çözümü:**\n\n1. Giriş ekranındaki (/login) **"Şifremi Unuttum"** butonuna tıklayarak e-postanıza sıfırlama bağlantısı gönderebilirsiniz.\n2. Eğer bağlantı gelmediyse veya hata alıyorsanız hemen aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna basın; destek ekibimiz size doğrudan şifre yenileme bağlantısını buradan gönderecektir!',
   menu_link:
-    '🔗 **İşletme Linki (Bağlantı) Çözümü:**\n\n1. Yönetim Paneli > **İşletme Ayarları** sayfasından linkinizi kontrol edip kaydedebilirsiniz.\n2. Eğer linkinizi bulamıyorsanız veya bozuk görünüyorsa aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın; temsilcimiz işletme bağlantınızı tek tuşla onarıp size buradan gönderecektir!',
+    '🔗 **İşletme Linki (Bağlantı) Çözümü:**\n\n1. İşletmem > **İşletme Ayarları** sayfasından linkinizi kontrol edip kaydedebilirsiniz.\n2. Eğer linkinizi bulamıyorsanız veya bozuk görünüyorsa aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın; temsilcimiz işletme bağlantınızı tek tuşla onarıp size buradan gönderecektir!',
   ans_link_broken:
     '🔗 **İşletme Bağlantısı Hatası:**\n\nİşletme adını değiştirdiğinizde Türkçe karakterlerden kaynaklanan bağlantı sorunu sistemimizde otomatik onarılmıştır. Hala açılmıyorsa aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın; temsilcimiz çalışan güncel bağlantınızı hemen sohbete gönderecektir.',
   ans_calendar_empty:
@@ -92,9 +92,9 @@ const AI_DETAILED_ANSWERS: Record<string, string> = {
   ans_slot_taken:
     '📅 **Müsait Saatler:**\n\nDolu olan saatler çakışma önleme motoru tarafından otomatik gizlenir. Farklı bir gün veya "Fark Etmez (İlk Müsait Uzman)" seçeneğini deneyebilirsiniz.',
   menu_qr_wp:
-    '📱 **QR Kod, Vitrin Afişi & WhatsApp:**\n\n• Yönetim panelinin sol menüsündeki **"QR Kod"** butonundan baskıya hazır vitrin afişinizi indirebilirsiniz.\n• Randevu alındığında veya onaylandığında çıkan yeşil **WhatsApp** butonuyla hazır mesajı tek tuşla gönderebilirsiniz.',
+    '📱 **QR Kod, Vitrin Afişi & WhatsApp:**\n\n• İşletme Tablosunun sol menüsündeki **"QR Kod"** butonundan baskıya hazır vitrin afişinizi indirebilirsiniz.\n• Randevu alındığında veya onaylandığında çıkan yeşil **WhatsApp** butonuyla hazır mesajı tek tuşla gönderebilirsiniz.',
   menu_billing:
-    '💳 **Paketler & Abonelik:**\n\nYönetim Paneli > **Abonelik & Lisans** menüsünden Standart, Profesyonel veya Kurumsal paketlere geçiş yapabilirsiniz. Özel kampanya veya paket tanımlaması için müşteri temsilcimize bağlanabilirsiniz.',
+    '💳 **Paketler & Abonelik:**\n\nİşletmem > **Abonelik & Lisans** menüsünden Standart, Profesyonel veya Kurumsal paketlere geçiş yapabilirsiniz. Özel kampanya veya paket tanımlaması için müşteri temsilcimize bağlanabilirsiniz.',
   menu_complaint:
     '🚨 **Güvenlik & İşletme Şikayeti:**\n\nGüvenilir olmayan veya kuralları ihlal eden bir işletmeyi bildirmek için lütfen aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın ve işletme adını/ekran görüntüsünü yazın. Güvenlik ekibimiz işletmeyi inceleyip anında yasaklayacaktır.',
 };

@@ -18,7 +18,6 @@ import {
   UserCheck,
   ChevronRight,
   ShieldCheck,
-  Scissors,
   Smartphone,
   Download,
 } from 'lucide-react';
@@ -80,7 +79,7 @@ export function HomeHeader() {
   const navItems = [
     { id: 'features', label: 'Özellikler', icon: Sparkles },
     { id: 'nasil-calisir', label: 'Nasıl Kullanılır?', icon: BookOpen },
-    { id: 'sectors', label: 'Sektörler', icon: Scissors },
+    { id: 'sectors', label: 'Sektörler', icon: Sparkles },
     {
       id: 'yorumlar',
       label: 'Yorumlar',
@@ -147,8 +146,8 @@ export function HomeHeader() {
               className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold rounded-xl bg-brand-600 text-white hover:bg-brand-700 shadow-sm transition-all flex items-center gap-1.5 shrink-0"
             >
               <LayoutDashboard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Yönetim Paneline Dön</span>
-              <span className="sm:hidden">Panel</span>
+              <span className="hidden sm:inline">İşletme Tablosuna Dön</span>
+              <span className="sm:hidden">Tablo</span>
             </Link>
           ) : (
             <div className="flex items-center gap-1.5">
@@ -231,7 +230,7 @@ export function HomeHeader() {
           onClick={(e) => handleNavClick(e, 'sectors')}
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white text-slate-800 border border-slate-300 text-xs font-semibold shrink-0 shadow-xs hover:border-brand-500 active:scale-95 transition-transform"
         >
-          <Scissors className="w-3.5 h-3.5 text-purple-600" />
+          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
           Sektörler
         </a>
 
@@ -348,7 +347,7 @@ export function HomeHeader() {
                   className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  Yönetim Paneline Git
+                  İşletme Tablosuna Git
                 </Link>
               </div>
             ) : (

@@ -62,6 +62,8 @@ export default function DashboardSettingsPage() {
   const [slotInterval, setSlotInterval] = useState(30);
   const [autoConfirm, setAutoConfirm] = useState(true);
   const [cancelHours, setCancelHours] = useState(2);
+  const [enableTableBooking, setEnableTableBooking] = useState(false);
+  const [defaultBookingStyle, setDefaultBookingStyle] = useState<'service' | 'table'>('service');
 
   // Loyalty Program State (İsteğe bağlı pazarlama)
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
@@ -99,6 +101,8 @@ export default function DashboardSettingsPage() {
         setSlotInterval(b.settings.slot_interval_minutes ?? 30);
         setAutoConfirm(b.settings.auto_confirm_appointments !== false);
         setCancelHours(b.settings.cancellation_deadline_hours ?? 2);
+        setEnableTableBooking(Boolean(b.settings?.enable_table_booking || b.sector === 'cafe_restaurant'));
+        setDefaultBookingStyle(b.settings?.default_booking_style || (b.sector === 'cafe_restaurant' ? 'table' : 'service'));
 
         const lp = b.settings?.loyalty_program;
         if (lp) {
@@ -216,6 +220,8 @@ export default function DashboardSettingsPage() {
           slot_interval_minutes: Number(slotInterval),
           auto_confirm_appointments: autoConfirm,
           cancellation_deadline_hours: Number(cancelHours),
+          enable_table_booking: enableTableBooking,
+          default_booking_style: defaultBookingStyle,
           maps_url: mapsUrl.trim() || undefined,
           latitude: latitude || undefined,
           longitude: longitude || undefined,
@@ -541,7 +547,9 @@ export default function DashboardSettingsPage() {
                 onChange={(e) => setSlotInterval(Number(e.target.value))}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
               >
+                <option value={10}>10 Dakika</option>
                 <option value={15}>15 Dakika</option>
+                <option value={20}>20 Dakika</option>
                 <option value={30}>30 Dakika (Önerilen)</option>
                 <option value={45}>45 Dakika</option>
                 <option value={60}>60 Dakika (1 Saat)</option>
@@ -712,6 +720,101 @@ export default function DashboardSettingsPage() {
               >
                 Aktif Et →
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Masa ve Mekan Rezervasyonu (2. Stil) */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg">
+                🍽️
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  Masa & Mekan Rezervasyon Düzeni (2. Stil)
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Kafe, restoran, nargile/lounge, oyun ve masa düzeniyle çalışan işletmeler için görsel masa rezervasyon stili.
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableTableBooking}
+                onChange={(e) => setEnableTableBooking(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+            </label>
+          </div>
+
+          {enableTableBooking && (
+            <div className="pt-4 border-t border-slate-100 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => setDefaultBookingStyle('service')}
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                    defaultBookingStyle === 'service'
+                      ? 'border-brand-600 bg-brand-50/40 text-brand-900 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-between mb-1">
+                    <span>⚡ 1. Stil: Hizmet & Seans Seçimi</span>
+                    {defaultBookingStyle === 'service' && <span className="text-[10px] bg-brand-600 text-white px-2 py-0.5 rounded-full font-bold">Varsayılan</span>}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Kuaför, berber, klinik, oto bakım vb. randevuları için idealdir.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setDefaultBookingStyle('table')}
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                    defaultBookingStyle === 'table'
+                      ? 'border-orange-500 bg-orange-50/40 text-orange-950 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-between mb-1 text-orange-950">
+                    <span>🍽️ 2. Stil: Görsel Masa Rezervasyonu</span>
+                    {defaultBookingStyle === 'table' && <span className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-bold">Varsayılan</span>}
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Müşteri Bahçe, Salon, Teras veya VIP Locadan dilediği masayı ve kişi sayısını seçerek rezervasyon yapar.
+                  </p>
+                </div>
+              </div>
+
+              {/* Masa Alanları & Özet */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="font-bold text-slate-800 mb-2">Hazır Masa Düzeni (Çoklulaştırılmış Alanlar):</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                    <div className="text-base">🌿</div>
+                    <div className="font-bold text-slate-800">Bahçe</div>
+                    <div className="text-[11px] text-slate-500">4 Masa • 16 Kişi</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                    <div className="text-base">🛋️</div>
+                    <div className="font-bold text-slate-800">Ana Salon</div>
+                    <div className="text-[11px] text-slate-500">5 Masa • 18 Kişi</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                    <div className="text-base">🌅</div>
+                    <div className="font-bold text-slate-800">Teras</div>
+                    <div className="text-[11px] text-slate-500">3 Masa • 10 Kişi</div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                    <div className="text-base">👑</div>
+                    <div className="font-bold text-slate-800">VIP Loca</div>
+                    <div className="text-[11px] text-slate-500">2 Loca • 18 Kişi</div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

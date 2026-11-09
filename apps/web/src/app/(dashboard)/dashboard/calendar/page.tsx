@@ -18,7 +18,6 @@ import {
   Check,
   X,
   Phone,
-  Scissors,
   CheckCircle,
   MessageSquare,
   Star,

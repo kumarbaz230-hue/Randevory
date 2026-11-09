@@ -20,6 +20,15 @@ export type BusinessSector =
   | 'health_clinic'
   | 'other';
 
+export interface RestaurantTable {
+  id: string;
+  name: string;
+  section: 'bahce' | 'salon' | 'teras' | 'vip';
+  capacity: number;
+  features?: string[];
+  is_active?: boolean;
+}
+
 export interface BusinessSettings {
   slot_interval_minutes: number;
   allow_guest_booking: boolean;
@@ -31,6 +40,9 @@ export interface BusinessSettings {
   maps_url?: string;
   latitude?: number;
   longitude?: number;
+  enable_table_booking?: boolean;
+  default_booking_style?: 'service' | 'table';
+  custom_tables?: RestaurantTable[];
   loyalty_program?: {
     enabled: boolean;
     target_appointments: number;
@@ -108,6 +120,9 @@ export interface Appointment {
   internal_notes?: string;
   start_time: string; // ISO string
   end_time: string; // ISO string
+  table_id?: string;
+  table_name?: string;
+  guest_count?: number;
   total_price: number;
   status: AppointmentStatus;
   cancellation_reason?: string;

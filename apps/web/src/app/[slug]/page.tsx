@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -19,6 +19,9 @@ import {
 import { BusinessQrModal } from '@/components/business-qr-modal';
 import { createCustomerToBusinessWhatsAppUrl } from '@/lib/whatsapp-helper';
 import { getBusinessMapsUrl, hasMapLink, extractUrl } from '@/lib/location-helper';
+import { formatDuration } from '@/lib/format-duration';
+import { TableBookingFlow } from '@/components/table-booking-flow';
+import { isTableBookingEnabled } from '@/lib/table-helper';
 import Link from 'next/link';
 import {
   Clock,
@@ -68,6 +71,8 @@ const SECTOR_LABELS: Record<string, string> = {
 
 export default function BusinessPublicPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const urlStyle = searchParams?.get('style');
   const slug = params?.slug as string;
 
   const [business, setBusiness] = useState<Business | null>(null);
@@ -95,6 +100,8 @@ export default function BusinessPublicPage() {
   const daysTurkish = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
   // Wizard Steps: 1: Service, 2: Staff, 3: Date & Slot, 4: Customer Details, 5: Confirmation
+  // Booking Style: 'service' (1. Klasik Hizmet) vs 'table' (2. Masa Rezervasyonu)
+  const [bookingStyle, setBookingStyle] = useState<'service' | 'table'>('service');
   const [step, setStep] = useState<number>(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedStaffId, setSelectedStaffId] = useState<string>('any');
@@ -169,6 +176,9 @@ export default function BusinessPublicPage() {
     const b = await repo.getBusinessBySlug(slug);
     if (b) {
       setBusiness(b);
+      if (urlStyle === 'table' || b.sector === 'cafe_restaurant' || b.settings?.default_booking_style === 'table') {
+        setBookingStyle('table');
+      }
       const [srvs, stf, wh, apts, revs] = await Promise.all([
         repo.getServices(b.id),
         repo.getStaff(b.id),
@@ -739,6 +749,46 @@ export default function BusinessPublicPage() {
         {/* TAB 1: BOOK APPOINTMENT WIZARD */}
         {activeTab === 'book' && (
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+            {/* Style Switcher (1. Klasik Hizmet vs 2. Masa Rezervasyonu) */}
+            {(isTableBookingEnabled(business) || urlStyle === 'table') && (
+              <div className="p-2 sm:p-2.5 bg-slate-50 border-b border-slate-200/80 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBookingStyle('table')}
+                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    bookingStyle === 'table'
+                      ? 'bg-orange-500 text-white shadow-xs'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>🍽️ Masa Rezervasyonu (2. Stil)</span>
+                  {business?.sector === 'cafe_restaurant' && (
+                    <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded-full hidden sm:inline font-bold">Önerilen</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingStyle('service')}
+                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    bookingStyle === 'service'
+                      ? 'bg-brand-600 text-white shadow-xs'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>⚡ Hizmet & Seans Randevusu</span>
+                </button>
+              </div>
+            )}
+
+            {bookingStyle === 'table' && (isTableBookingEnabled(business) || urlStyle === 'table') ? (
+              <TableBookingFlow
+                business={business}
+                appointments={appointments}
+                customerPhone={customerPhone}
+                onAppointmentCreated={(newApt) => setAppointments((prev) => [newApt, ...prev])}
+              />
+            ) : (
+              <>
             {/* Booking Progress Tracker */}
             {step < 5 && (
               <div className="border-b border-slate-200 bg-slate-50/50 px-4 sm:px-6 py-3 sm:py-4">
@@ -802,7 +852,7 @@ export default function BusinessPublicPage() {
                             <div className="flex items-center gap-3 text-xs text-slate-500 mt-2">
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                {service.duration_minutes} dk
+                                {formatDuration(service.duration_minutes)}
                               </span>
                               {service.category_name && (
                                 <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600">
@@ -924,7 +974,7 @@ export default function BusinessPublicPage() {
                     <div>
                       <h2 className="text-xl font-bold text-slate-900">3. Tarih ve Uygun Saat Seçimi</h2>
                       <p className="text-sm text-slate-500 mt-1">
-                        {selectedService?.name} ({selectedService?.duration_minutes} dk) için müsait saatler:
+                        {selectedService?.name} ({formatDuration(selectedService?.duration_minutes || 0)}) için müsait saatler:
                       </p>
                     </div>
                     <button
@@ -1360,11 +1410,13 @@ export default function BusinessPublicPage() {
                 </div>
               )}
             </div>
+            </>
+            )}
           </div>
         )}
 
         {/* Mobile Sticky Booking Bar (App-like native checkout experience) */}
-        {activeTab === 'book' && step < 4 && (
+        {activeTab === 'book' && bookingStyle === 'service' && step < 4 && (
           <div className="sm:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 p-3 z-30 shadow-2xl safe-bottom flex items-center justify-between gap-3 animate-in slide-in-from-bottom-2">
             <div className="min-w-0 flex-1">
               {step === 1 && (
@@ -1880,7 +1932,7 @@ export default function BusinessPublicPage() {
                         <div className="flex flex-wrap items-center gap-2 pt-1">
                           {rev.service_name && (
                             <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
-                              ✂️ {rev.service_name}
+                              ✨ {rev.service_name}
                             </span>
                           )}
                           {rev.staff_name && (

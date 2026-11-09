@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { store } from '@/lib/data-store';
 import { repo } from '@/lib/supabase-repository';
 import { Service, Business } from '@/types';
+import { formatDuration } from '@/lib/format-duration';
 import {
-  Scissors,
   Plus,
   Trash2,
   Edit,
@@ -177,7 +177,7 @@ export default function DashboardServicesPage() {
                   </span>
                   <span className="flex items-center gap-1 text-slate-500 text-[11px]">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    {srv.duration_minutes} dk{srv.buffer_after_minutes ? ` (+${srv.buffer_after_minutes})` : ''}
+                    {formatDuration(srv.duration_minutes)}{srv.buffer_after_minutes ? ` (+${srv.buffer_after_minutes} dk)` : ''}
                   </span>
                 </div>
 
@@ -237,7 +237,7 @@ export default function DashboardServicesPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-slate-700 font-medium">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {srv.duration_minutes} dk
+                      {formatDuration(srv.duration_minutes)}
                     </div>
                     {srv.buffer_after_minutes > 0 && (
                       <div className="text-[10px] text-slate-400 mt-0.5">
@@ -336,27 +336,77 @@ export default function DashboardServicesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1 text-[11px] sm:text-xs">Süre (Dk) *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="5"
-                    required
-                    placeholder="30"
-                    value={durationMinutes}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm"
-                  />
+              {/* Duration: hour + minute picker (any minute value is allowed, e.g. 1 sa 35 dk) */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1 text-[11px] sm:text-xs">Hizmet Süresi *</label>
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={Math.floor((Number(durationMinutes) || 0) / 60)}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const h = Math.max(0, Math.min(23, Number(e.target.value) || 0));
+                        const m = (Number(durationMinutes) || 0) % 60;
+                        setDurationMinutes(h * 60 + m);
+                      }}
+                      className="w-full pl-3 pr-12 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm font-semibold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">saat</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="30"
+                      value={(Number(durationMinutes) || 0) % 60}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const m = Math.max(0, Math.min(59, Number(e.target.value) || 0));
+                        const h = Math.floor((Number(durationMinutes) || 0) / 60);
+                        setDurationMinutes(h * 60 + m);
+                      }}
+                      className="w-full pl-3 pr-12 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-xs sm:text-sm font-semibold"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400">dk</span>
+                  </div>
                 </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[15, 30, 45, 60, 75, 90, 120, 150, 180].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setDurationMinutes(m)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${
+                        Number(durationMinutes) === m
+                          ? 'bg-brand-600 text-white border-brand-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-brand-300'
+                      }`}
+                    >
+                      {formatDuration(m)}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Toplam: <strong className="text-slate-800">{formatDuration(Number(durationMinutes) || 0)}</strong>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1 text-[11px] sm:text-xs">Mola Payı (Dk)</label>
                   <input
                     type="number"
                     min="0"
-                    step="5"
+                    step="1"
                     placeholder="0"
                     value={bufferAfterMinutes}
                     onFocus={(e) => e.target.select()}

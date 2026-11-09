@@ -53,7 +53,7 @@ function LoginForm() {
       setSuccessMessage('E-posta adresiniz başarıyla doğrulandı! Şimdi şifrenizle giriş yapabilirsiniz.');
     }
 
-    // Kullanıcı zaten giriş yapmışsa otomatik olarak Yönetim Paneline yönlendir
+    // Kullanıcı zaten giriş yapmışsa otomatik olarak İşletme sayfasına yönlendir
     if (isSupabaseConfigured()) {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {

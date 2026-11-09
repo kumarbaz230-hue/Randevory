@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
     const businessSmsText =
       event === 'appointment_cancelled'
         ? `[RANDEVORY] RANDEVU IPTALI: ${customerName} (${customerPhone}), ${dateFormatted} tarihli randevusunu iptal etti. Neden: ${cancelReason || 'Belirtilmedi'}`
-        : `[RANDEVORY] YENI RANDEVU! Musteri: ${customerName} (${customerPhone}), Hizmet: ${serviceName || 'Randevu'} (${totalPrice || 0} TL), Tarih: ${dateFormatted}. Panel: randevory.com/dashboard`;
+        : `[RANDEVORY] YENI RANDEVU! Musteri: ${customerName} (${customerPhone}), Hizmet: ${serviceName || 'Randevu'} (${totalPrice || 0} TL), Tarih: ${dateFormatted}. Isletmem: randevory.com/dashboard`;
 
     const customerSmsText =
       event === 'appointment_cancelled'

@@ -571,7 +571,7 @@ export default function SuperAdminDashboardPage() {
   if (loading) {
     return (
       <div className="p-8 text-center text-slate-500 text-sm">
-        RANDEVORY Kurucu & Güvenlik Kontrol Paneli yükleniyor...
+        RANDEVORY Kurucu Merkezi yükleniyor...
       </div>
     );
   }
@@ -582,7 +582,7 @@ export default function SuperAdminDashboardPage() {
         <ShieldAlert className="w-12 h-12 text-rose-600 mx-auto" />
         <h1 className="text-lg font-extrabold text-slate-900">Yetkisiz Erişim</h1>
         <p className="text-xs text-slate-600">
-          {errorMsg || 'Bu yönetim paneline yalnızca RANDEVORY Kurucu / Baş Yöneticisi erişebilir.'}
+          {errorMsg || 'Kurucu Merkezine yalnızca RANDEVORY Kurucu / Baş Yöneticisi erişebilir.'}
         </p>
       </div>
     );
@@ -637,7 +637,7 @@ export default function SuperAdminDashboardPage() {
               Tam Yetkili Kurucu & Canlı Destek Modu Aktif
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              RANDEVORY Merkez Yönetim & Destek Paneli
+              RANDEVORY Kurucu Merkezi & Destek
             </h1>
             <p className="text-xs text-slate-300 mt-1">
               Tek tıkla işletme bağlantısı çekip gönderin, şifre sıfırlama linki atın, çalışma saatlerini onarın veya şüpheli işletmeleri yasaklayın.

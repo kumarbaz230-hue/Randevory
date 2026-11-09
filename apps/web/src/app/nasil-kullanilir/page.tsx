@@ -12,7 +12,6 @@ import {
   ChevronRight,
   ChevronLeft,
   User,
-  Scissors,
   Sparkles,
   Share2,
   Settings,
@@ -50,19 +49,19 @@ export default function HowItWorksGuidePage() {
     {
       step: 1,
       title: '1. Adım: Müşteriniz Hizmet ve Fiyatı Seçer',
-      desc: 'Müşteriniz size özel bağlantıya (örn: randevory.com/isletmeniz) tıkladığında, yönetim panelinde tanımladığınız güncel hizmet listesini, seans sürelerini ve fiyatlarını net bir şekilde görür.',
+      desc: 'Müşteriniz size özel bağlantıya (örn: randevory.com/isletmeniz) tıkladığında, İşletme Tablonuzda tanımladığınız güncel hizmet listesini, seans sürelerini ve fiyatlarını net bir şekilde görür.',
       tip: 'Uygulama indirme veya üyelik şartı yoktur. Instagram biyografinizden veya WhatsApp üzerinden tek tıkla açılır.',
       benefits: [
         'Telefonla "Fiyatınız nedir?" sorularını ortadan kaldırır.',
         'Her hizmetin kaç dakika süreceği şeffafça görünür.',
-        'İstediğiniz zaman panelden fiyatları güncelleyebilirsiniz.',
+        'İstediğiniz zaman İşletme Tablosundan fiyatları güncelleyebilirsiniz.',
       ],
     },
     {
       step: 2,
       title: '2. Adım: Personel veya Uzman Tercihi Yapar',
       desc: 'Müşteriniz isterse kendi tanıdığı uzmanı seçer, isterse "Fark Etmez (En Uygun Uzman)" seçeneğiyle seçtiği saatte müsait olan ilk personelle otomatik eşleşir.',
-      tip: 'Her personelin verebildiği hizmetleri panelden ayrı ayrı belirleyebilirsiniz.',
+      tip: 'Her personelin verebildiği hizmetleri İşletme Tablosundan ayrı ayrı belirleyebilirsiniz.',
       benefits: [
         'Sadece seçilen hizmeti verebilen uzmanlar listelenir.',
         'Personellerinizin iş yükü dengeli dağılır.',
@@ -83,7 +82,7 @@ export default function HowItWorksGuidePage() {
     {
       step: 4,
       title: '4. Adım: İletişim Bilgileri ve Anında Randevu Onayı',
-      desc: 'Müşteriniz yalnızca Ad Soyad ve Telefon Numarasını yazarak randevusunu tamamlar. Randevu anında sizin Yönetim Panelinize ve Müşteri Veritabanınıza (CRM) düşer.',
+      desc: 'Müşteriniz yalnızca Ad Soyad ve Telefon Numarasını yazarak randevusunu tamamlar. Randevu anında sizin İşletme Yönetiminize ve Müşteri Veritabanınıza (CRM) düşer.',
       tip: 'İsterseniz randevular otomatik onaylanır, isterseniz sizin manuel onayınıza düşecek şekilde ayarlanır.',
       benefits: [
         '30 saniyenin altında tamamlanan pürüzsüz deneyim.',
@@ -462,7 +461,7 @@ export default function HowItWorksGuidePage() {
                           Randevu Anında Oluşturuldu ve Takviminize Düştü!
                         </h3>
                         <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                          Müşteriniz adını ve telefonunu yazıp onayladığı anda hem müşterinize randevu fişi gösterilir hem de sizin Yönetim Panelinizdeki takvime eklenir.
+                          Müşteriniz adını ve telefonunu yazıp onayladığı anda hem müşterinize randevu fişi gösterilir hem de sizin İşletmemnizdeki takvime eklenir.
                         </p>
                       </div>
 

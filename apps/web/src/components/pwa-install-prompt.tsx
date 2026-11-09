@@ -11,16 +11,14 @@ export function checkIsPwaStandalone(): boolean {
   const isMatchMedia = Boolean(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   const isNavStandalone = (window.navigator as any).standalone === true;
   const isDocReferrer = Boolean(document.referrer && document.referrer.includes('android-app://'));
-  const isSourceParam = Boolean(window.location.search && (window.location.search.includes('source=pwa') || window.location.search.includes('mode=standalone')));
-  const isLocalStored = localStorage.getItem('randevory_is_pwa') === 'true';
 
-  const result = isMatchMedia || isNavStandalone || isDocReferrer || isSourceParam || isLocalStored;
-  if (result) {
-    try {
-      localStorage.setItem('randevory_is_pwa', 'true');
-    } catch {}
-  }
-  return result;
+  // Only trust real browser signals. The old sticky localStorage flag / ?source=pwa param made
+  // normal browser visits on other phones show "Uygulama Yüklü" even though nothing was installed.
+  try {
+    localStorage.removeItem('randevory_is_pwa');
+  } catch {}
+
+  return isMatchMedia || isNavStandalone || isDocReferrer;
 }
 
 /**
