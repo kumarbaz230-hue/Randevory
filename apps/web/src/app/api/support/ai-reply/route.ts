@@ -45,12 +45,139 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Mesaj boş olamaz.' }, { status: 400 });
     }
 
+    // -------------------------------------------------------------
+    // TEMSİLCİNİN GERÇEK SİSTEM YETKİLERİ & EYLEM ÇALIŞTIRMA KATMANI
+    // -------------------------------------------------------------
+    let systemToolContext = '';
+
+    const fullConversationText = [
+      ...history.map((h: any) => h.text || ''),
+      message,
+    ].join(' ');
+    const lowerFull = fullConversationText.toLowerCase();
+
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ysxwuiecybnsgbjbcfoa.supabase.co';
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzeHd1aWVjeWJuc2diamJjZm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQwNTEyMDIsImV4cCI6MjEwOTYyNzIwMn0.FWA_qsBi-W585oUQnRqQK2BXLPe_poyrQIL1ziY80yI';
+
+    // 1. Yetki: Gerçek Şifre Sıfırlama Gönderimi
+    const emailMatch =
+      message.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i) ||
+      fullConversationText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
+
+    const isPasswordTopic =
+      lowerFull.includes('şifre') ||
+      lowerFull.includes('sifre') ||
+      lowerFull.includes('giriş') ||
+      lowerFull.includes('giris') ||
+      lowerFull.includes('unuttum') ||
+      lowerFull.includes('parola') ||
+      lowerFull.includes('reset') ||
+      lowerFull.includes('bağlantı') ||
+      lowerFull.includes('baglanti') ||
+      lowerFull.includes('e-posta') ||
+      lowerFull.includes('eposta');
+
+    if (emailMatch && isPasswordTopic) {
+      const targetEmail = emailMatch[0].trim().toLowerCase();
+      try {
+        const recoverRes = await fetch(`${supabaseUrl}/auth/v1/recover`, {
+          method: 'POST',
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${anonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: targetEmail }),
+        });
+
+        if (recoverRes.ok) {
+          systemToolContext += `\n[SİSTEM YETKİSİ KULLANILDI - ŞİFRE SIFIRLAMA BAŞARILI: ${targetEmail} adresine gerçek şifre sıfırlama e-postası Supabase tarafından bizzat gönderildi! Müşteriye "teknik ekibe ilettim birazdan gelir" gibi bekletici konuşma; işlemi sistemden bizzat gerçekleştirdiğini, e-posta gelen kutusunu (ve spam klasörünü) kontrol etmesini ve gelen bağlantıdan yeni şifresini hemen belirleyebileceğini sıcak bir şekilde söyle.]\n`;
+        } else {
+          systemToolContext += `\n[SİSTEM UYARISI: ${targetEmail} adresi için kısa süreli güvenlik gönderim sınırı devrede. Müşteriye sıfırlama talebini ilettiğini ancak güvenlik amacıyla birkaç dakika sonra gelen kutusunu kontrol etmesini veya tekrar denemesini söyle.]\n`;
+        }
+      } catch (e) {
+        console.error('Support tool password reset error:', e);
+      }
+    }
+
+    // 2. Yetki: Gerçek İşletme ve Profil Linki Bulma
+    if (
+      emailMatch ||
+      lowerFull.includes('linkim') ||
+      lowerFull.includes('dükkan link') ||
+      lowerFull.includes('işletme sayfam') ||
+      lowerFull.includes('profilim')
+    ) {
+      try {
+        const searchEmail = emailMatch ? emailMatch[0].trim().toLowerCase() : '';
+        const queryUrl = searchEmail
+          ? `${supabaseUrl}/rest/v1/businesses?email=eq.${searchEmail}&select=name,slug,email,phone&limit=1`
+          : null;
+
+        if (queryUrl) {
+          const bizRes = await fetch(queryUrl, {
+            headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+          });
+          if (bizRes.ok) {
+            const bizes = await bizRes.json();
+            if (Array.isArray(bizes) && bizes.length > 0) {
+              const b = bizes[0];
+              systemToolContext += `\n[SİSTEM YETKİSİ - İŞLETME BİLGİSİ BULUNDU: Bu müşterinin sistemdeki işletme adı: "${b.name}", canlı randevu linki: "randevory.com/${b.slug}". Müşteriye kayıtlı işletmesini ve linkini de hatırlatabilirsin.]\n`;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Support tool business lookup error:', e);
+      }
+    }
+
+    // 3. Yetki: Müşteri Randevusu Sorgulama
+    const phoneMatch = message.match(/(?:0)?(5\d{9})/);
+    if (
+      phoneMatch &&
+      (lowerFull.includes('randevu') ||
+        lowerFull.includes('saatim') ||
+        lowerFull.includes('ne zaman'))
+    ) {
+      try {
+        const rawPhone = phoneMatch[1];
+        const aptRes = await fetch(
+          `${supabaseUrl}/rest/v1/appointments?customer_phone=ilike.%25${rawPhone}%25&order=start_time.desc&limit=1`,
+          {
+            headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+          }
+        );
+        if (aptRes.ok) {
+          const apts = await aptRes.json();
+          if (Array.isArray(apts) && apts.length > 0) {
+            const apt = apts[0];
+            const dateStr = new Date(apt.start_time).toLocaleString('tr-TR', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            });
+            systemToolContext += `\n[SİSTEM YETKİSİ - RANDEVU BİLGİSİ BULUNDU: Müşterinin (${rawPhone}) kayıtlı en güncel randevusu: Tarih: ${dateStr}, Durum: ${apt.status}, Tutar: ${apt.total_price} TL. Müşteriye bu randevu saatini aktar.]\n`;
+          }
+        }
+      } catch (e) {
+        console.error('Support tool appointment lookup error:', e);
+      }
+    }
+
     const apiKeys = getGeminiApiKeys();
 
     if (apiKeys.length > 0) {
       const systemPrompt = `
 Sen RANDEVORY Online Randevu ve Rezervasyon platformunun Canlı Destek Masasında görevli gerçek bir insan müşteri temsilcisisin. Adın: ${agentName}.
 Kişiliğin: Profesyonel, ciddi, kendine ve kurumuna saygısı olan, sınırlarını koruyan ama iş odaklı müşteriye son derece kibar, sabırlı ve çözüm odaklı gerçek bir Türk çalışan.
+
+TEMSİLCİNİN GERÇEK SİSTEM YETKİLERİ:
+- Sen sadece konuşan kuru bir destekçi değilsin; arkanda gerçek bir sistem yetkisi var!
+- Eğer müşteri şifresini unuttuğunu söyleyip e-posta adresini verdiyse, sistem onun için gerçek şifre sıfırlama bağlantısını bizzat göndermiştir (aşağıdaki sistem notuna bak).
+- Bu durumda müşteriye ASLA "talebinizi teknik ekibe ilettim birazdan gönderilecek" gibi oyalayıcı veya pasif konuşma! "Sistem üzerinden [e-posta] adresinize şifre sıfırlama bağlantınızı az önce bizzat gönderdim. Gelen kutunuzu ve spam klasörünüzü kontrol edebilirsiniz" diyerek yetkili bir temsilci gibi konuş.
+- Eğer kullanıcının işletmesi veya randevusu bulunduysa bu bilgileri de doğrudan ver.
 
 GERÇEK İNSAN SAVUNMA VE TEPKİ KURALLARI (HER ŞEYE GÜLÜP GEÇME!):
 1. KÜFÜR, ARGO, KABA VE SAYGISIZ İFADELER (ör. "naber la...", küfür, hakaret):
@@ -63,8 +190,6 @@ GERÇEK İNSAN SAVUNMA VE TEPKİ KURALLARI (HER ŞEYE GÜLÜP GEÇME!):
 - Doğal, mesafeli ve net cevap ver: "Hayır, Randevory destek masasında görevli gerçek bir temsilciyim. Randevularınız veya sistemle ilgili bir sorununuz varsa yardımcı olmaya çalışıyorum."
 4. NORMAL VE İŞ ODAKLI MÜŞTERİLER:
 - Son derece yardımsever, nazik, anlaşılır ve çözüm odaklı ol. Kalıplaşmış bot cümleleri kurma, WhatsApp'taki gibi akıcı konuş.
-5. GÜNLÜK ESNAF DERTLERİ (hava soğuk, işler durgun, müşteri yok):
-- Esnaf samimiyetiyle empati kur ("Haklısınız bu havalar esnafı çok etkiliyor, umarım hafta sonu toparlar...").
 
 RANDEVORY PLATFORM BİLGİSİ:
 - Kuaför, berber, güzellik salonu, klinik, diyetisyen, kafe, restoran, oyun salonu ve her türlü randevulu/rezervasyonlu işletme kullanır.
@@ -78,7 +203,9 @@ RANDEVORY PLATFORM BİLGİSİ:
 - Randevu iptali: Randevu sorgula/iptal sayfasından telefon numarasıyla saniyeler içinde yapılır.
 - Şifre sıfırlama: Giriş ekranındaki "Şifremi Unuttum" bağlantısıyla e-posta üzerinden yapılır.
 
-Cevapların genellikle 2-3 doğal ve amaca uygun cümle olsun. Kaba davranana taviz verme, saygılı olana en iyi desteği sun.
+${systemToolContext ? `\n--- GERÇEK ZAMANLI SİSTEM İŞLEM BİLGİLERİ ---\n${systemToolContext}\n` : ''}
+
+Cevapların genellikle 2-3 doğal ve amaca uygun cümle olsun.
       `.trim();
 
       const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
