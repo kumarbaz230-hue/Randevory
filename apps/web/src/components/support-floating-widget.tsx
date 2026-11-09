@@ -241,62 +241,71 @@ export function SupportFloatingWidget() {
     }
   }, []);
 
+  const triggerInactivityEnd = useCallback(async () => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
+    const nowIso = new Date().toISOString();
+
+    const timeoutMsg: SupportChatMessage = {
+      sender: 'admin',
+      agent_name: repName,
+      text: 'Uzun süredir sizden bir yanıt alamadım. Başka bir sorunuz veya desteğe ihtiyacınız kalmadıysa görüşmeyi sonlandırıyorum. Hizmetimizi aşağıdan 1-5 yıldızla değerlendirebilirseniz çok seviniriz! İyi günler dilerim 😊',
+      created_at: nowIso,
+    };
+
+    const ratingCardMsg: SupportChatMessage = {
+      sender: 'system',
+      text: 'Destek Değerlendirmesi',
+      created_at: new Date(Date.now() + 500).toISOString(),
+      isRatingCard: true,
+    };
+
+    setIsTerminatedByAgent(true);
+
+    if (activeTicket?.id) {
+      try {
+        const supabase = createClient();
+        await supabase.rpc('support_send_agent_auto_reply', {
+          p_ticket_id: activeTicket.id,
+          p_reply: timeoutMsg.text,
+          p_agent_name: repName,
+        });
+
+        const { data } = await supabase
+          .from('platform_support_tickets')
+          .select('messages')
+          .eq('id', activeTicket.id)
+          .single();
+
+        if (data && Array.isArray(data.messages)) {
+          await supabase
+            .from('platform_support_tickets')
+            .update({
+              messages: [...data.messages, ratingCardMsg],
+              status: 'closed',
+            })
+            .eq('id', activeTicket.id);
+        }
+        await fetchActiveTicketById(activeTicket.id);
+      } catch (e) {
+        console.error('Inactivity timeout update error:', e);
+      }
+    } else {
+      setLocalMessages((prev) => [...prev, timeoutMsg, ratingCardMsg]);
+    }
+    setTimeout(() => scrollToBottom(true), 60);
+  }, [assignedAgent?.name, activeTicket?.id, fetchActiveTicketById, scrollToBottom]);
+
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
     }
-
-    inactivityTimerRef.current = setTimeout(async () => {
-      const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
-      const nowIso = new Date().toISOString();
-
-      const timeoutMsg: SupportChatMessage = {
-        sender: 'admin',
-        agent_name: repName,
-        text: 'Uzun süredir sizden bir yanıt alamadım. Başka bir sorunuz veya desteğe ihtiyacınız kalmadıysa görüşmeyi sonlandırıyorum. Hizmetimizi aşağıdan 1-5 yıldızla değerlendirebilirseniz çok seviniriz! İyi günler dilerim 😊',
-        created_at: nowIso,
-      };
-
-      const ratingCardMsg: SupportChatMessage = {
-        sender: 'system',
-        text: 'Destek Değerlendirmesi',
-        created_at: new Date(Date.now() + 500).toISOString(),
-        isRatingCard: true,
-      };
-
-      if (activeTicket?.id) {
-        try {
-          const supabase = createClient();
-          await supabase.rpc('support_send_agent_auto_reply', {
-            p_ticket_id: activeTicket.id,
-            p_reply: timeoutMsg.text,
-            p_agent_name: repName,
-          });
-
-          const { data } = await supabase
-            .from('platform_support_tickets')
-            .select('messages')
-            .eq('id', activeTicket.id)
-            .single();
-
-          if (data && Array.isArray(data.messages)) {
-            await supabase
-              .from('platform_support_tickets')
-              .update({
-                messages: [...data.messages, ratingCardMsg],
-                status: 'closed',
-              })
-              .eq('id', activeTicket.id);
-          }
-          await fetchActiveTicketById(activeTicket.id);
-        } catch (e) {
-          console.error('Inactivity timeout update error:', e);
-        }
-      } else {
-        setLocalMessages((prev) => [...prev, timeoutMsg, ratingCardMsg]);
-      }
-    }, 5 * 60 * 1000); // 5 minutes inactivity
-  }, [assignedAgent?.name, activeTicket?.id, fetchActiveTicketById]);
+    inactivityTimerRef.current = setTimeout(() => {
+      triggerInactivityEnd();
+    }, 5 * 60 * 1000);
+  }, [triggerInactivityEnd]);
 
   const handleSendRating = async () => {
     setRatingSubmitted(true);
@@ -456,6 +465,43 @@ export function SupportFloatingWidget() {
     }
     return localMessages;
   }, [activeTicket, localMessages, assignedAgent?.name]);
+
+  // 5 Dakikalık Cevapsızlık / Hareketsizlik Kontrolü
+  // Eğer son mesaj temsilciden gelmişse ve müşteri 5 dakika boyunca yanıt vermezse otomatik sonlandırılır.
+  useEffect(() => {
+    if (isTerminatedByAgent || activeTicket?.status === 'closed' || ratingSubmitted) {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      return;
+    }
+
+    if (!displayedMessages || displayedMessages.length === 0) return;
+    const lastMsg = displayedMessages[displayedMessages.length - 1];
+
+    if (lastMsg.sender === 'admin' && !lastMsg.isRatingCard) {
+      const msgTime = new Date(lastMsg.created_at).getTime();
+      const now = Date.now();
+      const elapsed = isNaN(msgTime) ? 0 : now - msgTime;
+      const FIVE_MINUTES = 5 * 60 * 1000;
+
+      if (elapsed >= FIVE_MINUTES) {
+        triggerInactivityEnd();
+      } else {
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        const remaining = Math.max(1000, FIVE_MINUTES - elapsed);
+        inactivityTimerRef.current = setTimeout(() => {
+          triggerInactivityEnd();
+        }, remaining);
+      }
+    } else {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    }
+
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    };
+  }, [displayedMessages, isTerminatedByAgent, activeTicket?.status, ratingSubmitted, triggerInactivityEnd]);
 
   // Auto-scroll on messages change or widget open
   useEffect(() => {
@@ -1136,15 +1182,17 @@ export function SupportFloatingWidget() {
                     Bitir
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={handleStartNewConversation}
-                  title="Yeni Konu Başlat"
-                  className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all flex items-center gap-1"
-                >
-                  <PlusCircle className="w-3 h-3" />
-                  <span className="hidden xs:inline">Yeni</span>
-                </button>
+                {(isTerminatedByAgent || activeTicket?.status === 'closed' || ratingSubmitted) && (
+                  <button
+                    type="button"
+                    onClick={handleStartNewConversation}
+                    title="Yeni Konu Başlat"
+                    className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all flex items-center gap-1"
+                  >
+                    <PlusCircle className="w-3 h-3" />
+                    <span className="hidden xs:inline">Yeni</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleCloseWidget}
