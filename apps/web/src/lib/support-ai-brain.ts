@@ -280,6 +280,38 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
+  // 4.5. Müşteri İşi Bittiğinde / Başka Soru Yok ("yok", "yok knk", "sorum yok" vb.)
+  if (
+    q === 'yok' ||
+    q === 'yok knk' ||
+    q === 'yok kanka' ||
+    q === 'yok sagol' ||
+    q === 'yok saol' ||
+    q === 'yok tesekkurler' ||
+    q === 'yok tesekkur ederim' ||
+    q === 'yok reis' ||
+    q === 'yok kral' ||
+    q === 'yok eyvallah' ||
+    q === 'yok canim' ||
+    q === 'sorum yok' ||
+    q === 'baska sorum yok' ||
+    q === 'sorunum yok' ||
+    q === 'baska bir sey yok' ||
+    q === 'tamamdir tesekkurler' ||
+    q === 'hallettim tesekkurler' ||
+    q === 'gerek kalmadi' ||
+    q === 'hepsi bu kadar' ||
+    q === 'hepsi bu kadardi'
+  ) {
+    return {
+      category: 'general',
+      title: '👋 Oturum Kapanışı',
+      solution:
+        'Anladım efendim, yardımcı olabildiysem çok sevindim. Başka bir sorunuz kalmadığı için bu destek görüşmesini sonlandırıyorum. Hizmetimizi aşağıdan değerlendirebilirseniz çok seviniriz, iyi günler dilerim! 😊',
+      quickActions: [],
+    };
+  }
+
   // 5. Samimi / Argo / Hitaplar (Kanka, Kral, Abi, Reis, Hocam)
   if (
     q === 'kanka' ||

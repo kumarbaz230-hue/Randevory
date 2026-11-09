@@ -134,6 +134,42 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 4. Müşterinin başka bir sorusu / talebi kalmadığını tespit etme ("yok", "yok knk", "sorum yok" vb.)
+    const lowerMessage = message.trim().toLowerCase();
+    const isDoneMessage =
+      lowerMessage === 'yok' ||
+      lowerMessage === 'yok knk' ||
+      lowerMessage === 'yok kanka' ||
+      lowerMessage === 'yok reis' ||
+      lowerMessage === 'yok kral' ||
+      lowerMessage === 'yok sağol' ||
+      lowerMessage === 'yok sagol' ||
+      lowerMessage === 'yok saol' ||
+      lowerMessage === 'yok tesekkurler' ||
+      lowerMessage === 'yok teşekkürler' ||
+      lowerMessage === 'yok teşekkür ederim' ||
+      lowerMessage === 'yok tesekkur ederim' ||
+      lowerMessage === 'yok eyvallah' ||
+      lowerMessage === 'yok canım' ||
+      lowerMessage === 'sorum yok' ||
+      lowerMessage === 'başka sorum yok' ||
+      lowerMessage === 'baska sorum yok' ||
+      lowerMessage === 'sorunum yok' ||
+      lowerMessage === 'başka bir şey yok' ||
+      lowerMessage === 'baska bir sey yok' ||
+      lowerMessage === 'tamamdır teşekkürler' ||
+      lowerMessage === 'tamamdir tesekkurler' ||
+      lowerMessage === 'hallettim teşekkürler' ||
+      lowerMessage === 'hallettim sagol' ||
+      lowerMessage === 'gerek kalmadı' ||
+      lowerMessage === 'hepsi bu kadar' ||
+      lowerMessage === 'hepsi bu kadardı' ||
+      lowerMessage === 'bu kadardı';
+
+    if (isDoneMessage) {
+      systemToolContext += `\n[MÜŞTERİ BAŞKA TALEBİ OLMADIĞINI BİLDİRDİ: Müşteri "${message}" diyerek başka sorusu olmadığını söyledi. Nazikçe teşekkür edip "Başka bir sorunuz kalmadığı için bu destek görüşmesini sonlandırıyorum. Aşağıdan değerlendirmenizi yapabilirsiniz, iyi günler dilerim!" diyerek görüşmeyi sonlandır.]\n`;
+    }
+
     // 3. Yetki: Müşteri Randevusu Sorgulama
     const phoneMatch = message.match(/(?:0)?(5\d{9})/);
     if (
@@ -190,6 +226,12 @@ GERÇEK İNSAN SAVUNMA VE TEPKİ KURALLARI (HER ŞEYE GÜLÜP GEÇME!):
 - Doğal, mesafeli ve net cevap ver: "Hayır, Randevory destek masasında görevli gerçek bir temsilciyim. Randevularınız veya sistemle ilgili bir sorununuz varsa yardımcı olmaya çalışıyorum."
 4. NORMAL VE İŞ ODAKLI MÜŞTERİLER:
 - Son derece yardımsever, nazik, anlaşılır ve çözüm odaklı ol. Kalıplaşmış bot cümleleri kurma, WhatsApp'taki gibi akıcı konuş.
+5. MÜŞTERİNİN İŞİ BİTTİĞİNDE VEYA BAŞKA SORUSU OLMADIĞINI BELİRTTİĞİNDE:
+(Örnekler: "yok", "yok knk", "yok sağol", "yok kanka", "sorum yok", "başka bir şey yok", "hallettim teşekkürler", "tamamdır bitti", "gerek kalmadı", "hepsi bu kadar"):
+- Müşterinin başka bir talebi kalmadığını anladığında görüşmeyi açık bırakma!
+- Nazikçe veda et ve görüşmeyi sonlandırdığını bizzat söyle.
+- Örnek: "Anladım, yardımcı olabildiysem çok sevindim. Başka bir sorunuz veya talebiniz kalmadığı için bu destek görüşmesini sonlandırıyorum. Aşağıdan görüşmemizi değerlendirebilirsiniz, iyi günler dilerim! 😊"
+- DİKKAT: Cümlende MUTLAKA "görüşmeyi sonlandırıyorum" ifadesini kullan ki sistem görüşmeyi kapatıp değerlendirme kartını açabilsin.
 
 RANDEVORY PLATFORM BİLGİSİ:
 - Kuaför, berber, güzellik salonu, klinik, diyetisyen, kafe, restoran, oyun salonu ve her türlü randevulu/rezervasyonlu işletme kullanır.
@@ -272,10 +314,13 @@ Cevapların genellikle 2-3 doğal ve amaca uygun cümle olsun.
                 const trimmed = generatedText.trim();
                 const lowerTrimmed = trimmed.toLowerCase();
                 const shouldTerminate =
+                  isDoneMessage ||
                   lowerTrimmed.includes('sonlandırılmıştır') ||
                   lowerTrimmed.includes('sonlandırıyorum') ||
                   lowerTrimmed.includes('oturum sonlandırıldı') ||
                   lowerTrimmed.includes('görüşmeyi kapatıyorum') ||
+                  lowerTrimmed.includes('görüşmeyi sonlandırıyorum') ||
+                  lowerTrimmed.includes('görüşmeyi sonlandırdım') ||
                   lowerTrimmed.includes('hizmet vermemiz mümkün değildir');
 
                 return NextResponse.json({

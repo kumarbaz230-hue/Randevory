@@ -838,6 +838,7 @@ export function SupportFloatingWidget() {
                 }
 
                 let replyText = '';
+                let aiShouldTerminate = false;
                 try {
                   const aiRes = await fetch('/api/support/ai-reply', {
                     method: 'POST',
@@ -853,6 +854,9 @@ export function SupportFloatingWidget() {
                     if (aiData.reply) {
                       replyText = aiData.reply;
                     }
+                    if (aiData.shouldTerminate) {
+                      aiShouldTerminate = true;
+                    }
                   }
                 } catch {
                   // Fallback
@@ -864,10 +868,13 @@ export function SupportFloatingWidget() {
 
                 const lowerRep = replyText.toLowerCase();
                 const isTerminated =
+                  aiShouldTerminate ||
                   lowerRep.includes('sonlandırılmıştır') ||
                   lowerRep.includes('sonlandırıyorum') ||
                   lowerRep.includes('oturum sonlandırıldı') ||
                   lowerRep.includes('görüşmeyi ben sonlandırıyorum') ||
+                  lowerRep.includes('görüşmeyi sonlandırıyorum') ||
+                  lowerRep.includes('görüşmeyi kapatıyorum') ||
                   lowerRep.includes('hizmet vermemiz mümkün değildir');
 
                 if (isTerminated) {
@@ -883,6 +890,13 @@ export function SupportFloatingWidget() {
                     created_at: new Date(Date.now() + 500).toISOString(),
                   };
 
+                  const ratingCardMsg: SupportChatMessage = {
+                    sender: 'system',
+                    text: 'Destek Değerlendirmesi',
+                    created_at: new Date(Date.now() + 600).toISOString(),
+                    isRatingCard: true,
+                  };
+
                   const { data: latestTicket } = await supabase
                     .from('platform_support_tickets')
                     .select('messages')
@@ -894,7 +908,7 @@ export function SupportFloatingWidget() {
                     .from('platform_support_tickets')
                     .update({
                       status: 'closed',
-                      messages: [...currentMsgs, badgeMsg],
+                      messages: [...currentMsgs, badgeMsg, ratingCardMsg],
                     })
                     .eq('id', currentTicket.id);
 
@@ -982,6 +996,7 @@ export function SupportFloatingWidget() {
         setTimeout(async () => {
           let replyText = '';
           let quickActions: Array<{ id: string; label: string; url?: string }> = [];
+          let aiLocalShouldTerminate = false;
 
           try {
             const aiRes = await fetch('/api/support/ai-reply', {
@@ -999,6 +1014,9 @@ export function SupportFloatingWidget() {
                 replyText = aiData.reply;
                 quickActions = aiData.quickActions || [];
               }
+              if (aiData.shouldTerminate) {
+                aiLocalShouldTerminate = true;
+              }
             }
           } catch {
             // Fallback
@@ -1012,10 +1030,13 @@ export function SupportFloatingWidget() {
 
           const lowerLocalRep = replyText.toLowerCase();
           const isLocalTerminated =
+            aiLocalShouldTerminate ||
             lowerLocalRep.includes('sonlandırılmıştır') ||
             lowerLocalRep.includes('sonlandırıyorum') ||
             lowerLocalRep.includes('oturum sonlandırıldı') ||
             lowerLocalRep.includes('görüşmeyi ben sonlandırıyorum') ||
+            lowerLocalRep.includes('görüşmeyi sonlandırıyorum') ||
+            lowerLocalRep.includes('görüşmeyi kapatıyorum') ||
             lowerLocalRep.includes('hizmet vermemiz mümkün değildir');
 
           if (isLocalTerminated) {
@@ -1033,6 +1054,12 @@ export function SupportFloatingWidget() {
                 sender: 'system',
                 text: '🛑 Görüşme temsilci tarafından sonlandırılmıştır.',
                 created_at: new Date(Date.now() + 500).toISOString(),
+              },
+              {
+                sender: 'system',
+                text: 'Destek Değerlendirmesi',
+                created_at: new Date(Date.now() + 600).toISOString(),
+                isRatingCard: true,
               },
             ]);
             setTimeout(() => scrollToBottom(true), 60);
