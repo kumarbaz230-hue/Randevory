@@ -525,20 +525,39 @@ export function SupportFloatingWidget() {
     if (!displayedMessages || displayedMessages.length === 0) return;
     const lastMsg = displayedMessages[displayedMessages.length - 1];
 
-    if (lastMsg.sender === 'admin' && !lastMsg.isRatingCard) {
-      const msgTime = new Date(lastMsg.created_at).getTime();
-      const now = Date.now();
-      const elapsed = isNaN(msgTime) ? 0 : now - msgTime;
-      const FIVE_MINUTES = 5 * 60 * 1000;
+    // Hem setTimeout hem de her 10 saniyede bir çalışan interval ile 5 dakikalık süreyi KESİN garantiye al
+    let interval: any = null;
 
-      if (elapsed >= FIVE_MINUTES) {
-        triggerInactivityEnd();
-      } else {
+    if (lastMsg.sender === 'admin' && !lastMsg.isRatingCard) {
+      const checkAndTrigger = () => {
+        const msgTime = new Date(lastMsg.created_at || Date.now()).getTime();
+        const now = Date.now();
+        const elapsed = isNaN(msgTime) ? 0 : now - msgTime;
+        const FIVE_MINUTES = 5 * 60 * 1000;
+
+        if (elapsed >= FIVE_MINUTES) {
+          triggerInactivityEnd();
+          return true;
+        }
+        return false;
+      };
+
+      // Sayfa açıldığında veya mesaj güncellendiğinde hemen kontrol et
+      const alreadyEnded = checkAndTrigger();
+      if (!alreadyEnded) {
         if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-        const remaining = Math.max(1000, FIVE_MINUTES - elapsed);
+        const msgTime = new Date(lastMsg.created_at || Date.now()).getTime();
+        const elapsed = isNaN(msgTime) ? 0 : Date.now() - msgTime;
+        const remaining = Math.max(1000, 5 * 60 * 1000 - elapsed);
+
         inactivityTimerRef.current = setTimeout(() => {
           triggerInactivityEnd();
         }, remaining);
+
+        // Arka planda veya sekme uykusunda bile kesin yakalamak için periyodik interval
+        interval = setInterval(() => {
+          checkAndTrigger();
+        }, 10000);
       }
     } else {
       if (inactivityTimerRef.current) {
@@ -548,6 +567,7 @@ export function SupportFloatingWidget() {
 
     return () => {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (interval) clearInterval(interval);
     };
   }, [displayedMessages, isTerminatedByAgent, activeTicket?.status, ratingSubmitted, triggerInactivityEnd]);
 
