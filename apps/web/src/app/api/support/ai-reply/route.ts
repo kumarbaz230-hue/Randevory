@@ -12,16 +12,16 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 1. If Gemini API Key is available, use real Google Gemini 1.5 Flash!
+    // 1. Google Gemini 2.5 Flash
     if (apiKey) {
       try {
         const systemPrompt = `
 Sen RANDEVORY Online Randevu ve Rezervasyon platformunun Canlı Destek Masasında görevli gerçek bir insan müşteri temsilcisisin. Adın: ${agentName}.
 KURALLAR:
-1. Asla yapay zeka, bot, dil modeli olduğunu söyleme veya ima etme. Gerçek, samimi, kibar, profesyonel bir Türk çalışan gibi konuş.
+1. Asla yapay zeka, bot veya dil modeli olduğunu söyleme veya ima etme. Gerçek, samimi, kibar, esprili ve profesyonel bir Türk çalışan gibi konuş.
 2. Karşıdaki müşteri ne sorarsa sorsun (günlük hal hatır, esnaf dertleri, teknik sorular, şifre, randevu çakışması, personel izinleri, fiyatlar, fatura, hava durumu, espri) samimi ve duruma özel yanıt ver.
-3. Yanıtların ne çok uzun ne çok kısa olsun (genellikle 2-4 doğal cümle). Kalıplaşmış "Mesajınızı aldım ve okudum" gibi cümleler ASLA kurma.
-4. Kişisel sorular sorulursa (yaş, nereli olduğun, medeni halin, telefonun, instagramın): Şirket gizlilik kuralları gereği temsilcilerin özel bilgilerini paylaşamadığını kibarca belirt ve platform konusunda yardıma hazır olduğunu söyle.
+3. Yanıtların genellikle 2-3 doğal cümle olsun. Kalıplaşmış "Mesajınızı aldım ve okudum" gibi cümleler ASLA kurma.
+4. Kişisel sorular sorulursa (yaş, nereli olduğun, medeni halin, telefonun, instagramın): Şirket gizlilik ve güvenlik kuralları gereği temsilcilerin özel iletişim bilgilerini paylaşamadığını kibarca belirt ve platform konusunda yardıma hazır olduğunu söyle.
 5. RANDEVORY PLATFORM BİLGİSİ:
 - Kuaför, berber, güzellik merkezi, klinik, kafe, restoran, oyun salonu ve her türlü randevulu işletme kullanır.
 - İşletmeler "randevory.com/isletme-adi" linkini Instagram biyolarına koyup 7/24 randevu toplarlar.
@@ -32,7 +32,6 @@ KURALLAR:
 - Paketler Shopier üzerinden kredi kartıyla güvenli ödenir (Ücretsiz, Standart, Pro).
         `.trim();
 
-        // Prepare contents with recent history (last 6 messages)
         const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
         if (Array.isArray(history) && history.length > 0) {
@@ -46,10 +45,9 @@ KURALLAR:
           }
         }
 
-        // Add current user message
         contents.push({ role: 'user', parts: [{ text: message }] });
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
         const res = await fetch(geminiUrl, {
           method: 'POST',
@@ -61,31 +59,42 @@ KURALLAR:
             contents,
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 250,
+              maxOutputTokens: 1000,
+              thinkingConfig: {
+                thinkingBudget: 0,
+              },
             },
           }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const candidate = data?.candidates?.[0];
+          const parts = candidate?.content?.parts;
+          let generatedText = '';
+          if (Array.isArray(parts)) {
+            // Find text part
+            for (const p of parts) {
+              if (p.text) generatedText += p.text;
+            }
+          }
           if (generatedText && generatedText.trim()) {
             return NextResponse.json({
               reply: generatedText.trim(),
               source: 'gemini',
             });
           }
+        } else {
+          const errText = await res.text();
+          console.error('Gemini API response error:', res.status, errText);
         }
       } catch (geminiErr) {
         console.error('Gemini call error:', geminiErr);
       }
     }
 
-    // 2. Intelligent Fallback if GEMINI_API_KEY is not yet provided
+    // 2. Intelligent Fallback if API call fails
     const resolution = solveSupportQuery(message);
-    const agent = SUPPORT_AGENTS.find((a) => a.name === agentName) || SUPPORT_AGENTS[0];
-
-    // For general queries, return friendly contextual answer
     return NextResponse.json({
       reply: resolution.solution,
       source: 'fallback',
