@@ -184,7 +184,9 @@ export function SupportFloatingWidget() {
   });
 
   const [isAgentTyping, setIsAgentTyping] = useState(false);
+  const [readMessageTimestamps, setReadMessageTimestamps] = useState<string[]>([]);
   const typingTimerRef = useRef<any>(null);
+  const readTimerRef = useRef<any>(null);
 
   // Initial stage local messages (before activeTicket)
   const [localMessages, setLocalMessages] = useState<SupportChatMessage[]>(() => [
@@ -520,54 +522,63 @@ export function SupportFloatingWidget() {
         }
 
         const agent = assignedAgent || SUPPORT_AGENTS[0];
+        const sentIso = new Date().toISOString();
 
-        // Trigger realistic typing animation for 4.5 seconds
-        setIsAgentTyping(true);
-        if (typingTimerRef.current) {
-          clearTimeout(typingTimerRef.current);
-        }
+        // 1. Aşama: Mesaj gönderildi (tek tik ✓). Temsilci hemen görmüyor, 2.8 saniye bekle
+        if (readTimerRef.current) clearTimeout(readTimerRef.current);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
 
-        typingTimerRef.current = setTimeout(async () => {
-          try {
-            // Check if ticket was closed or taken over in the meantime
-            const { data: freshTicket } = await supabase
-              .from('platform_support_tickets')
-              .select('*')
-              .eq('id', currentTicket.id)
-              .maybeSingle();
+        readTimerRef.current = setTimeout(() => {
+          // 2. Aşama: Temsilci bildirimi gördü ve açtı (çift tik ✓✓ Okundu)!
+          setReadMessageTimestamps((prev) => [...prev, sentIso]);
 
-            if (freshTicket?.is_taken_over || freshTicket?.status === 'closed') {
-              setIsAgentTyping(false);
-              if (freshTicket) setActiveTicket(freshTicket as SupportTicketRow);
-              return;
-            }
+          // 3. Aşama: 1.5 saniye mesajı okuma ve düşünme payı
+          typingTimerRef.current = setTimeout(() => {
+            setIsAgentTyping(true);
+            setTimeout(() => scrollToBottom(true), 50);
 
-            // Generate smart conversational reply
-            const { reply } = formatConversationalAgentReply(agent, text || 'fotoğraf');
+            // 4. Aşama: İnsan hızında gerçekçi klavye yazma süresi (6.5 saniye)
+            setTimeout(async () => {
+              try {
+                const { data: freshTicket } = await supabase
+                  .from('platform_support_tickets')
+                  .select('*')
+                  .eq('id', currentTicket.id)
+                  .maybeSingle();
 
-            const { data: updatedTicket, error: repError } = await supabase.rpc(
-              'support_send_agent_auto_reply',
-              {
-                p_ticket_id: currentTicket.id,
-                p_reply: reply,
-                p_agent_name: agent.name,
+                if (freshTicket?.is_taken_over || freshTicket?.status === 'closed') {
+                  setIsAgentTyping(false);
+                  if (freshTicket) setActiveTicket(freshTicket as SupportTicketRow);
+                  return;
+                }
+
+                const { reply } = formatConversationalAgentReply(agent, text || 'fotoğraf');
+
+                const { data: updatedTicket, error: repError } = await supabase.rpc(
+                  'support_send_agent_auto_reply',
+                  {
+                    p_ticket_id: currentTicket.id,
+                    p_reply: reply,
+                    p_agent_name: agent.name,
+                  }
+                );
+
+                setIsAgentTyping(false);
+
+                if (!repError && updatedTicket && (updatedTicket as any).id) {
+                  setActiveTicket(updatedTicket as SupportTicketRow);
+                } else {
+                  await fetchActiveTicketById(currentTicket.id);
+                }
+
+                setTimeout(() => scrollToBottom(true), 60);
+              } catch (replyErr) {
+                console.error('Agent reply error:', replyErr);
+                setIsAgentTyping(false);
               }
-            );
-
-            setIsAgentTyping(false);
-
-            if (!repError && updatedTicket && (updatedTicket as any).id) {
-              setActiveTicket(updatedTicket as SupportTicketRow);
-            } else {
-              await fetchActiveTicketById(currentTicket.id);
-            }
-
-            setTimeout(() => scrollToBottom(true), 60);
-          } catch (replyErr) {
-            console.error('Agent reply error:', replyErr);
-            setIsAgentTyping(false);
-          }
-        }, 4500);
+            }, 6500);
+          }, 1500);
+        }, 2800);
       } catch (err: any) {
         alert(err?.message || 'Mesaj gönderilemedi.');
       } finally {
@@ -604,22 +615,38 @@ export function SupportFloatingWidget() {
     setLocalMessages((prev) => [...prev, { sender: 'user', text, created_at: nowIso }]);
     setTimeout(() => scrollToBottom(true), 50);
 
-    setIsAgentTyping(true);
-    setTimeout(() => {
-      setIsAgentTyping(false);
-      const resolution = solveSupportQuery(text);
-      setLocalMessages((prev) => [
-        ...prev,
-        {
-          sender: 'admin',
-          text: resolution.solution,
-          created_at: new Date().toISOString(),
-          options: resolution.quickActions && resolution.quickActions.length > 0 ? resolution.quickActions : MAIN_AI_CHOICES,
-          showEscalationButtons: true,
-        },
-      ]);
-      setTimeout(() => scrollToBottom(true), 60);
-    }, 3800);
+    // İnsan hızında kademeli okuma ve yazma:
+    // 2.8s okuma payı -> okundu -> 1.5s sonra yazıyor başlar -> 5.5s yazma süresi
+    if (readTimerRef.current) clearTimeout(readTimerRef.current);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+
+    readTimerRef.current = setTimeout(() => {
+      setReadMessageTimestamps((prev) => [...prev, nowIso]);
+
+      typingTimerRef.current = setTimeout(() => {
+        setIsAgentTyping(true);
+        setTimeout(() => scrollToBottom(true), 50);
+
+        setTimeout(() => {
+          setIsAgentTyping(false);
+          const resolution = solveSupportQuery(text);
+          setLocalMessages((prev) => [
+            ...prev,
+            {
+              sender: 'admin',
+              text: resolution.solution,
+              created_at: new Date().toISOString(),
+              options:
+                resolution.quickActions && resolution.quickActions.length > 0
+                  ? resolution.quickActions
+                  : MAIN_AI_CHOICES,
+              showEscalationButtons: true,
+            },
+          ]);
+          setTimeout(() => scrollToBottom(true), 60);
+        }, 5500);
+      }, 1400);
+    }, 2800);
   };
 
   const handleSelectImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -643,7 +670,11 @@ export function SupportFloatingWidget() {
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
     }
+    if (readTimerRef.current) {
+      clearTimeout(readTimerRef.current);
+    }
     setIsAgentTyping(false);
+    setReadMessageTimestamps([]);
     setActiveTicket(null);
     setAssignedAgent(null);
     setInputText('');
@@ -851,9 +882,10 @@ export function SupportFloatingWidget() {
                   const repName = msg.agent_name || (assignedAgent ? assignedAgent.name : 'Destek Masası');
 
                   // Okundu / Gönderildi durumu:
-                  // Kullanıcı mesajından sonra başka bir mesaj gelmişse veya şu an temsilci yazıyorsa "Okundu"
+                  // Kullanıcı mesajından sonra gelen bir yanıt varsa VEYA okuma zamanı dolmuşsa "Okundu"
                   const hasReplyAfter = displayedMessages.slice(idx + 1).some((m) => m.sender !== 'user');
-                  const isRead = hasReplyAfter || isAgentTyping;
+                  const isTimestampRead = msg.created_at ? readMessageTimestamps.includes(msg.created_at) : false;
+                  const isRead = hasReplyAfter || isTimestampRead;
 
                   return (
                     <div
