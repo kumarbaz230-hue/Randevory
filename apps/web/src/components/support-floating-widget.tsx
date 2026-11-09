@@ -212,6 +212,7 @@ export function SupportFloatingWidget() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [ratingNote, setRatingNote] = useState('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [isTerminatedByAgent, setIsTerminatedByAgent] = useState(false);
   const inactivityTimerRef = useRef<any>(null);
 
   
@@ -671,6 +672,49 @@ export function SupportFloatingWidget() {
                   replyText = formatConversationalAgentReply(agent, text || 'fotoğraf').reply;
                 }
 
+                const lowerRep = replyText.toLowerCase();
+                const isTerminated =
+                  lowerRep.includes('sonlandırılmıştır') ||
+                  lowerRep.includes('sonlandırıyorum') ||
+                  lowerRep.includes('oturum sonlandırıldı') ||
+                  lowerRep.includes('görüşmeyi ben sonlandırıyorum') ||
+                  lowerRep.includes('hizmet vermemiz mümkün değildir');
+
+                if (isTerminated) {
+                  await supabase.rpc('support_send_agent_auto_reply', {
+                    p_ticket_id: currentTicket.id,
+                    p_reply: replyText,
+                    p_agent_name: agent.name,
+                  });
+
+                  const badgeMsg: SupportChatMessage = {
+                    sender: 'system',
+                    text: '🛑 Görüşme, kurallara uyulmadığı gerekçesiyle temsilci tarafından sonlandırılmıştır.',
+                    created_at: new Date(Date.now() + 500).toISOString(),
+                  };
+
+                  const { data: latestTicket } = await supabase
+                    .from('platform_support_tickets')
+                    .select('messages')
+                    .eq('id', currentTicket.id)
+                    .single();
+
+                  const currentMsgs = latestTicket?.messages || [];
+                  await supabase
+                    .from('platform_support_tickets')
+                    .update({
+                      status: 'closed',
+                      messages: [...currentMsgs, badgeMsg],
+                    })
+                    .eq('id', currentTicket.id);
+
+                  setIsAgentTyping(false);
+                  setIsTerminatedByAgent(true);
+                  await fetchActiveTicketById(currentTicket.id);
+                  setTimeout(() => scrollToBottom(true), 60);
+                  return;
+                }
+
                 const { data: updatedTicket, error: repError } = await supabase.rpc(
                   'support_send_agent_auto_reply',
                   {
@@ -776,6 +820,35 @@ export function SupportFloatingWidget() {
             quickActions = resolution.quickActions || [];
           }
 
+          const lowerLocalRep = replyText.toLowerCase();
+          const isLocalTerminated =
+            lowerLocalRep.includes('sonlandırılmıştır') ||
+            lowerLocalRep.includes('sonlandırıyorum') ||
+            lowerLocalRep.includes('oturum sonlandırıldı') ||
+            lowerLocalRep.includes('görüşmeyi ben sonlandırıyorum') ||
+            lowerLocalRep.includes('hizmet vermemiz mümkün değildir');
+
+          if (isLocalTerminated) {
+            setIsAgentTyping(false);
+            setIsTerminatedByAgent(true);
+            setLocalMessages((prev) => [
+              ...prev,
+              {
+                sender: 'admin',
+                agent_name: currentAgentName,
+                text: replyText,
+                created_at: new Date().toISOString(),
+              },
+              {
+                sender: 'system',
+                text: '🛑 Görüşme, kurallara uyulmadığı gerekçesiyle temsilci tarafından sonlandırılmıştır.',
+                created_at: new Date(Date.now() + 500).toISOString(),
+              },
+            ]);
+            setTimeout(() => scrollToBottom(true), 60);
+            return;
+          }
+
           setIsAgentTyping(false);
           setLocalMessages((prev) => [
             ...prev,
@@ -825,6 +898,7 @@ export function SupportFloatingWidget() {
       clearTimeout(inactivityTimerRef.current);
     }
     setRatingSubmitted(false);
+    setIsTerminatedByAgent(false);
     setSelectedRating(5);
     setSelectedTags([]);
     setRatingNote('');
@@ -1307,15 +1381,18 @@ export function SupportFloatingWidget() {
               )}
 
               {/* Bottom Message Bar */}
-              {activeTicket?.status === 'closed' ? (
-                <div className="p-3 bg-white border-t border-slate-200 text-center space-y-2">
-                  <div className="text-xs text-slate-500 font-medium">
-                    Bu destek görüşmesi çözümlenerek tamamlanmıştır.
+              {activeTicket?.status === 'closed' || isTerminatedByAgent ? (
+                <div className="p-3.5 bg-slate-50 border-t border-slate-200 text-center space-y-2.5">
+                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs">
+                    <span>🛑</span> Bu destek görüşmesi sonlandırılmıştır.
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Yeni bir destek talebinde bulunmak için lütfen kurumsal iletişim kurallarına dikkat ediniz.
                   </div>
                   <button
                     type="button"
                     onClick={handleStartNewConversation}
-                    className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs"
+                    className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition-all"
                   >
                     Yeni Sohbet Başlat
                   </button>

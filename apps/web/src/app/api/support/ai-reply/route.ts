@@ -142,11 +142,21 @@ Cevapların genellikle 2-3 doğal ve amaca uygun cümle olsun. Kaba davranana ta
                 }
               }
               if (generatedText && generatedText.trim()) {
+                const trimmed = generatedText.trim();
+                const lowerTrimmed = trimmed.toLowerCase();
+                const shouldTerminate =
+                  lowerTrimmed.includes('sonlandırılmıştır') ||
+                  lowerTrimmed.includes('sonlandırıyorum') ||
+                  lowerTrimmed.includes('oturum sonlandırıldı') ||
+                  lowerTrimmed.includes('görüşmeyi kapatıyorum') ||
+                  lowerTrimmed.includes('hizmet vermemiz mümkün değildir');
+
                 return NextResponse.json({
-                  reply: generatedText.trim(),
+                  reply: trimmed,
                   source: 'gemini',
                   model: modelName,
                   keyPoolIndex: currentKeyIdx,
+                  shouldTerminate,
                 });
               }
             } else if (res.status === 429 || res.status === 503) {
