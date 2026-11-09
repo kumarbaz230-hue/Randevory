@@ -552,13 +552,36 @@ export function SupportFloatingWidget() {
                   return;
                 }
 
-                const { reply } = formatConversationalAgentReply(agent, text || 'fotoğraf');
+                let replyText = '';
+                try {
+                  const aiRes = await fetch('/api/support/ai-reply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      message: text || 'fotoğraf',
+                      agentName: agent.name,
+                      history: displayedMessages.slice(-6),
+                    }),
+                  });
+                  if (aiRes.ok) {
+                    const aiData = await aiRes.json();
+                    if (aiData.reply) {
+                      replyText = aiData.reply;
+                    }
+                  }
+                } catch {
+                  // Fallback
+                }
+
+                if (!replyText) {
+                  replyText = formatConversationalAgentReply(agent, text || 'fotoğraf').reply;
+                }
 
                 const { data: updatedTicket, error: repError } = await supabase.rpc(
                   'support_send_agent_auto_reply',
                   {
                     p_ticket_id: currentTicket.id,
-                    p_reply: reply,
+                    p_reply: replyText,
                     p_agent_name: agent.name,
                   }
                 );
@@ -627,18 +650,47 @@ export function SupportFloatingWidget() {
         setIsAgentTyping(true);
         setTimeout(() => scrollToBottom(true), 50);
 
-        setTimeout(() => {
+        setTimeout(async () => {
+          let replyText = '';
+          let quickActions: Array<{ id: string; label: string; url?: string }> = [];
+
+          try {
+            const aiRes = await fetch('/api/support/ai-reply', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message: text,
+                agentName: 'Müşteri Temsilcisi',
+                history: localMessages.slice(-6),
+              }),
+            });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              if (aiData.reply) {
+                replyText = aiData.reply;
+                quickActions = aiData.quickActions || [];
+              }
+            }
+          } catch {
+            // Fallback
+          }
+
+          if (!replyText) {
+            const resolution = solveSupportQuery(text);
+            replyText = resolution.solution;
+            quickActions = resolution.quickActions || [];
+          }
+
           setIsAgentTyping(false);
-          const resolution = solveSupportQuery(text);
           setLocalMessages((prev) => [
             ...prev,
             {
               sender: 'admin',
-              text: resolution.solution,
+              text: replyText,
               created_at: new Date().toISOString(),
               options:
-                resolution.quickActions && resolution.quickActions.length > 0
-                  ? resolution.quickActions
+                quickActions && quickActions.length > 0
+                  ? quickActions
                   : MAIN_AI_CHOICES,
               showEscalationButtons: true,
             },
