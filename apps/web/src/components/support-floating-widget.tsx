@@ -798,7 +798,7 @@ export function SupportFloatingWidget() {
 
                   const badgeMsg: SupportChatMessage = {
                     sender: 'system',
-                    text: '🛑 Görüşme, kurallara uyulmadığı gerekçesiyle temsilci tarafından sonlandırılmıştır.',
+                    text: '🛑 Görüşme temsilci tarafından sonlandırılmıştır.',
                     created_at: new Date(Date.now() + 500).toISOString(),
                   };
 
@@ -950,7 +950,7 @@ export function SupportFloatingWidget() {
               },
               {
                 sender: 'system',
-                text: '🛑 Görüşme, kurallara uyulmadığı gerekçesiyle temsilci tarafından sonlandırılmıştır.',
+                text: '🛑 Görüşme temsilci tarafından sonlandırılmıştır.',
                 created_at: new Date(Date.now() + 500).toISOString(),
               },
             ]);
