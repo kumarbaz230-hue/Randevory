@@ -493,31 +493,37 @@ export default function RegisterPage() {
               {legalModalType === 'kvkk' ? (
                 <>
                   <p>
-                    <strong>1. Veri Sorumlusu ve Veri İşleyen Sıfatı:</strong> 6698 sayılı Kişisel Verilerin Korunması Kanunu (&ldquo;KVKK&rdquo;) uyarınca; platforma üye olan İşletme Sahiplerinin üyelik verileri bakımından <strong>RANDEVORY</strong> Veri Sorumlusudur. Üye işletmelerin kendi müşterilerine ait kaydettiği veya müşterilerin randevu alırken paylaştığı veriler bakımından ise <strong>ilgili İşletme &ldquo;Veri Sorumlusu&rdquo;</strong>, RANDEVORY ise yalnızca teknik altyapı sağlayan <strong>&ldquo;Veri İşleyen&rdquo;</strong> konumundadır.
+                    <strong>1. Veri Sorumlusu ve Veri İşleyen Sıfatı:</strong> 6698 sayılı Kişisel Verilerin Korunması Kanunu (&ldquo;KVKK&rdquo;) uyarınca; platforma üye olan İşletme Sahiplerinin üyelik verileri bakımından <strong>RANDEVORY</strong> Veri Sorumlusudur. Üye işletmelerin kendi müşterilerine ait kaydettiği veya müşterilerin randevu alırken paylaştığı veriler bakımından ise <strong>ilgili İşletme &ldquo;Veri Sorumlusu&rdquo;</strong>, RANDEVORY ise verileri teknik olarak barındıran <strong>&ldquo;Veri İşleyen&rdquo;</strong> konumundadır.
                   </p>
                   <p>
                     <strong>2. İşlenen Kişisel Veriler ve Amaçları:</strong> Ad, soyad, telefon numarası, e-posta adresi, işletme bilgileri ve işlem güvenliği kayıtlarınız; üyelik oluşturulması, kimlik doğrulaması, randevu takviminin yürütülmesi, bildirimlerin gönderilmesi ve yasal yükümlülüklerin yerine getirilmesi amacıyla işlenmektedir.
                   </p>
                   <p>
-                    <strong>3. Üye İşletmenin KVKK Yükümlülüğü:</strong> Üye İşletme, RANDEVORY paneli üzerinden eriştiği müşteri iletişim ve randevu bilgilerini yalnızca randevu hizmetinin sunulması amacıyla kullanmayı, müşterilerin açık rızası olmaksızın üçüncü kişilerle paylaşmamayı ve KVKK mevzuatına tam uyum sağlamayı kabul ve taahhüt eder.
+                    <strong>3. Yurtdışı Bulut Altyapısı Aktarımı (KVKK Madde 9):</strong> Platform güvenliği ve kesintisiz hizmet için verileriniz yüksek güvenlikli uluslararası bulut altyapılarında (Supabase / AWS Frankfurt-AB sunucuları) 256-bit SSL şifrelemeyle barındırılmaktadır. Bu aktarıma açık rıza gösterdiğinizi kabul etmektesiniz.
                   </p>
                   <p>
-                    <strong>4. Veri Güvenliği ve Haklarınız:</strong> Kişisel verileriniz 256-bit SSL şifreli bulut altyapısında korunur ve üçüncü şahıslara pazarlama amacıyla asla satılmaz. KVKK Madde 11 kapsamındaki tüm taleplerinizi <code>noreply@randevory.com</code> adresine iletebilirsiniz.
+                    <strong>4. Personel Gizlilik Taahhüdü ve Şahsi Kullanım Yasağı (TCK 135-138):</strong> Üye İşletme ve personelleri, RANDEVORY paneli üzerinden eriştikleri müşteri telefon ve kimlik bilgilerini yalnızca ilgili randevunun ifası için kullanmayı, müşterileri şahsi amaçlarla aramayı/mesaj atmayı kesinlikle yasaklamayı taahhüt eder. Personelin şahsi amaçla müşteri verisini kullanmasından doğacak TCK ve KVKK cezai sorumluluğu doğrudan işletmeye aittir.
+                  </p>
+                  <p>
+                    <strong>5. Veri Güvenliği ve Haklarınız:</strong> Kişisel verileriniz üçüncü şahıslara pazarlama amacıyla asla satılmaz. KVKK Madde 11 kapsamındaki tüm taleplerinizi <code>kvkk@randevory.com</code> veya <code>destek@randevory.com</code> adresine iletebilirsiniz.
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    <strong>1. Platformun Hukuki Konumu (Teknik Altyapı Sağlayıcı):</strong> <strong>RANDEVORY</strong>, randevulu çalışan işletmelerin kendi takvim, personel ve hizmetlerini yönetmelerini sağlayan bulut tabanlı bir yazılım altyapısıdır (SaaS). RANDEVORY, üye işletmelerin sunduğu hizmetlerin satıcısı, sağlayıcısı veya ortağı değildir.
+                    <strong>1. Platformun Hukuki Konumu (SaaS / Yer Sağlayıcı):</strong> <strong>RANDEVORY</strong>, randevulu çalışan işletmelerin kendi takvim, personel ve hizmetlerini yönetmelerini sağlayan bulut tabanlı bir yazılım altyapısıdır (5651 Sayılı Kanun kapsamında Yer Sağlayıcı). RANDEVORY, üye işletmelerin sunduğu hizmetlerin satıcısı, sağlayıcısı veya ortağı değildir.
                   </p>
                   <p>
-                    <strong>2. Sorumluluk Reddi:</strong> İşletmenin müşterilerine sunduğu hizmetlerin kalitesi, güvenliği, fiyatlandırması, randevu iptalleri, müşteri ile işletme arasındaki ücret tahsilatı, vergi/fatura yükümlülükleri ve doğabilecek her türlü tüketici uyuşmazlığında <strong>tek muhatap ve sorumlu ilgili İşletmedir</strong>. RANDEVORY, işletme ile müşteri arasındaki uyuşmazlıklarda hiçbir hukuki, cezai veya mali sorumluluk kabul etmez.
+                    <strong>2. Tüketici Sorumluluğu ve Hizmet Ayıpları Reddi:</strong> İşletmenin müşterilerine sunduğu hizmetlerin kalitesi, güvenliği, fiyatlandırması, randevu iptalleri, müşteri ile işletme arasındaki ücret tahsilatı, vergi/fatura yükümlülükleri ve doğabilecek her türlü tüketici uyuşmazlığında <strong>tek muhatap ve sorumlu ilgili İşletmedir</strong>. RANDEVORY hiçbir hukuki, cezai veya mali sorumluluk kabul etmez.
                   </p>
                   <p>
-                    <strong>3. İçerik ve Kullanım Şartları:</strong> İşletme sahibi, oluşturduğu işletme sayfasındaki tüm bilgilerin doğruluğundan ve yürürlükteki mevzuata uygunluğundan bizzat sorumludur. Yasa dışı veya yanıltıcı kullanım tespit edildiğinde RANDEVORY hesabı askıya alma hakkına sahiptir.
+                    <strong>3. Personel Gizlilik İhlali ve Rücu Şartı:</strong> İşletme çalışanlarının müşteri telefon veya iletişim verilerini şahsi amaçla kaydetmesi, rahatsız etmesi veya kötüye kullanmasından münhasıran işletme sorumludur. RANDEVORY&apos;ye bu sebeple yansıtılabilecek her türlü idari para cezası ve tazminat fer&apos;ileriyle birlikte derhal işletmeye rücu edilir.
                   </p>
                   <p>
-                    <strong>4. Lisans ve İptal Şartları:</strong> Yazılım abonelik paketleri taahhütsüzdür; dilediğiniz dönem sonlandırabilirsiniz. Ödemeler Shopier 3D Secure güvenli ödeme altyapısı üzerinden tahsil edilir.
+                    <strong>4. SMS ve Ticari İleti Sınırı (ETK & İYS):</strong> Platform SMS altyapısı yalnızca randevu teyit/iptal (işlemsel ileti) amaçlıdır. İşletmelerin İYS onaysız reklam/kampanya SMS&apos;i göndermesi yasaktır; doğacak bakanlık cezalarından işletme sorumludur.
+                  </p>
+                  <p>
+                    <strong>5. Lisans ve İptal Şartları:</strong> Yazılım abonelik paketleri taahhütsüzdür. Ödemeler Shopier 3D Secure güvenli altyapısıyla tahsil edilir. Cayma hakkı Mesafeli Sözleşmeler Yönetmeliği Madde 15/1-ğ uyarınca anında ifa edilen dijital hizmetlerde kapsam dışıdır.
                   </p>
                 </>
               )}

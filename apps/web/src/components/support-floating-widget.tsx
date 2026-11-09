@@ -24,6 +24,7 @@ import {
   Check,
   CheckCheck,
   Star,
+  ShieldCheck,
 } from 'lucide-react';
 
 export interface SupportChatMessage {
@@ -1362,6 +1363,14 @@ export function SupportFloatingWidget() {
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1 shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                     {assignedAgent ? `${assignedAgent.name} • Canlı` : 'Destek Masası'}
+                  </span>
+                </div>
+
+                {/* KVKK & Güvenlik Bilgilendirme Rozeti */}
+                <div className="flex justify-center -mt-1 mb-1">
+                  <span className="text-[9px] text-slate-400 bg-slate-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-slate-200/60">
+                    <ShieldCheck className="w-2.5 h-2.5 text-slate-400" />
+                    Görüşmeler kalite ve KVKK standartları uyarınca kayıt altındadır.
                   </span>
                 </div>
 

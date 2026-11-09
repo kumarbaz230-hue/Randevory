@@ -2208,13 +2208,16 @@ export default function BusinessPublicPage() {
 
             <div className="p-6 overflow-y-auto text-xs text-slate-600 space-y-3 leading-relaxed">
               <p>
-                <strong>1. Kişisel Verilerin İşlenmesi (KVKK):</strong> Girmiş olduğunuz Ad Soyad, Telefon Numarası, E-posta ve Randevu Notu bilgileriniz; yalnızca randevunuzun oluşturulması, çakışmaların önlenmesi ve randevu bilgilendirmelerinin yapılması amacıyla 6698 sayılı KVKK kapsamında randevu aldığınız <strong>{business.name}</strong> işletmesi (Veri Sorumlusu) ile paylaşılmaktadır.
+                <strong>1. Kişisel Verilerin İşlenmesi (KVKK & Açık Rıza):</strong> Randevu oluştururken girdiğiniz Ad, Soyad, Telefon Numarası, E-posta ve Randevu Notu bilgileriniz; randevunun oluşturulması, çakışmaların önlenmesi, randevu onay/hatırlatma SMS&apos;lerinin iletilmesi amacıyla 6698 sayılı KVKK kapsamında randevu aldığınız <strong>{business.name}</strong> işletmesi (Veri Sorumlusu) ve teknik altyapı sağlayıcı RANDEVORY (Veri İşleyen) tarafından güvenli bulut sunucularında işlenmektedir.
               </p>
               <p>
-                <strong>2. Hizmet ve Sorumluluk Sınırı:</strong> <strong>RANDEVORY</strong> yalnızca randevu takibini sağlayan teknik yazılım altyapısıdır. Randevu aldığınız hizmetin sunulması, kalitesi, fiyatlandırılması, ücret tahsilatı veya randevu iptal/erteleme süreçlerinden doğrudan randevu aldığınız <strong>{business.name}</strong> işletmesi sorumludur.
+                <strong>2. Hizmet ve Tüketici Sorumluluğu Sınırı:</strong> <strong>RANDEVORY</strong>, randevu takvimini sağlayan teknik altyapı sağlayıcısı (Yer Sağlayıcı) konumundadır. Sunulan berber, kuaför, klinik vb. hizmetin kalitesi, ayıplı ifası, hijyeni, bedeli, randevu saatinde gecikmeler, iptaller veya işletme içinde yaşanabilecek durumlar münhasıran <strong>{business.name}</strong> işletmesinin sorumluluğundadır; RANDEVORY hiçbir hukuki veya cezai sorumluluk taşımaz.
               </p>
               <p>
-                <strong>3. İptal ve Değişiklik:</strong> Randevunuza katılamayacağınız durumlarda en geç {business.settings.cancellation_deadline_hours} saat öncesinden sayfadaki <strong>Randevu Sorgula / İptal</strong> sekmesinden veya işletme telefonundan iptal işlemi yapabilirsiniz.
+                <strong>3. Randevu Sadakati ve Kabul Kısıtlaması (No-Show):</strong> Randevunuza katılamayacağınız durumlarda lütfen en geç {business.settings.cancellation_deadline_hours} saat öncesinden sayfadaki <strong>Randevu Sorgula / İptal</strong> sekmesinden randevunuzu iptal ediniz. Mazeretsiz olarak gelinmeyen randevularda işletmenin randevu kabul kısıtlaması (hizmet güvenlik listesi) uygulama hakkı saklıdır.
+              </p>
+              <p>
+                <strong>4. Veri Güvenliği:</strong> Bilgileriniz hiçbir koşulda üçüncü taraf reklam veya pazarlama şirketlerine aktarılmaz veya satılmaz. Detaylı haklarınız için <a href="/yasal" target="_blank" className="text-brand-600 underline font-semibold">Yasal Şartlar ve KVKK Metnini</a> inceleyebilirsiniz.
               </p>
             </div>
 
