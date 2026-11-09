@@ -33,6 +33,7 @@ import {
   ChevronLeft,
   X,
   Eye,
+  UserCheck,
 } from 'lucide-react';
 import { buildWhatsAppUrl } from '@/lib/whatsapp-helper';
 
@@ -66,6 +67,7 @@ interface AdminTicketRow {
   message: string;
   reported_business_slug: string | null;
   status: 'open' | 'answered' | 'closed';
+  is_taken_over?: boolean;
   admin_reply: string | null;
   messages?: Array<{
     sender: 'user' | 'admin' | 'ai';
@@ -427,6 +429,43 @@ export default function SuperAdminDashboardPage() {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+
+  const handleToggleTakeover = async (ticket: AdminTicketRow) => {
+    setActionBusyId(ticket.id);
+    const currentlyTaken = Boolean(ticket.is_taken_over || takenOverTickets.includes(ticket.id));
+    const nextState = !currentlyTaken;
+
+    try {
+      const supabase = createClient();
+      await supabase.rpc('support_toggle_takeover', {
+        p_ticket_id: ticket.id,
+        p_takeover: nextState,
+      });
+
+      setTakenOverTickets((prev) => {
+        const next = nextState ? [...prev, ticket.id] : prev.filter((id) => id !== ticket.id);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('randevory_taken_over_tickets', JSON.stringify(next));
+        }
+        return next;
+      });
+
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticket.id ? { ...t, is_taken_over: nextState } : t))
+      );
+
+      showToast(
+        nextState
+          ? '✋ Sohbeti sessizce ele aldınız. Temsilci susturuldu, mesajları artık siz yazıyorsunuz.'
+          : '🤖 Sohbet tekrar temsilciye devredildi.'
+      );
+    } catch (err: any) {
+      alert(err?.message || 'İşlem gerçekleştirilemedi.');
+    } finally {
+      setActionBusyId(null);
+    }
   };
 
   const sendAdminMessageToTicket = async (
@@ -1048,6 +1087,32 @@ export default function SuperAdminDashboardPage() {
                           </a>
                         )}
 
+                        {/* Sessiz Ele Al / Devret Butonu */}
+                        {ticket.status !== 'closed' && (
+                          <button
+                            type="button"
+                            disabled={actionBusyId === ticket.id}
+                            onClick={() => handleToggleTakeover(ticket)}
+                            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs ${
+                              ticket.is_taken_over || takenOverTickets.includes(ticket.id)
+                                ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 ring-2 ring-amber-300'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                            }`}
+                            title={
+                              ticket.is_taken_over || takenOverTickets.includes(ticket.id)
+                                ? 'Sohbet sizde. Temsilciye geri devretmek için tıklayın.'
+                                : 'Sohbeti temsilciden siz devralın (karşı tarafa bildirim gitmez).'
+                            }
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>
+                              {ticket.is_taken_over || takenOverTickets.includes(ticket.id)
+                                ? 'Ele Alındı (Sizdesiniz)'
+                                : '✋ Sohbeti Ele Al'}
+                            </span>
+                          </button>
+                        )}
+
                         {/* Kapat / Çözüldü Butonu */}
                         {ticket.status !== 'closed' ? (
                           <button
@@ -1083,6 +1148,25 @@ export default function SuperAdminDashboardPage() {
                         >
                           İşletmeyi Aç &rarr;
                         </a>
+                      </div>
+                    )}
+
+                    {/* Sessiz Ele Alma Bilgilendirme Çubuğu */}
+                    {(ticket.is_taken_over || takenOverTickets.includes(ticket.id)) && ticket.status !== 'closed' && (
+                      <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center justify-between gap-3 text-xs text-amber-900 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                          <span>
+                            <strong>Sohbeti Siz Ele Aldınız:</strong> Temsilci otomatik yanıt vermeyi durdurdu. Yazdığınız tüm mesajlar canlı olarak iletilir, karşı tarafa herhangi bir bot bildirimi gitmez.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTakeover(ticket)}
+                          className="px-2 py-0.5 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[11px] shrink-0 transition-colors"
+                        >
+                          Temsilciye Devret
+                        </button>
                       </div>
                     )}
 

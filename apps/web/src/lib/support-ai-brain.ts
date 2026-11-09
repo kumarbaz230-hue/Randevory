@@ -1,284 +1,13 @@
 /**
  * RANDEVORY AI Support Brain
- * 7/24 Kesin Çözüm Üreten Yapay Zeka Destek Motoru
+ * 7/24 Kesin Çözüm Üreten Doğal Müşteri Temsilcisi Motoru
  */
 
 export interface AiResolution {
-  category: 'auth' | 'booking' | 'tables' | 'calendar' | 'services' | 'security' | 'billing' | 'pwa' | 'general';
+  category: 'greeting' | 'help_request' | 'thanks' | 'auth' | 'booking' | 'tables' | 'calendar' | 'services' | 'security' | 'billing' | 'pwa' | 'general';
   title: string;
   solution: string;
   quickActions: Array<{ id: string; label: string; url?: string }>;
-}
-
-export function solveSupportQuery(userText: string): AiResolution {
-  const q = userText.toLowerCase().trim();
-
-  // 1. Şifre, Giriş, Parola Sorunları
-  if (
-    q.includes('şifre') ||
-    q.includes('sifre') ||
-    q.includes('giriş') ||
-    q.includes('giris') ||
-    q.includes('parola') ||
-    q.includes('login') ||
-    q.includes('hesabıma giremiyorum')
-  ) {
-    return {
-      category: 'auth',
-      title: '🔑 Şifre Sıfırlama & Giriş Çözümü',
-      solution:
-        `Giriş ve şifre sorununu hemen 2 adımda çözebilirsiniz:\n\n` +
-        `1. **Şifremi Unuttum Ekranı:** Giriş sayfasında (/login) bulunan **"Şifremi Unuttum"** bağlantısına tıklayın ve kayıtlı e-postanızı yazın.\n` +
-        `2. **Sıfırlama Bağlantısı:** 1 dakika içinde e-posta kutunuza (Spam/Gereksiz klasörünü de kontrol edin) yeni şifre oluşturma linki gelecektir.\n\n` +
-        `💡 *Eğer e-posta gelmiyorsa veya kayıtlı e-postanızı hatırlamıyorsanız, destek talebinize e-posta adresinizi yazın; yetkili arkadaşımız hesabınızı doğrudan güncelleyecektir.*`,
-      quickActions: [
-        { id: 'act_login', label: 'Giriş Ekranına Git', url: '/login' },
-        { id: 'act_forgot', label: 'Şifre Sıfırlama Sayfası', url: '/forgot-password' },
-      ],
-    };
-  }
-
-  // 2. Masa & Mekan Rezervasyonu (2. Stil) Soruları
-  if (
-    q.includes('masa') ||
-    q.includes('restoran') ||
-    q.includes('kafe') ||
-    q.includes('loca') ||
-    q.includes('bahçe') ||
-    q.includes('bahce') ||
-    q.includes('teras') ||
-    q.includes('salon') ||
-    q.includes('2. stil')
-  ) {
-    return {
-      category: 'tables',
-      title: '🍽️ Masa & Mekan Rezervasyonu Çözümü',
-      solution:
-        `Masa ve mekan rezervasyonu sistemi (2. Stil) hakkında bilmeniz gerekenler:\n\n` +
-        `1. **Masa Düzenini Açma/Kapatma:** İşletme Tablonuzda sol menüdeki **"Masalar & Alanlar"** sekmesine gidin. En üstteki **"Masa Rezervasyon Sistemini Aktif Et"** butonuna basarak anında açıp kapatabilirsiniz.\n` +
-        `2. **Bölüm & Masa Yönetimi:** Bahçe, Ana Salon, Teras ve VIP Loca bölümlerine istediğiniz kadar masa ekleyebilir, kişi kapasitelerini (2, 4, 8 kişi) ve özelliklerini (Prizli, Klimalı vb.) belirleyebilirsiniz.\n` +
-        `3. **Varsayılan Görünüm:** Kafe veya restoran iseniz, sayfanız açıldığında doğrudan interaktif masa haritasının açılmasını seçebilirsiniz.\n` +
-        `4. **Canlı Önizleme:** "Masa Sayfasını Canlı Gör" butonuna tıklayarak müşterilerinizin masaları nasıl gördüğünü hemen test edebilirsiniz.`,
-      quickActions: [
-        { id: 'act_tables', label: 'Masalar & Alanlar Sayfasına Git', url: '/dashboard/tables' },
-        { id: 'act_settings', label: 'İşletme Ayarları', url: '/dashboard/settings' },
-      ],
-    };
-  }
-
-  // 3. Randevu İptali / Sorgulama
-  if (
-    q.includes('iptal') ||
-    q.includes('vazgeç') ||
-    q.includes('randevumu sil') ||
-    q.includes('sorgula') ||
-    q.includes('saat değiştir')
-  ) {
-    return {
-      category: 'booking',
-      title: '📅 Randevu İptali & Değişiklik Çözümü',
-      solution:
-        `Randevu iptali ve sorgulama işlemleri son derece basittir:\n\n` +
-        `• **Müşteriler İçin:** Randevu aldığınız işletmenin profil sayfasına gidin (/isletme-adiniz). Üstteki **"Randevu Sorgula / İptal"** sekmesine tıklayıp telefon numaranızı girin; mevcut randevunuzu tek tuşla iptal edebilirsiniz.\n` +
-        `• **İşletmeler İçin:** İşletme Tablonuzdaki **"Randevular"** veya **"Randevu Takvimi"** sayfasından istediğiniz randevunun üzerine tıklayıp kırmızı **"İptal"** veya **"Gelmedi (No-Show)"** butonuna basabilirsiniz.\n\n` +
-        `İptal edilen randevunun saati anında takvimde boşa çıkar ve başka müşteriler randevu alabilir.`,
-      quickActions: [
-        { id: 'act_calendar', label: 'Randevu Takvimine Git', url: '/dashboard/calendar' },
-        { id: 'act_dashboard', label: 'İşletme Tablosuna Git', url: '/dashboard' },
-      ],
-    };
-  }
-
-  // 4. Takvimde Saat Çıkmaması / Saatlerin Kapalı Olması
-  if (
-    q.includes('saat') ||
-    q.includes('takvim') ||
-    q.includes('müsait') ||
-    q.includes('musait') ||
-    q.includes('boş saat yok') ||
-    q.includes('saat görünmüyor') ||
-    q.includes('slot')
-  ) {
-    return {
-      category: 'calendar',
-      title: '⏰ Takvimde Randevu Saatlerinin Görünmesi Çözümü',
-      solution:
-        `Sayfanızda randevu saatleri çıkmıyorsa veya kapalı görünüyorsa 3 adımı kontrol edin:\n\n` +
-        `1. **Çalışma Saatleri:** İşletme Ayarları > Çalışma Saatleri sekmesinde ilgili günün (Pzt, Salı vb.) **"Açık"** olduğundan ve saat aralığının (örn: 09:00 - 19:00) doğru girildiğinden emin olun.\n` +
-        `2. **Personel Eşleşmesi:** Personel Yönetimi menüsünde en az 1 çalışanınızın o gün çalıştığından ve sunduğunuz **hizmetlerle eşleştiğinden** emin olun.\n` +
-        `3. **Slot Aralığı:** İşletme Ayarları sayfasından slot aralığını (15, 20, 30, 45, 60 dk) dilediğiniz gibi değiştirebilirsiniz.`,
-      quickActions: [
-        { id: 'act_settings_hours', label: 'Çalışma Saatlerini Düzenle', url: '/dashboard/settings' },
-        { id: 'act_staff', label: 'Personel Yönetimi', url: '/dashboard/staff' },
-      ],
-    };
-  }
-
-  // 5. Hizmet Süresi (90 Dakika vb.) & Fiyat Düzenleme
-  if (
-    q.includes('süre') ||
-    q.includes('dakika') ||
-    q.includes('90') ||
-    q.includes('fiyat') ||
-    q.includes('hizmet ekle') ||
-    q.includes('ücret')
-  ) {
-    return {
-      category: 'services',
-      title: '✨ Hizmet Süresi & Fiyat Ayarları Çözümü',
-      solution:
-        `Hizmetlerin süresi ve fiyatları tam istediğiniz gibi özelleştirilebilir:\n\n` +
-        `1. **Hizmetler & Fiyatlar** (/dashboard/services) sayfasına gidin.\n` +
-        `2. Düzenlemek istediğiniz hizmetin yanındaki **Düzenle (Kalem)** butonuna tıklayın.\n` +
-        `3. **Süre Seçimi:** Artık Saat (0-23) ve Dakika (0-59) alanları üzerinden **15 dk, 30 dk, 45 dk, 1 sa, 1 sa 30 dk (90 dk), 2 sa** gibi her türlü süreyi tam küsuratıyla belirleyebilirsiniz.\n` +
-        `4. Fiyatınızı yazıp **Kaydet** butonuna basın. Sayfanızda anında güncellenir.`,
-      quickActions: [
-        { id: 'act_services', label: 'Hizmetler & Fiyatlar Sayfasına Git', url: '/dashboard/services' },
-      ],
-    };
-  }
-
-  // 6. Troll / Sahte Randevu / Gelmeyen Müşteri (No-Show) Koruması
-  if (
-    q.includes('gelmedi') ||
-    q.includes('troll') ||
-    q.includes('sahte') ||
-    q.includes('kara liste') ||
-    q.includes('engelle') ||
-    q.includes('spam') ||
-    q.includes('no-show')
-  ) {
-    return {
-      category: 'security',
-      title: '🛡️ Troll, Sahte Randevu & No-Show Koruması Çözümü',
-      solution:
-        `İşletmenizi trollüklerden ve gelmeyen müşterilerden korumak için 3 kalkan devrededir:\n\n` +
-        `1. **Kara Liste / Numarayı Engelleme:** **Müşteriler (CRM)** sekmesine gidip randevusuna gelmeyen veya sahte işlem yapan kişinin yanındaki kırmızı **"🚫 Engelle"** butonuna basın. Bu numara bir daha işletmenizden asla randevu alamaz.\n` +
-        `2. **No-Show İşaretleme:** Randevular sayfasında gelmeyen müşterilerin randevusunu tek tıkla **"Gelmedi"** olarak işaretleyebilirsiniz. Sistem o müşterinin kaç kez gelmediğini CRM tablonuzda otomatik sayar.\n` +
-        `3. **Spam & Güvenlik Kodu Doğrulaması:** Aynı numara aynı günde en fazla 2 randevu alabilir ve müşteriler randevu alırken 4 haneli güvenlik kodunu onaylar; böylece botlar ve troller %100 engellenir.`,
-      quickActions: [
-        { id: 'act_customers', label: 'Müşteriler & Kara Liste Sayfası', url: '/dashboard/customers' },
-        { id: 'act_appointments', label: 'Randevuları Görüntüle', url: '/dashboard' },
-      ],
-    };
-  }
-
-  // 7. İşletme Linki / Profil Açılmıyor / 404 Hatası
-  if (
-    q.includes('link') ||
-    q.includes('bağlantı') ||
-    q.includes('baglanti') ||
-    q.includes('açılmıyor') ||
-    q.includes('acilmiyor') ||
-    q.includes('404') ||
-    q.includes('bulunamadı') ||
-    q.includes('instagram')
-  ) {
-    return {
-      category: 'general',
-      title: '🔗 İşletme Randevu Linki Çözümü',
-      solution:
-        `İşletmenizin müşterilere vereceği özel bağlantı hakkında çözüm adımları:\n\n` +
-        `1. **Özel Linkinizi Kontrol Edin:** İşletme Tablonuzdaki **"İşletme Ayarları"** sayfasına gidin. Orada dükkanınızın web adresi yazar (Örn: *randevory.pro/isletme-adiniz*).\n` +
-        `2. **Otomatik Onarım:** Türkçe karakterler (ş, ı, ğ, ç vb.) linkte otomatik düzeltilir. Eğer açılmıyorsa linkinizi sadece küçük harf ve tire kullanarak kaydedin (Örn: *mustafa-kuafor*).\n` +
-        `3. **Instagram & WhatsApp:** Bu linki Instagram profilinizin "Biyografi / Bağlantılar" kısmına veya WhatsApp İşletme profilinize ekleyerek müşterilerinizin 7/24 randevu almasını sağlayabilirsiniz.`,
-      quickActions: [
-        { id: 'act_settings_slug', label: 'İşletme Ayarlarına Git', url: '/dashboard/settings' },
-      ],
-    };
-  }
-
-  // 8. Paketler, Ücret & Shopier Kart ile Ödeme
-  if (
-    q.includes('paket') ||
-    q.includes('ücret') ||
-    q.includes('ucret') ||
-    q.includes('fiyat') ||
-    q.includes('shopier') ||
-    q.includes('kart') ||
-    q.includes('ödeme') ||
-    q.includes('odeme') ||
-    q.includes('abonelik') ||
-    q.includes('lisans')
-  ) {
-    return {
-      category: 'billing',
-      title: '💳 Abonelik, Paketler & Güvenli Ödeme Çözümü',
-      solution:
-        `RANDEVORY lisans paketleri taahhütsüz ve anında aktiftir:\n\n` +
-        `1. **Paket Seçimi:** İşletme Tablosundaki **"Abonelik & Lisans"** (/dashboard/billing) menüsüne gidin.\n` +
-        `2. **Ödeme Altyapısı:** Ödemeler Türkiye'nin BDDK lisanslı güvenli ödeme kuruluşu **Shopier** üzerinden 3D Secure kredi/banka kartıyla yapılır.\n` +
-        `3. **Anında Aktivasyon:** Ödeme tamamlandığı an paketiniz saniyeler içinde otomatik olarak yükseltilir; ek personel ve sınırsız hizmet limitleri hemen açılır.`,
-      quickActions: [
-        { id: 'act_billing', label: 'Abonelik & Paketleri Gör', url: '/dashboard/billing' },
-      ],
-    };
-  }
-
-  // 9. QR Kod, Vitrin Afişi & WhatsApp
-  if (
-    q.includes('qr') ||
-    q.includes('afiş') ||
-    q.includes('afis') ||
-    q.includes('vitrin') ||
-    q.includes('yazdır') ||
-    q.includes('whatsapp')
-  ) {
-    return {
-      category: 'general',
-      title: '📱 QR Kod & Vitrin Afişi Çözümü',
-      solution:
-        `Dükkanınızın vitrinine veya masalarına koyabileceğiniz baskıya hazır materyaller:\n\n` +
-        `1. **Vitrin Afişi:** İşletme Tablonuzun sol menüsündeki veya sayfanızdaki **"QR Kod"** butonuna tıklayın.\n` +
-        `2. **Tek Tıkla İndir:** Açılan ekrandan "Afişi İndir / Yazdır" diyerek dükkan logonuz ve karekodunuzun olduğu yüksek kaliteli afişi alıp kuşe kağıda bastırabilirsiniz.\n` +
-        `3. **WhatsApp İletişimi:** Randevu alındığında çıkan yeşil "WhatsApp ile Bilgilendir" butonu sayesinde müşteriye randevu detaylarını tek tuşla gönderebilirsiniz.`,
-      quickActions: [
-        { id: 'act_dashboard', label: 'İşletme Tablosuna Git', url: '/dashboard' },
-      ],
-    };
-  }
-
-  // 10. Uygulama Yükleme (PWA)
-  if (
-    q.includes('uygulama') ||
-    q.includes('yükle') ||
-    q.includes('yukle') ||
-    q.includes('indir') ||
-    q.includes('telefona') ||
-    q.includes('pwa') ||
-    q.includes('ana ekran')
-  ) {
-    return {
-      category: 'pwa',
-      title: '📲 Mobil Uygulamayı Telefona Yükleme Çözümü',
-      solution:
-        `RANDEVORY uygulamasını telefonunuza uygulama mağazası olmadan 5 saniyede indirebilirsiniz:\n\n` +
-        `• **Android (Chrome):** Siteye girdiğinizde altta çıkan "Uygulamayı Yükle" butonuna basın veya sağ üstteki 3 noktaya tıklayıp **"Uygulamayı Yükle / Ana Ekrana Ekle"** deyin.\n` +
-        `• **iPhone (Safari):** Safari'de ekranın altındaki **Paylaş (kare içinde yukarı ok)** simgesine dokunun ve aşağı kaydırıp **"Ana Ekrana Ekle"** seçeneğini seçin.\n\n` +
-        `Telefonunuzun ana ekranına RANDEVORY ikonu gelir ve tıpkı mağaza uygulaması gibi tam ekran, bildirim destekli ve hızlı çalışır.`,
-      quickActions: [
-        { id: 'act_home', label: 'Ana Sayfaya Git', url: '/' },
-      ],
-    };
-  }
-
-  // 11. Genel Akıllı Yanıt (NLP Intelligent Fallback)
-  return {
-    category: 'general',
-    title: '🤖 RANDEVORY Akıllı Asistanı Çözüm Rehberi',
-    solution:
-      `Sorunuzu aldım: "${userText}"\n\n` +
-      `Sistemimizde en sık ihtiyaç duyulan çözümler şunlardır:\n\n` +
-      `• **Randevu & Takvim:** İşletme Tablonuzdan randevularınızı onaylayabilir, iptal edebilir veya gelmeyenleri "Gelmedi" olarak işaretleyebilirsiniz.\n` +
-      `• **Hizmet & Fiyat:** Hizmetler menüsünden süreleri (15, 30, 45, 90 dk vb.) ve fiyatları anında güncelleyebilirsiniz.\n` +
-      `• **Masa Düzeni:** Kafe/restoranlar için Masalar & Alanlar menüsünden masa rezervasyonunu açabilirsiniz.\n` +
-      `• **Güvenlik & Kara Liste:** Müşteriler sayfasından sahte işlem yapan numaraları tek tıkla engelleyebilirsiniz.\n\n` +
-      `Eğer sorununuz devam ediyorsa lütfen aşağıdaki butona tıklayın; kurucu destek ekibimize ileteyim, hemen ilgilenelim!`,
-    quickActions: [
-      { id: 'connect_human', label: '👨‍💼 Müşteri Temsilcisine Not Bırak' },
-      { id: 'restart_options', label: '🔄 Konu Menüsünü Göster' },
-    ],
-  };
 }
 
 export interface SupportAgent {
@@ -292,10 +21,10 @@ export interface SupportAgent {
 }
 
 export const SUPPORT_AGENTS: SupportAgent[] = [
-  // Çoğunluk Kadın Temsilciler
+  // Çoğunluk Kadın Temsilciler (Sadece İsimler)
   {
     id: 'esma',
-    name: 'Esma Kaya',
+    name: 'Esma',
     title: 'Müşteri Temsilcisi',
     gender: 'female',
     avatarLetter: 'E',
@@ -305,17 +34,17 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
   },
   {
     id: 'zeynep',
-    name: 'Zeynep Aksoy',
-    title: 'Müşteri Destek Uzmanı',
+    name: 'Zeynep',
+    title: 'Müşteri Temsilcisi',
     gender: 'female',
     avatarLetter: 'Z',
     avatarColor: 'from-fuchsia-600 to-pink-600',
     welcomeGreeting:
-      'Merhaba! Ben Zeynep, Randevory destek ekibine hoş geldiniz. Sorununuzu hemen birlikte çözelim, size nasıl yardımcı olabilirim?',
+      'Merhaba! Ben Zeynep. Randevory destek masasına hoş geldiniz. Sorununuzu hemen birlikte çözelim, size nasıl yardımcı olabilirim?',
   },
   {
     id: 'selin',
-    name: 'Selin Yılmaz',
+    name: 'Selin',
     title: 'Müşteri Temsilcisi',
     gender: 'female',
     avatarLetter: 'S',
@@ -325,28 +54,38 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
   },
   {
     id: 'elif',
-    name: 'Elif Öztürk',
-    title: 'Müşteri Başarı Temsilcisi',
+    name: 'Elif',
+    title: 'Müşteri Temsilcisi',
     gender: 'female',
     avatarLetter: 'E',
     avatarColor: 'from-amber-500 to-rose-500',
     welcomeGreeting:
-      'Merhaba! Ben Elif, Randevory canlı destek hattından. Size yardımcı olmak için buradayım, ne konuda destek istersiniz?',
+      'Merhaba! Ben Elif. Size yardımcı olmak için buradayım, ne konuda desteğe ihtiyacınız vardı acaba?',
   },
   {
     id: 'buse',
-    name: 'Buse Çelik',
-    title: 'Kıdemli Destek Uzmanı',
+    name: 'Buse',
+    title: 'Müşteri Temsilcisi',
     gender: 'female',
     avatarLetter: 'B',
     avatarColor: 'from-violet-600 to-purple-700',
     welcomeGreeting:
-      'Merhabalar! Ben Buse. Randevory destek masasına hoş geldiniz. Konuyla ilgili hemen yardımcı oluyorum.',
+      'Merhabalar! Ben Buse, Randevory ekibinden. Konuyla ilgili hemen yardımcı oluyorum, sorununuz nedir acaba?',
+  },
+  {
+    id: 'merve',
+    name: 'Merve',
+    title: 'Müşteri Temsilcisi',
+    gender: 'female',
+    avatarLetter: 'M',
+    avatarColor: 'from-pink-500 to-rose-600',
+    welcomeGreeting:
+      'Merhaba! Ben Merve. Mesajınızı aldım, hemen birlikte ilgilenelim. Hangi konuda yardımcı olabilirim?',
   },
   // Erkek Temsilciler
   {
     id: 'burak',
-    name: 'Burak Demir',
+    name: 'Burak',
     title: 'Müşteri Temsilcisi',
     gender: 'male',
     avatarLetter: 'B',
@@ -356,28 +95,385 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
   },
   {
     id: 'emre',
-    name: 'Emre Can',
+    name: 'Emre',
     title: 'Müşteri Temsilcisi',
     gender: 'male',
     avatarLetter: 'E',
-    avatarColor: 'from-emerald-600 to-teal-700',
+    avatarColor: 'from-cyan-600 to-blue-600',
     welcomeGreeting:
-      'Merhaba! Ben Emre, Randevory destek masasından. Mesajınızı inceliyorum, sorununuzu hemen halledelim.',
+      'Merhabalar! Ben Emre. Canlı destek talebinizi aldım. Size nasıl yardımcı olabilirim?',
   },
   {
     id: 'mert',
-    name: 'Mert Kılıç',
-    title: 'Destek Uzmanı',
+    name: 'Mert',
+    title: 'Müşteri Temsilcisi',
     gender: 'male',
     avatarLetter: 'M',
-    avatarColor: 'from-cyan-600 to-blue-700',
+    avatarColor: 'from-emerald-600 to-teal-600',
     welcomeGreeting:
-      'Merhabalar! Ben Mert. Randevory destek ekibine hoş geldiniz. Size nasıl yardımcı olabilirim?',
+      'Merhaba! Ben Mert, Randevory ekibinden. Sorunuzu hemen yanıtlamak için buradayım, durum nedir?',
   },
 ];
 
-export function getRandomSupportAgent(): SupportAgent {
-  return SUPPORT_AGENTS[Math.floor(Math.random() * SUPPORT_AGENTS.length)];
+export function getInitialAgentMessage(agent: SupportAgent) {
+  return {
+    sender: 'admin' as const,
+    agent_name: agent.name,
+    text:
+      agent.welcomeGreeting +
+      '\n\nSize hemen yardımcı olabilmem için aşağıdaki konulardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz:',
+    created_at: new Date().toISOString(),
+    options: [
+      { id: 'menu_app_error', label: '🛠️ Sitede / Uygulamada Hata Alıyorum' },
+      { id: 'menu_password', label: '🔑 Şifremi Yenileyemiyorum / Giriş Sorunu' },
+      { id: 'menu_link', label: '🔗 İşletme Linkim Bozuk / Açılmıyor' },
+      { id: 'menu_booking', label: '📅 Randevu Alma veya İptal Sorunu' },
+      { id: 'menu_qr_wp', label: '📱 QR Kod, Afiş veya WhatsApp Sorusu' },
+      { id: 'menu_billing', label: '💳 Paketler & Ödeme İşlemleri' },
+      { id: 'menu_complaint', label: '🚨 Güvenilir Olmayan İşletme Şikayeti' },
+    ],
+  };
+}
+
+export function solveSupportQuery(userText: string): AiResolution {
+  const q = userText.toLowerCase().trim();
+
+  // 1. Selamlaşma & Giriş
+  if (
+    q === 'merhaba' ||
+    q === 'merhabalar' ||
+    q === 'selam' ||
+    q === 'selamlar' ||
+    q === 'iyi günler' ||
+    q === 'günaydın' ||
+    q === 'iyi akşamlar' ||
+    q === 'slm' ||
+    q === 'mrb' ||
+    q.startsWith('merhaba') ||
+    q.startsWith('selam')
+  ) {
+    return {
+      category: 'greeting',
+      title: '👋 Canlı Karşılama',
+      solution:
+        'Merhabalar! Randevory Destek Masasına hoş geldiniz. Size yardımcı olmaktan memnuniyet duyarım. Yaşadığınız durum veya işlem yapmak istediğiniz konu hakkında kısaca bilgi verirseniz hemen birlikte adım adım çözelim.',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
+        { id: 'menu_password', label: '🔑 Şifre & Giriş' },
+        { id: 'menu_tables', label: '🍽️ Masa Rezervasyonu' },
+        { id: 'menu_services', label: '✨ Hizmet & Fiyat Düzenleme' },
+      ],
+    };
+  }
+
+  // 2. Doğrudan Yardım İstekleri
+  if (
+    q === 'yardım' ||
+    q === 'yardıma ihtiyacım var' ||
+    q === 'yardım edin' ||
+    q === 'yardım edebilir misiniz' ||
+    q === 'bakar mısınız' ||
+    q === 'burada mısınız' ||
+    q === 'kimse var mı' ||
+    q === 'destek' ||
+    q === 'canlı destek' ||
+    q.includes('yardım edebilir misiniz') ||
+    q.includes('yardıma ihtiyacım') ||
+    q.includes('bakar mısınız')
+  ) {
+    return {
+      category: 'help_request',
+      title: '🤝 Hazır Destek',
+      solution:
+        'Tabii ki, hemen buradayım ve size yardımcı olmak için dinliyorum! Randevularınız, masa düzeni, fiyatlandırma, şifre sıfırlama veya panel ayarlarıyla ilgili ne gerekiyorsa hemen çözebiliriz. Yaşadığınız durumu biraz açabilir misiniz?',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevu Sorunları' },
+        { id: 'menu_tables', label: '🍽️ Masa & Salon Düzeni' },
+        { id: 'menu_services', label: '✨ Hizmetler & Süreler' },
+        { id: 'menu_billing', label: '💳 Paket & Abonelik' },
+      ],
+    };
+  }
+
+  // 3. Teşekkür / Kapanış
+  if (
+    q === 'teşekkürler' ||
+    q === 'teşekkür ederim' ||
+    q === 'sağol' ||
+    q === 'sağolun' ||
+    q === 'eyvallah' ||
+    q === 'tamamdır' ||
+    q === 'anladım' ||
+    q.includes('teşekkür')
+  ) {
+    return {
+      category: 'thanks',
+      title: '✨ Teşekkür & Rica',
+      solution:
+        'Rica ederim, ne demek! İşletmenizin sorunsuz ve verimli çalışması bizim için her şeyden önemli. Başka bir sorunuz veya desteğe ihtiyacınız olursa bana buradan dilediğiniz zaman yazabilirsiniz. İyi çalışmalar ve bol kazançlar dilerim! 😊',
+      quickActions: [
+        { id: 'act_dashboard', label: 'İşletme Tablosuna Dön', url: '/dashboard' },
+      ],
+    };
+  }
+
+  // 4. Şifre, Giriş ve Hesap Sorunları
+  if (
+    q.includes('şifre') ||
+    q.includes('sifre') ||
+    q.includes('parola') ||
+    q.includes('giriş yapamıyorum') ||
+    q.includes('giris') ||
+    q.includes('unuttum') ||
+    q.includes('oturum')
+  ) {
+    return {
+      category: 'auth',
+      title: '🔑 Şifre Sıfırlama & Giriş Çözümü',
+      solution:
+        'Giriş ve şifre sorununu hemen 2 adımda çözebilirsiniz:\n\n' +
+        '1. **Şifremi Unuttum Ekranı:** Giriş sayfasında (/login) bulunan **"Şifremi Unuttum"** bağlantısına tıklayın ve kayıtlı e-postanızı yazın.\n' +
+        '2. **Sıfırlama Bağlantısı:** 1 dakika içinde e-posta kutunuza (Spam/Gereksiz klasörünü de kontrol edin) yeni şifre oluşturma linki gelecektir.\n\n' +
+        '💡 *Eğer e-posta gelmiyorsa veya kayıtlı e-postanızı hatırlamıyorsanız, bana e-postanızı yazın; buradan hemen kontrol edeyim.*',
+      quickActions: [
+        { id: 'act_login', label: 'Giriş Ekranına Git', url: '/login' },
+        { id: 'act_forgot', label: 'Şifre Sıfırlama Sayfası', url: '/forgot-password' },
+      ],
+    };
+  }
+
+  // 5. Masa ve Restoran / Kafe Rezervasyonu Sorunları
+  if (
+    q.includes('masa') ||
+    q.includes('restoran') ||
+    q.includes('kafe') ||
+    q.includes('salon') ||
+    q.includes('bölüm') ||
+    q.includes('rezervasyon') ||
+    q.includes('vip') ||
+    q.includes('bahçe')
+  ) {
+    return {
+      category: 'tables',
+      title: '🍽️ Masa ve Salon Yönetimi Çözümü',
+      solution:
+        'Masa yönetimi sistemimiz yalnızca kafe, restoran, oyun salonu veya mekan işletmelerinde aktiftir:\n\n' +
+        '1. **Masa Bölümü:** Sol menüdeki **"Masa Yönetimi"** (/dashboard/tables) sekmesine geçin.\n' +
+        '2. **Bölüm & Masa Ekleme:** "Bölüm Ekle" (İç Salon, Bahçe, Teras) butonundan mekanınızı bölün, ardından masaların kişi kapasitesini ve adını girin.\n' +
+        '3. **Görünürlük:** Berber veya kuaför gibi randevulu hizmet veren işletmelerde masalar gereksiz kalabalık yapmaması için gizlenmiştir. İstediğiniz zaman İşletme Ayarları > Özellikler kısmından masa modunu açıp kapatabilirsiniz.',
+      quickActions: [
+        { id: 'act_tables', label: 'Masa Yönetimine Git', url: '/dashboard/tables' },
+        { id: 'act_settings', label: 'İşletme Ayarlarına Git', url: '/dashboard/settings' },
+      ],
+    };
+  }
+
+  // 6. Randevu Alma, İptal ve Saat Sorunları
+  if (
+    q.includes('randevu') ||
+    q.includes('iptal') ||
+    q.includes('sorgula') ||
+    q.includes('saat') ||
+    q.includes('dolu') ||
+    q.includes('boş') ||
+    q.includes('slot')
+  ) {
+    return {
+      category: 'booking',
+      title: '📅 Randevu İşlemleri & Takvim Çözümü',
+      solution:
+        'Randevu oluşturma ve yönetimiyle ilgili pratik çözümler:\n\n' +
+        '• **Randevu İptali (Müşteri için):** İşletmenin randevu linkine girip sağ üstteki **"Randevu Sorgula / İptal"** sekmesinden telefon numarasıyla anında iptal edilebilir.\n' +
+        '• **Randevu İptali (İşletme için):** Yönetim Panelinizdeki **"Randevular"** sekmesinden ilgili randevunun yanındaki üç noktadan "İptal Et" seçeneğini seçebilirsiniz.\n' +
+        '• **Saat Çakışması Önleme:** Aynı personele aynı saatte 2 randevu verilemez; sistem dolu saatleri otomatik olarak listeden kaldırır.',
+      quickActions: [
+        { id: 'act_apts', label: 'Randevular Listesine Git', url: '/dashboard/appointments' },
+        { id: 'act_calendar', label: 'Takvime Git', url: '/dashboard/calendar' },
+      ],
+    };
+  }
+
+  // 7. Takvimde Saatlerin Kapalı / Görünmeme Sorunu
+  if (
+    q.includes('saatler kapalı') ||
+    q.includes('saat görünmüyor') ||
+    q.includes('müsait saat yok') ||
+    q.includes('randevu alınamıyor') ||
+    q.includes('takvim boş')
+  ) {
+    return {
+      category: 'calendar',
+      title: '⏰ Takvimde Saat Görünmeme Çözümü',
+      solution:
+        'Müşterileriniz randevu alırken saatlerin kapalı görünmesinin 3 temel sebebi vardır:\n\n' +
+        '1. **Çalışma Saatleri:** **İşletme Ayarları > Çalışma Saatleri** sayfasında o günün "Açık" olduğundan emin olun (örneğin Pazartesi 09:00 - 19:00).\n' +
+        '2. **Personel Eşleşmesi:** En az bir personelinizin hizmetlerle eşleştirilmiş olması ve çalışma saatlerinin tanımlı olması gerekir.\n' +
+        '3. **İleri Tarih Limiti:** Müşterilerin en fazla kaç gün sonrasına randevu alabileceği kısıtlanmış olabilir.',
+      quickActions: [
+        { id: 'act_settings_hours', label: 'Çalışma Saatlerini Ayarla', url: '/dashboard/settings' },
+        { id: 'act_staff', label: 'Personel Listesine Git', url: '/dashboard/staff' },
+      ],
+    };
+  }
+
+  // 8. Hizmetler, Fiyatlar ve Süreler
+  if (
+    q.includes('hizmet') ||
+    q.includes('fiyat') ||
+    q.includes('ücret') ||
+    q.includes('süre') ||
+    q.includes('dakika') ||
+    q.includes('kategori')
+  ) {
+    return {
+      category: 'services',
+      title: '✨ Hizmet & Fiyat Yönetimi Çözümü',
+      solution:
+        'Hizmetlerinizi ve fiyatlarınızı güncellemek için:\n\n' +
+        '1. Sol menüden **"Hizmetler"** (/dashboard/services) sekmesine girin.\n' +
+        '2. "Yeni Hizmet Ekle" butonuyla hizmet adı, süresi (örneğin 30 dk) ve fiyatını belirleyin.\n' +
+        '3. Süreler çok önemlidir; randevu takvimi seçilen hizmetin dakikasına göre sonraki randevuyu otomatik öteler ve çakışmayı engeller.',
+      quickActions: [
+        { id: 'act_services', label: 'Hizmetler Sayfasına Git', url: '/dashboard/services' },
+      ],
+    };
+  }
+
+  // 9. Sahte Randevu, Gelmeyen Müşteriler (No-Show) ve Güvenlik
+  if (
+    q.includes('gelmeyen') ||
+    q.includes('no-show') ||
+    q.includes('sahte') ||
+    q.includes('troll') ||
+    q.includes('kara liste') ||
+    q.includes('engelle') ||
+    q.includes('önlem') ||
+    q.includes('spam')
+  ) {
+    return {
+      category: 'security',
+      title: '🛡️ Sahte Randevu & No-Show Engelleme Çözümü',
+      solution:
+        'RANDEVORY işletmenizi sahte ve ciddiyetsiz randevulardan korumak için 3 katmanlı güvenlik sunar:\n\n' +
+        '1. **Telefon SMS / OTP Doğrulama:** Randevu oluşturan müşterilere 4 haneli güvenlik onay kodu gider, sahte numarayla işlem yapılamaz.\n' +
+        '2. **Kara Liste (1 Tıkla Engelleme):** Randevusuna mazeretsiz gelmeyen müşteriyi **Müşteriler** (/dashboard/customers) sayfasından tek tuşla kara listeye alabilirsiniz. Kara listedeki numara bir daha dükkanınızdan randevu alamaz.\n' +
+        '3. **Günlük Randevu Limiti:** Aynı telefon numarasından günde en fazla 2 aktif randevu alınabilir, art arda slot işgali engellenir.',
+      quickActions: [
+        { id: 'act_customers', label: 'Müşteri & Kara Liste Ekranı', url: '/dashboard/customers' },
+      ],
+    };
+  }
+
+  // 10. Paketler, Abonelik ve Ödeme
+  if (
+    q.includes('paket') ||
+    q.includes('abonelik') ||
+    q.includes('lisans') ||
+    q.includes('ödeme') ||
+    q.includes('shopier') ||
+    q.includes('satın al') ||
+    q.includes('pro') ||
+    q.includes('standart')
+  ) {
+    return {
+      category: 'billing',
+      title: '💳 Abonelik, Paketler & Lisans Çözümü',
+      solution:
+        'RANDEVORY paketleri işletmenizin büyüklüğüne göre ölçeklenir:\n\n' +
+        '• **Ücretsiz Paket:** 1 personel ve temel randevu takvimiyle dükkanınızı hemen açıp test edebilirsiniz.\n' +
+        '• **Standart & Pro Paketler:** Sınırsız personel, WhatsApp bildirim entegrasyonu, QR kodlu vitrin afişi ve detaylı ciro raporlaması içerir.\n' +
+        '• **Shopier Güvenli Ödeme:** Yönetim Panelinizdeki **"Abonelik & Lisans"** (/dashboard/billing) menüsünden kredi kartıyla 3D Secure güvencesiyle anında yükseltebilirsiniz.',
+      quickActions: [
+        { id: 'act_billing', label: 'Abonelik & Paketler Sayfası', url: '/dashboard/billing' },
+      ],
+    };
+  }
+
+  // 11. İşletme Linki & Web Sayfası
+  if (
+    q.includes('link') ||
+    q.includes('bağlantı') ||
+    q.includes('sayfam') ||
+    q.includes('web sitesi') ||
+    q.includes('açılmıyor') ||
+    q.includes('bulunamadı')
+  ) {
+    return {
+      category: 'general',
+      title: '🔗 İşletme Randevu Linki Çözümü',
+      solution:
+        'İşletmenizin müşterilere göndereceğiniz randevu linki: **randevory.com/isletme-adiniz** şeklindedir.\n\n' +
+        '• Linkinizi sol üstteki **"Sayfamı Gör"** veya **İşletme Ayarları** sayfasından kopyalayabilirsiniz.\n' +
+        '• Instagram biyografinize veya WhatsApp İşletme profilinize bu linki ekleyerek müşterilerinizin 7/24 kendiliğinden randevu oluşturmasını sağlayabilirsiniz.\n' +
+        '• Türkçe karakterli linklerdeki uyumsuzluklar sistemimiz tarafından otomatik düzeltilir.',
+      quickActions: [
+        { id: 'act_settings_slug', label: 'İşletme Ayarlarını Aç', url: '/dashboard/settings' },
+      ],
+    };
+  }
+
+  // 12. QR Kod, Vitrin Afişi & WhatsApp
+  if (
+    q.includes('qr') ||
+    q.includes('karekod') ||
+    q.includes('afiş') ||
+    q.includes('vitrin') ||
+    q.includes('baskı') ||
+    q.includes('whatsapp')
+  ) {
+    return {
+      category: 'general',
+      title: '📱 QR Kod & Vitrin Afişi Çözümü',
+      solution:
+        'Dükkanınızın vitrinine veya masalarına koyabileceğiniz baskıya hazır materyaller:\n\n' +
+        '1. **Vitrin Afişi:** İşletme Tablonuzun sol menüsündeki veya sayfanızdaki **"QR Kod"** butonuna tıklayın.\n' +
+        '2. **Tek Tıkla İndir:** Açılan ekrandan "Afişi İndir / Yazdır" diyerek dükkan logonuz ve karekodunuzun olduğu yüksek kaliteli afişi alıp kuşe kağıda bastırabilirsiniz.\n' +
+        '3. **WhatsApp İletişimi:** Randevu alındığında çıkan yeşil "WhatsApp ile Bilgilendir" butonu sayesinde müşteriye randevu detaylarını tek tuşla gönderebilirsiniz.',
+      quickActions: [
+        { id: 'act_dashboard', label: 'İşletme Tablosuna Git', url: '/dashboard' },
+      ],
+    };
+  }
+
+  // 13. Uygulama Yükleme (PWA)
+  if (
+    q.includes('uygulama') ||
+    q.includes('yükle') ||
+    q.includes('yukle') ||
+    q.includes('indir') ||
+    q.includes('telefona') ||
+    q.includes('pwa') ||
+    q.includes('ana ekran')
+  ) {
+    return {
+      category: 'pwa',
+      title: '📲 Mobil Uygulamayı Telefona Yükleme Çözümü',
+      solution:
+        'RANDEVORY uygulamasını telefonunuza uygulama mağazası olmadan 5 saniyede indirebilirsiniz:\n\n' +
+        '• **Android (Chrome):** Siteye girdiğinizde altta çıkan "Uygulamayı Yükle" butonuna basın veya sağ üstteki 3 noktaya tıklayıp **"Uygulamayı Yükle / Ana Ekrana Ekle"** deyin.\n' +
+        '• **iPhone (Safari):** Safari\'de ekranın altındaki **Paylaş (kare içinde yukarı ok)** simgesine dokunun ve aşağı kaydırıp **"Ana Ekrana Ekle"** seçeneğini seçin.\n\n' +
+        'Telefonunuzun ana ekranına RANDEVORY ikonu gelir ve tıpkı mağaza uygulaması gibi tam ekran, bildirim destekli ve hızlı çalışır.',
+      quickActions: [
+        { id: 'act_home', label: 'Ana Sayfaya Git', url: '/' },
+      ],
+    };
+  }
+
+  // 14. Genel Her Konuya Cevap Veren Doğal Temsilci Yanıtı
+  return {
+    category: 'general',
+    title: '💬 Destek Yanıtı',
+    solution:
+      `Mesajınızı aldım ve okudum ("${userText}").\n\n` +
+      `Konuyla ilgili size hemen en doğru çözümü sunabilmem için durumunuzu biraz daha detaylandırabilir misiniz? Ya da randevu, şifre, masa düzeni, fiyatlar veya işletme ayarları gibi bir konuda mı işlem yapmak istiyordunuz?\n\n` +
+      `Siz mesajınızı yazın, ben hemen buradan adım adım yardımcı olacağım.`,
+    quickActions: [
+      { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
+      { id: 'menu_password', label: '🔑 Şifre & Giriş' },
+      { id: 'menu_tables', label: '🍽️ Masa Rezervasyonu' },
+      { id: 'menu_services', label: '✨ Hizmetler & Fiyat' },
+    ],
+  };
 }
 
 export function formatConversationalAgentReply(
@@ -385,13 +481,19 @@ export function formatConversationalAgentReply(
   userText: string
 ): { reply: string; quickActions: Array<{ id: string; label: string; url?: string }> } {
   const resolution = solveSupportQuery(userText);
-  const q = userText.toLowerCase();
 
-  // Natural human transitions based on category
-  let conversationalIntro = `Merhaba! Ben ${agent.name}. Mesajınızı okudum, hiç merak etmeyin hemen yardımcı olayım.`;
-  
+  // If greeting, thanks, or help request, return direct natural reply without robotic headers
+  if (resolution.category === 'greeting' || resolution.category === 'thanks' || resolution.category === 'help_request') {
+    return {
+      reply: resolution.solution,
+      quickActions: resolution.quickActions,
+    };
+  }
+
+  let conversationalIntro = `Merhabalar! Ben ${agent.name}. Mesajınızı okudum, hemen yardımcı olayım;`;
+
   if (resolution.category === 'auth') {
-    conversationalIntro = `Merhabalar, ben ${agent.name}. Şifre ve giriş konusundaki sorununuzu şimdi inceledim;`;
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Şifre ve giriş konusundaki sorununuzu inceledim;`;
   } else if (resolution.category === 'tables') {
     conversationalIntro = `Merhaba! Ben ${agent.name}. Masa ve mekan rezervasyonu düzeniniz hakkında hemen bilgi vereyim;`;
   } else if (resolution.category === 'booking') {

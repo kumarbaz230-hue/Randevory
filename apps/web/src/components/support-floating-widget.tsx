@@ -3,17 +3,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { solveSupportQuery, SUPPORT_AGENTS, SupportAgent, formatConversationalAgentReply } from '@/lib/support-ai-brain';
+import {
+  solveSupportQuery,
+  SUPPORT_AGENTS,
+  SupportAgent,
+  formatConversationalAgentReply,
+} from '@/lib/support-ai-brain';
 import {
   Headset,
   X,
   Send,
-  Clock,
-  Megaphone,
   PlusCircle,
-  ShieldCheck,
-  Bot,
-  Sparkles,
   ImagePlus,
   CheckCircle2,
   RotateCcw,
@@ -23,6 +23,7 @@ import {
 
 export interface SupportChatMessage {
   sender: 'user' | 'admin' | 'ai';
+  agent_name?: string;
   text: string;
   image_url?: string | null;
   created_at: string;
@@ -41,6 +42,7 @@ export interface SupportTicketRow {
   status: 'open' | 'answered' | 'closed';
   admin_reply: string | null;
   messages?: SupportChatMessage[];
+  is_taken_over?: boolean;
   replied_at: string | null;
   created_at: string;
 }
@@ -64,7 +66,7 @@ const SUB_AI_CHOICES: Record<string, { reply: string; options: Array<{ id: strin
       { id: 'ans_link_broken', label: '🔗 İşletme adı/linki değiştirdim, sayfa bulunamadı diyor' },
       { id: 'ans_calendar_empty', label: '⏰ Takvimde randevu saatleri kapalı / görünmüyor' },
       { id: 'ans_staff_limit', label: '👥 Personel veya hizmet eklerken uyarı alıyorum' },
-      { id: 'connect_human', label: '👨‍💻 Farklı bir hata var, Müşteri Temsilcisine Bağlan' },
+      { id: 'connect_human', label: '👩‍💼 Farklı bir durum var, Temsilciye Doğrudan Yaz' },
     ],
   },
   menu_booking: {
@@ -72,22 +74,22 @@ const SUB_AI_CHOICES: Record<string, { reply: string; options: Array<{ id: strin
     options: [
       { id: 'ans_cancel_apt', label: '❌ Aldığım randevuyu nasıl iptal ederim?' },
       { id: 'ans_slot_taken', label: '📅 İstediğim saat listede neden çıkmıyor?' },
-      { id: 'connect_human', label: '👨‍💻 Müşteri Temsilcisine Bağlan' },
+      { id: 'connect_human', label: '👩‍💼 Müşteri Temsilcisine Bağlan' },
     ],
   },
 };
 
 const AI_DETAILED_ANSWERS: Record<string, string> = {
   menu_password:
-    '🔑 **Şifre Yenileme & Giriş Çözümü:**\n\n1. Giriş ekranındaki (/login) **"Şifremi Unuttum"** butonuna tıklayarak e-postanıza sıfırlama bağlantısı gönderebilirsiniz.\n2. Eğer bağlantı gelmediyse veya hata alıyorsanız hemen aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna basın; destek ekibimiz size doğrudan şifre yenileme bağlantısını buradan gönderecektir!',
+    '🔑 **Şifre Yenileme & Giriş Çözümü:**\n\n1. Giriş ekranındaki (/login) **"Şifremi Unuttum"** butonuna tıklayarak e-postanıza sıfırlama bağlantısı gönderebilirsiniz.\n2. Eğer bağlantı gelmediyse veya hata alıyorsanız aşağıdaki kutudan mesajınızı yazın; destek ekibimiz size buradan doğrudan yardımcı olacaktır!',
   menu_link:
-    '🔗 **İşletme Linki (Bağlantı) Çözümü:**\n\n1. İşletmem > **İşletme Ayarları** sayfasından linkinizi kontrol edip kaydedebilirsiniz.\n2. Eğer linkinizi bulamıyorsanız veya bozuk görünüyorsa aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın; temsilcimiz işletme bağlantınızı tek tuşla onarıp size buradan gönderecektir!',
+    '🔗 **İşletme Linki (Bağlantı) Çözümü:**\n\n1. İşletmem > **İşletme Ayarları** sayfasından linkinizi kontrol edip kaydedebilirsiniz.\n2. Eğer linkinizi bulamıyorsanız veya bozuk görünüyorsa aşağıdaki kutudan yazın; çalışan güncel bağlantınızı hemen buradan iletelim!',
   ans_link_broken:
-    '🔗 **İşletme Bağlantısı Hatası:**\n\nİşletme adını değiştirdiğinizde Türkçe karakterlerden kaynaklanan bağlantı sorunu sistemimizde otomatik onarılmıştır. Hala açılmıyorsa aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın; temsilcimiz çalışan güncel bağlantınızı hemen sohbete gönderecektir.',
+    '🔗 **İşletme Bağlantısı Hatası:**\n\nİşletme adını değiştirdiğinizde Türkçe karakterlerden kaynaklanan bağlantı sorunu sistemimizde otomatik onarılmıştır. Hala açılmıyorsa aşağıya mesajınızı yazın, bağlantınızı anında kontrol edelim.',
   ans_calendar_empty:
-    '⏰ **Takvimde Saat Görünmeme Çözümü:**\n\n• **İşletme Ayarları > Çalışma Saatleri** kısmında günlerin "Açık" olduğundan emin olun.\n• **Personel Yönetimi** kısmında en az 1 personelinizin hizmetlerle eşleşmiş olması gerekir.\n• İsterseniz **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna basın, temsilcimiz çalışma saatlerinizi uzaktan tek tuşla açsın!',
+    '⏰ **Takvimde Saat Görünmeme Çözümü:**\n\n• **İşletme Ayarları > Çalışma Saatleri** kısmında günlerin "Açık" olduğundan emin olun.\n• **Personel Yönetimi** kısmında en az 1 personelinizin hizmetlerle eşleşmiş olması gerekir.\n• Durum devam ederse aşağıdan bize yazabilirsiniz, hemen kontrol edelim!',
   ans_staff_limit:
-    '👥 **Personel & Hizmet Limitleri:**\n\nÜcretsiz pakette 1 personel ve 5 hizmet tanımlanabilir. Limitinizi artırmak için **Abonelik & Lisans** sayfasından üst pakete geçebilir veya müşteri temsilcimize bağlanarak destek isteyebilirsiniz.',
+    '👥 **Personel & Hizmet Limitleri:**\n\nÜcretsiz pakette 1 personel ve 5 hizmet tanımlanabilir. Limitinizi artırmak için **Abonelik & Lisans** sayfasından üst pakete geçebilir veya bize buradan yazabilirsiniz.',
   ans_cancel_apt:
     '❌ **Randevu İptali:**\n\nRandevu aldığınız işletmenin sayfasına girip **"Randevu Sorgula / İptal"** sekmesine tıklayın, telefon numaranızı yazarak randevunuzu anında iptal edebilirsiniz.',
   ans_slot_taken:
@@ -95,9 +97,9 @@ const AI_DETAILED_ANSWERS: Record<string, string> = {
   menu_qr_wp:
     '📱 **QR Kod, Vitrin Afişi & WhatsApp:**\n\n• İşletme Tablosunun sol menüsündeki **"QR Kod"** butonundan baskıya hazır vitrin afişinizi indirebilirsiniz.\n• Randevu alındığında veya onaylandığında çıkan yeşil **WhatsApp** butonuyla hazır mesajı tek tuşla gönderebilirsiniz.',
   menu_billing:
-    '💳 **Paketler & Abonelik:**\n\nİşletmem > **Abonelik & Lisans** menüsünden Standart, Profesyonel veya Kurumsal paketlere geçiş yapabilirsiniz. Özel kampanya veya paket tanımlaması için müşteri temsilcimize bağlanabilirsiniz.',
+    '💳 **Paketler & Abonelik:**\n\nİşletmem > **Abonelik & Lisans** menüsünden Standart, Profesyonel veya Kurumsal paketlere geçiş yapabilirsiniz. Özel kampanya veya paket tanımlaması için bize buradan yazabilirsiniz.',
   menu_complaint:
-    '🚨 **Güvenlik & İşletme Şikayeti:**\n\nGüvenilir olmayan veya kuralları ihlal eden bir işletmeyi bildirmek için lütfen aşağıdaki **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayın ve işletme adını/ekran görüntüsünü yazın. Güvenlik ekibimiz işletmeyi inceleyip anında yasaklayacaktır.',
+    '🚨 **Güvenlik & İşletme Şikayeti:**\n\nGüvenilir olmayan veya kuralları ihlal eden bir işletmeyi bildirmek için lütfen aşağıdaki kutudan işletme adını veya ekran görüntüsünü yazıp gönderin. Güvenlik ekibimiz derhal inceleyecektir.',
 };
 
 async function compressImageToDataUrl(file: File): Promise<string> {
@@ -138,10 +140,11 @@ async function compressImageToDataUrl(file: File): Promise<string> {
 
 function getInitialAgentMessage(agent: SupportAgent): SupportChatMessage {
   return {
-    sender: 'ai',
+    sender: 'admin',
+    agent_name: agent.name,
     text:
       agent.welcomeGreeting +
-      '\n\nSize hemen yardımcı olabilmem için aşağıdaki hızlı konulardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz:',
+      '\n\nSize hemen yardımcı olabilmem için aşağıdaki konulardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz:',
     created_at: new Date().toISOString(),
     options: MAIN_AI_CHOICES,
   };
@@ -151,8 +154,6 @@ export function SupportFloatingWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname() || '';
 
-  // Müşteri randevu ekranlarında (/[slug]) işletmenin kendi 'İşletmeye Sor' butonu olduğu için
-  // platform teknik destek ikonunu gizleyerek butonların birbirine girmesini ve çakışmasını engelle
   const isMerchantBookingPage =
     Boolean(pathname) &&
     !pathname.startsWith('/dashboard') &&
@@ -165,7 +166,6 @@ export function SupportFloatingWidget() {
     pathname !== '/nasil-kullanilir' &&
     pathname !== '/yasal';
 
-  // Yönetim panelinde telefonda alt sekme çubuğu olduğu için buton onun üstünde durur
   const inDashboard = pathname.startsWith('/dashboard');
   const inMessages = pathname.startsWith('/dashboard/messages');
   const [mobileWidgetDismissed, setMobileWidgetDismissed] = useState(false);
@@ -175,7 +175,7 @@ export function SupportFloatingWidget() {
   const [announcementText, setAnnouncementText] = useState('');
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // User identity (automatically filled if logged in, or editable by guest)
+  // User identity
   const [senderName, setSenderName] = useState('Ziyaretçi Kullanıcı');
   const [senderContact, setSenderContact] = useState('Web Sohbet');
   const [lastSelectedTopic, setLastSelectedTopic] = useState('Canlı Destek Görüşmesi');
@@ -193,15 +193,16 @@ export function SupportFloatingWidget() {
     }
     return SUPPORT_AGENTS[0];
   });
+
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const typingTimerRef = useRef<any>(null);
 
-  // Unified Chat Messages when in AI stage
+  // Unified Chat Messages when in initial stage
   const [localMessages, setLocalMessages] = useState<SupportChatMessage[]>(() => [
     getInitialAgentMessage(SUPPORT_AGENTS[0]),
   ]);
 
-  // Active Database Ticket (once escalated to human agent)
+  // Active Database Ticket (once escalated or connected)
   const [activeTicket, setActiveTicket] = useState<SupportTicketRow | null>(null);
   const [inputText, setInputText] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -211,7 +212,16 @@ export function SupportFloatingWidget() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+    } else if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, []);
 
   const fetchActiveTicketById = useCallback(async (ticketId: string) => {
     const supabase = createClient();
@@ -288,6 +298,7 @@ export function SupportFloatingWidget() {
       if (activeTicket.admin_reply) {
         fallback.push({
           sender: 'admin',
+          agent_name: assignedAgent.name,
           text: activeTicket.admin_reply,
           created_at: activeTicket.replied_at || activeTicket.created_at,
         });
@@ -295,17 +306,19 @@ export function SupportFloatingWidget() {
       return fallback;
     }
     return localMessages;
-  }, [activeTicket, localMessages]);
+  }, [activeTicket, localMessages, assignedAgent.name]);
 
+  // Auto-scroll on messages change or widget open
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 60);
+      const t = setTimeout(() => {
+        scrollToBottom(true);
+      }, 70);
+      return () => clearTimeout(t);
     }
-  }, [isOpen, displayedMessages.length, activeTicket?.status]);
+  }, [isOpen, displayedMessages.length, isAgentTyping, scrollToBottom]);
 
-  // Escalate current AI conversation to Live Human Representative (creates DB ticket)
+  // Connect to Live Human Representative (creates DB ticket)
   const connectToHumanRepresentative = async (customFirstUserMessage?: string, customImage?: string | null) => {
     if (sending) return;
     setSending(true);
@@ -314,30 +327,19 @@ export function SupportFloatingWidget() {
 
       const historyToSave: SupportChatMessage[] = [...localMessages].map((m) => ({
         sender: m.sender,
+        agent_name: m.agent_name || (m.sender !== 'user' ? assignedAgent.name : undefined),
         text: m.text,
         image_url: m.image_url || null,
         created_at: m.created_at,
       }));
 
-      if (customFirstUserMessage || customImage) {
-        historyToSave.push({
-          sender: 'user',
-          text: customFirstUserMessage || '📷 [Fotoğraf Gönderildi]',
-          image_url: customImage || null,
-          created_at: new Date().toISOString(),
-        });
-      } else {
-        historyToSave.push({
-          sender: 'user',
-          text: '👨‍💻 Canlı Müşteri Temsilcisine bağlanmak istiyorum.',
-          created_at: new Date().toISOString(),
-        });
-      }
-
-      const lastUserText =
-        customFirstUserMessage ||
-        [...historyToSave].reverse().find((m) => m.sender === 'user')?.text ||
-        'Canlı Destek Talebi';
+      const userMsgText = customFirstUserMessage || '👩‍💼 Canlı Müşteri Temsilcisine bağlanmak istiyorum.';
+      historyToSave.push({
+        sender: 'user',
+        text: userMsgText,
+        image_url: customImage || null,
+        created_at: new Date().toISOString(),
+      });
 
       const { data, error } = await supabase
         .from('platform_support_tickets')
@@ -345,8 +347,8 @@ export function SupportFloatingWidget() {
           sender_name: senderName.trim() || 'Ziyaretçi',
           sender_contact: senderContact.trim() || 'Canlı Sohbet',
           category: lastCategory,
-          subject: lastSelectedTopic || lastUserText.slice(0, 50),
-          message: lastUserText,
+          subject: lastSelectedTopic || userMsgText.slice(0, 50),
+          message: userMsgText,
           messages: historyToSave,
           status: 'open',
         })
@@ -362,6 +364,28 @@ export function SupportFloatingWidget() {
       }
       setInputText('');
       setImagePreview(null);
+      setTimeout(() => scrollToBottom(true), 60);
+
+      // Show realistic typing animation, then send welcome greeting
+      setIsAgentTyping(true);
+      setTimeout(async () => {
+        try {
+          const { data: repData } = await supabase.rpc('support_send_agent_auto_reply', {
+            p_ticket_id: created.id,
+            p_reply: assignedAgent.welcomeGreeting,
+            p_agent_name: assignedAgent.name,
+          });
+          setIsAgentTyping(false);
+          if (repData && (repData as any).id) {
+            setActiveTicket(repData as SupportTicketRow);
+          } else {
+            await fetchActiveTicketById(created.id);
+          }
+          setTimeout(() => scrollToBottom(true), 60);
+        } catch {
+          setIsAgentTyping(false);
+        }
+      }, 2500);
     } catch (err: any) {
       alert(err?.message || 'Müşteri temsilcisine bağlanırken hata oluştu.');
     } finally {
@@ -369,7 +393,7 @@ export function SupportFloatingWidget() {
     }
   };
 
-  // Handle clicking any option bubble inside the AI chat
+  // Handle clicking any option bubble inside the chat
   const handleOptionClick = async (optId: string, optLabel: string) => {
     const nowIso = new Date().toISOString();
 
@@ -383,12 +407,14 @@ export function SupportFloatingWidget() {
         ...prev,
         { sender: 'user', text: '✅ Teşekkürler, sorunum çözüldü!', created_at: nowIso },
         {
-          sender: 'ai',
-          text: 'Rica ederim! 😊 Başka bir sorunuz olursa aşağıdan yeniden seçebilir veya müşteri temsilcimize bağlanabilirsiniz:',
+          sender: 'admin',
+          agent_name: assignedAgent.name,
+          text: 'Rica ederim! Memnuniyetle yardımcı oldum. Başka bir sorunuz veya desteğe ihtiyacınız olursa bana buradan dilediğiniz zaman yazabilirsiniz! 😊',
           created_at: new Date().toISOString(),
           options: MAIN_AI_CHOICES,
         },
       ]);
+      setTimeout(() => scrollToBottom(true), 60);
       return;
     }
 
@@ -397,12 +423,14 @@ export function SupportFloatingWidget() {
         ...prev,
         { sender: 'user', text: '🔄 Başka bir konu seçmek istiyorum', created_at: nowIso },
         {
-          sender: 'ai',
-          text: 'Tabii! Lütfen aşağıdan destek almak istediğiniz konuyu seçin:',
+          sender: 'admin',
+          agent_name: assignedAgent.name,
+          text: 'Tabii ki! Lütfen aşağıdan destek almak istediğiniz konuyu seçin veya sorununuzu kısaca yazın:',
           created_at: new Date().toISOString(),
           options: MAIN_AI_CHOICES,
         },
       ]);
+      setTimeout(() => scrollToBottom(true), 60);
       return;
     }
 
@@ -420,13 +448,15 @@ export function SupportFloatingWidget() {
         setLocalMessages((prev) => [
           ...prev,
           {
-            sender: 'ai',
+            sender: 'admin',
+            agent_name: assignedAgent.name,
             text: sub.reply,
             created_at: new Date().toISOString(),
             options: sub.options,
           },
         ]);
-      }, 7000);
+        setTimeout(() => scrollToBottom(true), 60);
+      }, 3500);
       return;
     }
 
@@ -440,42 +470,103 @@ export function SupportFloatingWidget() {
         setLocalMessages((prev) => [
           ...prev,
           {
-            sender: 'ai',
+            sender: 'admin',
+            agent_name: assignedAgent.name,
             text: naturalAnswer,
             created_at: new Date().toISOString(),
             showEscalationButtons: true,
           },
         ]);
-      }, 9000);
+        setTimeout(() => scrollToBottom(true), 60);
+      }, 4000);
     }
   };
 
-  // Handle bottom input submit (works BOTH in AI stage and in Human Representative stage!)
+  // Handle bottom input submit (works BOTH in initial stage and in live ticket stage!)
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputText.trim();
     if ((!text && !imagePreview) || sending) return;
 
-    // 1. If already connected to Human Representative (activeTicket exists), send live message to DB
+    setInputText('');
+    const currentImg = imagePreview;
+    setImagePreview(null);
+
+    // 1. If already connected to Live Ticket (activeTicket exists), send live message to DB
     if (activeTicket) {
       setSending(true);
       try {
         const supabase = createClient();
         const { data, error } = await supabase.rpc('support_send_user_msg', {
           p_ticket_id: activeTicket.id,
-          p_message: text,
-          p_image_url: imagePreview || '',
+          p_message: text || '📷 [Fotoğraf Gönderildi]',
+          p_image_url: currentImg || '',
         });
 
         if (error) throw error;
 
-        if (data) {
-          setActiveTicket(data as SupportTicketRow);
+        let currentTicket = activeTicket;
+        if (data && (data as any).id) {
+          currentTicket = data as SupportTicketRow;
+          setActiveTicket(currentTicket);
         } else {
           await fetchActiveTicketById(activeTicket.id);
         }
-        setInputText('');
-        setImagePreview(null);
+
+        setTimeout(() => scrollToBottom(true), 50);
+
+        // If admin has taken over or ticket is closed, don't auto-reply
+        if (currentTicket.is_taken_over || currentTicket.status === 'closed') {
+          return;
+        }
+
+        // Realistic typing animation for 4.5-5.5 seconds
+        setIsAgentTyping(true);
+        if (typingTimerRef.current) {
+          clearTimeout(typingTimerRef.current);
+        }
+
+        typingTimerRef.current = setTimeout(async () => {
+          try {
+            // Check if ticket was closed or taken over in the meantime
+            const { data: freshTicket } = await supabase
+              .from('platform_support_tickets')
+              .select('*')
+              .eq('id', currentTicket.id)
+              .maybeSingle();
+
+            if (freshTicket?.is_taken_over || freshTicket?.status === 'closed') {
+              setIsAgentTyping(false);
+              if (freshTicket) setActiveTicket(freshTicket as SupportTicketRow);
+              return;
+            }
+
+            // Generate smart conversational reply
+            const { reply } = formatConversationalAgentReply(assignedAgent, text || 'fotoğraf');
+
+            const { data: updatedTicket, error: repError } = await supabase.rpc(
+              'support_send_agent_auto_reply',
+              {
+                p_ticket_id: currentTicket.id,
+                p_reply: reply,
+                p_agent_name: assignedAgent.name,
+              }
+            );
+
+            setIsAgentTyping(false);
+
+            if (!repError && updatedTicket && (updatedTicket as any).id) {
+              setActiveTicket(updatedTicket as SupportTicketRow);
+            } else {
+              await fetchActiveTicketById(currentTicket.id);
+            }
+
+            setTimeout(() => scrollToBottom(true), 60);
+          } catch (replyErr) {
+            console.error('Agent reply error:', replyErr);
+            setIsAgentTyping(false);
+          }
+        }, 5000);
       } catch (err: any) {
         alert(err?.message || 'Mesaj gönderilemedi.');
       } finally {
@@ -484,50 +575,49 @@ export function SupportFloatingWidget() {
       return;
     }
 
-    // 2. If user attached a photo in AI stage, immediately escalate to Human Representative with the photo!
-    if (imagePreview) {
-      await connectToHumanRepresentative(text || '📷 [Ekran Görüntüsü Gönderildi]', imagePreview);
+    // 2. If user attached a photo in initial stage, immediately escalate to Live Ticket
+    if (currentImg) {
+      await connectToHumanRepresentative(text || '📷 [Ekran Görüntüsü Gönderildi]', currentImg);
       return;
     }
 
-    // 3. Otherwise, user typed a message in AI stage: AI tries to answer first & offers "Müşteri Temsilcisine Bağlan"
-    setInputText('');
-    const nowIso = new Date().toISOString();
+    // 3. If user explicitly asks to connect in text
     const lower = text.toLowerCase();
-    setLastSelectedTopic(text.slice(0, 50));
-
-    let aiResponseText = '';
-    if (lower.includes('şifre') || lower.includes('giriş') || lower.includes('parola')) {
-      aiResponseText = AI_DETAILED_ANSWERS.menu_password;
-    } else if (lower.includes('link') || lower.includes('bağlantı') || lower.includes('bulunamadı') || lower.includes('açılmıyor')) {
-      aiResponseText = AI_DETAILED_ANSWERS.menu_link;
-    } else if (lower.includes('saat') || lower.includes('takvim') || lower.includes('müsait')) {
-      aiResponseText = AI_DETAILED_ANSWERS.ans_calendar_empty;
-    } else if (lower.includes('iptal')) {
-      aiResponseText = AI_DETAILED_ANSWERS.ans_cancel_apt;
-    } else if (lower.includes('qr') || lower.includes('afiş') || lower.includes('whatsapp')) {
-      aiResponseText = AI_DETAILED_ANSWERS.menu_qr_wp;
-    } else if (lower.includes('paket') || lower.includes('ücret') || lower.includes('fiyat')) {
-      aiResponseText = AI_DETAILED_ANSWERS.menu_billing;
-    } else if (lower.includes('temsilci') || lower.includes('insan') || lower.includes('admin') || lower.includes('yetkili') || lower.includes('bağla')) {
+    if (
+      lower.includes('temsilci') ||
+      lower.includes('insan') ||
+      lower.includes('admin') ||
+      lower.includes('yetkili') ||
+      lower.includes('bağla') ||
+      lower.includes('bağlan')
+    ) {
       await connectToHumanRepresentative(text);
       return;
-    } else {
-      aiResponseText =
-        `Mesajınızı aldım ("${text}").\n\n` +
-        `Size hemen yardımcı olabilmem için aşağıdan ilgili konuyu seçebilir veya doğrudan **"👨‍💻 Müşteri Temsilcisine Bağlan"** butonuna tıklayarak canlı destek ekibimizle görüşebilirsiniz:`;
     }
 
-    setLocalMessages((prev) => [
-      ...prev,
-      { sender: 'user', text, created_at: nowIso },
-      {
-        sender: 'ai',
-        text: aiResponseText,
-        created_at: new Date().toISOString(),
-        showEscalationButtons: true,
-      },
-    ]);
+    // 4. Initial stage message
+    const nowIso = new Date().toISOString();
+    setLastSelectedTopic(text.slice(0, 50));
+    setLocalMessages((prev) => [...prev, { sender: 'user', text, created_at: nowIso }]);
+    setTimeout(() => scrollToBottom(true), 50);
+
+    setIsAgentTyping(true);
+    setTimeout(() => {
+      setIsAgentTyping(false);
+      const { reply, quickActions } = formatConversationalAgentReply(assignedAgent, text);
+      setLocalMessages((prev) => [
+        ...prev,
+        {
+          sender: 'admin',
+          agent_name: assignedAgent.name,
+          text: reply,
+          created_at: new Date().toISOString(),
+          options: quickActions && quickActions.length > 0 ? quickActions : MAIN_AI_CHOICES,
+          showEscalationButtons: true,
+        },
+      ]);
+      setTimeout(() => scrollToBottom(true), 60);
+    }, 4500);
   };
 
   const handleSelectImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -542,19 +632,26 @@ export function SupportFloatingWidget() {
     e.target.value = '';
   };
 
+  // Reset conversation completely
   const handleStartNewConversation = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(ACTIVE_TICKET_STORAGE_KEY);
     }
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+    setIsAgentTyping(false);
     setActiveTicket(null);
     setInputText('');
     setImagePreview(null);
     setLocalMessages([getInitialAgentMessage(assignedAgent)]);
   };
 
-  const lastMsg = displayedMessages[displayedMessages.length - 1];
-  const isWaitingForHumanAdmin =
-    Boolean(activeTicket) && activeTicket?.status !== 'closed' && lastMsg?.sender === 'user';
+  // User closed widget: Reset state completely so old messages don't stay stuck
+  const handleCloseWidget = () => {
+    handleStartNewConversation();
+    setIsOpen(false);
+  };
 
   if (isMerchantBookingPage) {
     return null;
@@ -562,71 +659,50 @@ export function SupportFloatingWidget() {
 
   return (
     <>
-      {/* Global Top Announcement Banner (Kayan Akıcı Şerit - Marquee) */}
+      {/* Global Top Announcement Banner */}
       {announcementActive && announcementText && !bannerDismissed && (
         <div className="bg-gradient-to-r from-slate-950 via-brand-900 to-indigo-950 text-white border-b border-indigo-500/30 py-2 px-3 text-xs font-semibold relative z-[60] shadow-md overflow-hidden flex items-center justify-between gap-3">
-          {/* Sol Kampanya Rozeti */}
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] tracking-wide shrink-0 shadow-xs uppercase">
             <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping inline-block" />
             🔥 FIRSAT
           </div>
 
-          {/* Kayan Yazı Akışı (Marquee Ticker) */}
           <div
             className="flex-1 overflow-hidden relative cursor-pointer select-none"
             onClick={() => setIsOpen(true)}
             title="Detaylar ve fırsattan yararlanmak için tıklayın"
           >
             <div className="animate-marquee inline-flex items-center gap-16 font-bold tracking-wide text-[11px] sm:text-xs text-white/95">
-              <span className="inline-flex items-center gap-2">
-                <span>{announcementText}</span>
-                <span className="px-2 py-0.5 rounded-full bg-brand-500/30 text-amber-300 border border-amber-400/30 text-[10px] font-bold">
-                  👉 Destekle İletişime Geçin &rarr;
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span>{announcementText}</span>
-                <span className="px-2 py-0.5 rounded-full bg-brand-500/30 text-amber-300 border border-amber-400/30 text-[10px] font-bold">
-                  👉 Destekle İletişime Geçin &rarr;
-                </span>
-              </span>
+              <span>{announcementText}</span>
+              <span className="text-amber-300 font-extrabold">🎁 Randevory Canlı Destek Masası 7/24 Aktif!</span>
+              <span>{announcementText}</span>
             </div>
           </div>
 
-          {/* Sağ Butonlar: Canlı Destek & Kapat */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-extrabold transition-all shadow-xs"
-            >
-              Destek Al
-            </button>
-            <button
-              type="button"
-              onClick={() => setBannerDismissed(true)}
-              className="text-white/60 hover:text-white p-1 rounded-md transition-colors"
-              title="Duyuruyu Kapat"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setBannerDismissed(true)}
+            className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 shrink-0 transition-colors"
+            title="Duyuruyu Kapat"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
-      {/* Fullscreen Image Lightbox */}
+      {/* Fullscreen Image Lightbox Modal */}
       {lightboxImage && (
         <div
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
           onClick={() => setLightboxImage(null)}
-          className="fixed inset-0 z-[80] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
         >
-          <div className="relative max-w-3xl max-h-[85vh]">
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
             <button
               type="button"
               onClick={() => setLightboxImage(null)}
-              className="absolute -top-10 right-0 px-3 py-1 rounded-lg bg-white/20 text-white text-xs font-bold hover:bg-white/30"
+              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all"
             >
-              Kapat (X)
+              <X className="w-6 h-6" />
             </button>
             <img
               src={lightboxImage}
@@ -653,18 +729,21 @@ export function SupportFloatingWidget() {
               type="button"
               onClick={() => setIsOpen(true)}
               aria-label="Canlı Destek"
-              className="flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/30 border border-slate-700/80 transition-all hover:scale-105"
+              className="flex items-center gap-2.5 p-2 sm:pl-3.5 sm:pr-4 sm:py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white shadow-2xl shadow-slate-900/40 border border-slate-700/80 transition-all hover:scale-105"
             >
-              <div className="relative flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
-                <Headset className="w-4 h-4" />
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+              <div
+                className={`relative flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-tr ${assignedAgent.avatarColor} text-white font-black text-xs ring-2 ring-white/20`}
+              >
+                {assignedAgent.avatarLetter}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
               </div>
               <div className="text-left hidden sm:block">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
-                  Canlı Destek Masası
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 leading-none flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Müşteri Temsilcisi
                 </div>
                 <div className="text-xs font-extrabold leading-tight mt-0.5">
-                  Canlı Destek / Bildir
+                  {assignedAgent.name} (Çevrimiçi)
                 </div>
               </div>
             </button>
@@ -687,25 +766,22 @@ export function SupportFloatingWidget() {
         {/* Unified Single Support Chat Window */}
         {isOpen && (
           <div className="w-full sm:w-[425px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-4 flex items-center justify-between shrink-0">
+            {/* Header: Displays assigned representative clearly */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shrink-0 shadow-inner relative">
-                  {activeTicket ? (
-                    <Headset className="w-5 h-5 text-white" />
-                  ) : (
-                    <Bot className="w-5 h-5 text-white" />
-                  )}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+                <div
+                  className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${assignedAgent.avatarColor} flex items-center justify-center shrink-0 shadow-inner relative text-white font-black text-base ring-2 ring-white/20`}
+                >
+                  {assignedAgent.avatarLetter}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm flex items-center gap-1.5">
-                    RANDEVORY Canlı Destek
+                  <h3 className="font-black text-sm tracking-tight text-white flex items-center gap-1.5">
+                    {assignedAgent.name}
                   </h3>
-                  <p className="text-[11px] text-slate-300 truncate max-w-[205px]">
-                    {activeTicket
-                      ? '👨‍💻 Canlı Müşteri Temsilcisi Sohbeti'
-                      : `${assignedAgent.name} (Çevrimiçi)`}
+                  <p className="text-[11px] text-emerald-400 font-semibold truncate max-w-[205px] flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                    {assignedAgent.title} • Çevrimiçi
                   </p>
                 </div>
               </div>
@@ -721,7 +797,8 @@ export function SupportFloatingWidget() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleCloseWidget}
+                  title="Sohbeti Kapat ve Sıfırla"
                   className="text-slate-300 hover:text-white p-1 rounded-lg hover:bg-white/10"
                 >
                   <X className="w-5 h-5" />
@@ -729,57 +806,44 @@ export function SupportFloatingWidget() {
               </div>
             </div>
 
-            {/* Unified Chat Scroll Area */}
-            <div className="flex flex-col h-[min(475px,calc(100dvh-8rem))]">
-              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50">
+            {/* Chat Area */}
+            <div className="flex flex-col h-[min(480px,calc(100dvh-8rem))]">
+              <div
+                ref={chatContainerRef}
+                className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-slate-50 pt-3"
+              >
                 {/* Sender & Status Pill Bar */}
                 <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between shadow-2xs">
-                  <span className="truncate max-w-[180px]">
-                    Gönderen: <strong>{activeTicket?.sender_name || senderName}</strong>
+                  <span className="truncate max-w-[180px] font-medium text-slate-700">
+                    Sohbet: <strong>{activeTicket?.sender_name || senderName}</strong>
                   </span>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                      !activeTicket
-                        ? 'bg-indigo-100 text-indigo-800'
-                        : activeTicket.status === 'closed'
-                        ? 'bg-slate-200 text-slate-700'
-                        : activeTicket.status === 'answered'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {!activeTicket
-                      ? `🟢 ${assignedAgent.name} (Çevrimiçi)`
-                      : activeTicket.status === 'closed'
-                      ? 'Görüşme Tamamlandı'
-                      : activeTicket.status === 'answered'
-                      ? 'Destek Ekibi Yanıtladı'
-                      : 'Destek Ekibi Bekleniyor'}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                    {assignedAgent.name} ile Canlı Görüşme
                   </span>
                 </div>
 
-                {/* All Chat Bubbles (AI, User, and Admin) */}
+                {/* All Chat Bubbles */}
                 {displayedMessages.map((msg, idx) => {
                   const isUser = msg.sender === 'user';
-                  const isAi = msg.sender === 'ai';
+                  const repName = msg.agent_name || assignedAgent.name;
+
                   return (
                     <div
                       key={idx}
                       className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
                     >
                       <div
-                        className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm ${
+                        className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
                           isUser
-                            ? 'bg-brand-600 text-white rounded-tr-sm'
-                            : isAi
-                            ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'
-                            : 'bg-white border-2 border-brand-300 text-slate-900 rounded-tl-sm'
+                            ? 'bg-brand-600 text-white rounded-tr-xs'
+                            : 'bg-white border border-slate-200 text-slate-900 rounded-tl-xs'
                         }`}
                       >
                         {!isUser && (
                           <div className="font-extrabold text-[11px] text-slate-800 flex items-center gap-1.5 mb-1">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span>{assignedAgent.name} • {assignedAgent.title}</span>
+                            <span>{repName} • Müşteri Temsilcisi</span>
                           </div>
                         )}
 
@@ -787,16 +851,16 @@ export function SupportFloatingWidget() {
                           <div className="mb-2">
                             <img
                               src={msg.image_url}
-                              alt="Gönderilen Fotoğraf"
+                              alt="Gönderilen Görsel"
                               onClick={() => setLightboxImage(msg.image_url || null)}
-                              className="rounded-xl max-h-48 w-auto object-cover border border-white/20 cursor-zoom-in hover:opacity-95 transition-opacity"
+                              className="rounded-xl max-h-48 w-auto object-cover border border-slate-200 cursor-zoom-in hover:opacity-95 transition-opacity"
                             />
                           </div>
                         )}
 
                         <p className="whitespace-pre-wrap">{msg.text}</p>
 
-                        {/* Clickable Choice Buttons inside AI bubble (only active if not yet escalated) */}
+                        {/* Options buttons in initial state */}
                         {!activeTicket && msg.options && msg.options.length > 0 && (
                           <div className="mt-3 space-y-1.5">
                             {msg.options.map((opt) => (
@@ -812,20 +876,19 @@ export function SupportFloatingWidget() {
                               </button>
                             ))}
 
-                            {/* Direct Connect to Customer Representative button right below options */}
                             <button
                               type="button"
                               disabled={sending}
                               onClick={() => connectToHumanRepresentative()}
-                              className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                              className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs transition-all"
                             >
                               <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                              👨‍💻 Direkt Müşteri Temsilcisine Bağlan
+                              👩‍💼 {assignedAgent.name}'e Doğrudan Bağlan
                             </button>
                           </div>
                         )}
 
-                        {/* Escalation / Solved Buttons after AI gives an answer */}
+                        {/* Quick feedback buttons */}
                         {!activeTicket && msg.showEscalationButtons && (
                           <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
                             <div className="grid grid-cols-2 gap-1.5">
@@ -843,17 +906,17 @@ export function SupportFloatingWidget() {
                                 className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center gap-1"
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
-                                Diğer Şıklar
+                                Diğer Konular
                               </button>
                             </div>
                             <button
                               type="button"
                               disabled={sending}
                               onClick={() => connectToHumanRepresentative()}
-                              className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm"
+                              className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs"
                             >
                               <UserCheck className="w-3.5 h-3.5" />
-                              👨‍💻 Çözülmedi, Müşteri Temsilcisine Bağlan
+                              👩‍💼 {assignedAgent.name} ile Görüşmeye Devam Et
                             </button>
                           </div>
                         )}
@@ -871,15 +934,21 @@ export function SupportFloatingWidget() {
                   );
                 })}
 
-                {/* Waiting Indicator when connected to Human Admin and waiting for reply */}
-                {isWaitingForHumanAdmin && (
-                  <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2.5">
-                    <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-spin" />
-                    <div>
-                      <div className="font-bold">Destek ekibimiz mesajınızı inceliyor...</div>
-                      <div className="text-amber-700 mt-0.5">
-                        Bu pencereden ayrılmanıza gerek yoktur; yanıt geldiğinde otomatik olarak ekrana düşecektir.
-                      </div>
+                {/* Realistic Typing Animation */}
+                {isAgentTyping && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs max-w-[230px] animate-in fade-in slide-in-from-bottom-2">
+                    <div
+                      className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${assignedAgent.avatarColor} text-white font-extrabold text-[10px] flex items-center justify-center shrink-0`}
+                    >
+                      {assignedAgent.avatarLetter}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+                      <span>{assignedAgent.name} yazıyor</span>
+                      <span className="flex items-center gap-0.5 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce" />
+                      </span>
                     </div>
                   </div>
                 )}
@@ -914,14 +983,14 @@ export function SupportFloatingWidget() {
               {activeTicket?.status === 'closed' ? (
                 <div className="p-3 bg-white border-t border-slate-200 text-center space-y-2">
                   <div className="text-xs text-slate-500 font-medium">
-                    Bu destek görüşmesi çözümlenerek kapatılmıştır.
+                    Bu destek görüşmesi çözümlenerek tamamlanmıştır.
                   </div>
                   <button
                     type="button"
                     onClick={handleStartNewConversation}
                     className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs"
                   >
-                    Yeni Destek Sohbeti Başlat
+                    Yeni Sohbet Başlat
                   </button>
                 </div>
               ) : (
@@ -946,7 +1015,7 @@ export function SupportFloatingWidget() {
                   </button>
                   <input
                     type="text"
-                    placeholder="Destek ekibine mesajınızı yazın..."
+                    placeholder={`${assignedAgent.name}'e mesajınızı yazın...`}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
