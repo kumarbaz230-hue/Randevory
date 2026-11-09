@@ -145,6 +145,48 @@ async function compressImageToDataUrl(file: File): Promise<string> {
   });
 }
 
+function playNotificationChime() {
+  try {
+    const AudioContextClass =
+      typeof window !== 'undefined'
+        ? window.AudioContext || (window as any).webkitAudioContext
+        : null;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    // Gentle modern bell chime (659.25Hz E5 -> 880Hz A5)
+    osc.frequency.setValueAtTime(659.25, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.6);
+
+    setTimeout(() => {
+      try {
+        ctx.close().catch(() => {});
+      } catch {}
+    }, 1000);
+  } catch {
+    // Graceful fallback
+  }
+}
+
 export function SupportFloatingWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname() || '';
@@ -205,6 +247,12 @@ export function SupportFloatingWidget() {
 
   // Fullscreen Image Lightbox
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // Minimized notification & sound state
+  const [hasUnreadMessage, setHasUnreadMessage] = useState(false);
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
+  const lastAdminMsgCountRef = useRef<number>(-1);
 
   // Inactivity timeout & Rating state
   const [selectedRating, setSelectedRating] = useState<number>(5);
@@ -502,6 +550,39 @@ export function SupportFloatingWidget() {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
     };
   }, [displayedMessages, isTerminatedByAgent, activeTicket?.status, ratingSubmitted, triggerInactivityEnd]);
+
+  // Clear unread indicator when widget opens
+  useEffect(() => {
+    if (isOpen) {
+      setHasUnreadMessage(false);
+    }
+  }, [isOpen]);
+
+  // Sesli Bildirim ve Kırmızı Nokta (Sadece pencere simge durumundayken temsilci mesaj atarsa çalar)
+  useEffect(() => {
+    if (!displayedMessages || displayedMessages.length === 0) return;
+
+    const adminMsgCount = displayedMessages.filter(
+      (m) => m.sender === 'admin' && !m.isRatingCard
+    ).length;
+
+    // İlk yüklemede önceki mesajlar için ses çalma
+    if (lastAdminMsgCountRef.current === -1) {
+      lastAdminMsgCountRef.current = adminMsgCount;
+      return;
+    }
+
+    // Temsilciden yeni mesaj geldiyse
+    if (adminMsgCount > lastAdminMsgCountRef.current) {
+      lastAdminMsgCountRef.current = adminMsgCount;
+
+      // SADECE pencere kapalı / simge durumundayken bildirim sesi çal ve kırmızı noktayı yak
+      if (!isOpenRef.current) {
+        playNotificationChime();
+        setHasUnreadMessage(true);
+      }
+    }
+  }, [displayedMessages]);
 
   // Auto-scroll on messages change or widget open
   useEffect(() => {
@@ -1006,6 +1087,7 @@ export function SupportFloatingWidget() {
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
     }
+    setHasUnreadMessage(false);
     setRatingSubmitted(false);
     setIsTerminatedByAgent(false);
     setSelectedRating(5);
@@ -1106,20 +1188,35 @@ export function SupportFloatingWidget() {
           <div className="relative group">
             <button
               type="button"
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                setIsOpen(true);
+                setHasUnreadMessage(false);
+              }}
               aria-label="Canlı Destek"
-              className="flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/40 border border-slate-700/80 transition-all hover:scale-105"
+              className="flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/40 border border-slate-700/80 transition-all hover:scale-105 relative"
             >
+              {/* Modern subtle notification dot */}
+              {hasUnreadMessage && (
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 z-10" title="Yeni mesajınız var">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-80" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500 border-2 border-slate-950" />
+                </span>
+              )}
+
               <div className="relative flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
                 <Headset className="w-4 h-4 text-white group-hover:text-brand-600" />
                 <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
               </div>
               <div className="text-left hidden sm:block">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
-                  Canlı Destek Masası
+                  {hasUnreadMessage ? 'Temsilci Yanıtladı' : 'Canlı Destek Masası'}
                 </div>
-                <div className="text-xs font-extrabold leading-tight mt-0.5">
-                  Canlı Destek / Bildir
+                <div className={`text-xs font-extrabold leading-tight mt-0.5 ${hasUnreadMessage ? 'text-amber-300 animate-pulse' : ''}`}>
+                  {hasUnreadMessage
+                    ? 'Yeni Mesajınız Var!'
+                    : assignedAgent
+                    ? `${assignedAgent.name} • Çevrimiçi`
+                    : 'Canlı Destek / Bildir'}
                 </div>
               </div>
             </button>
