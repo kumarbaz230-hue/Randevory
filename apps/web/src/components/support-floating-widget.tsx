@@ -1093,60 +1093,62 @@ export function SupportFloatingWidget() {
         {/* Unified Single Support Chat Window */}
         {isOpen && (
           <div className="w-full sm:w-[425px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
-            {/* Header: Initial is RANDEVORY Destek Masası; Once connected, switches to assigned agent! */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
+            {/* Header: Clean, Compact Modern Layout */}
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-brand-950 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between shrink-0 border-b border-white/10">
+              <div className="flex items-center gap-2.5 min-w-0">
                 {assignedAgent ? (
                   <div
-                    className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${assignedAgent.avatarColor} flex items-center justify-center shrink-0 shadow-inner relative text-white font-black text-base ring-2 ring-white/20`}
+                    className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${assignedAgent.avatarColor} flex items-center justify-center shrink-0 shadow-xs relative text-white font-extrabold text-xs ring-1 ring-white/20`}
                   >
                     {assignedAgent.avatarLetter}
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-slate-900" />
                   </div>
                 ) : (
-                  <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shrink-0 shadow-inner relative ring-2 ring-white/20">
-                    <Headset className="w-5 h-5 text-white" />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
+                  <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shrink-0 shadow-xs relative ring-1 ring-white/20">
+                    <Headset className="w-4 h-4 text-white" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-slate-900" />
                   </div>
                 )}
 
-                <div>
-                  <h3 className="font-black text-sm tracking-tight text-white flex items-center gap-1.5">
-                    {assignedAgent ? assignedAgent.name : 'RANDEVORY Canlı Destek'}
+                <div className="min-w-0">
+                  <h3 className="font-bold text-xs tracking-tight text-white truncate flex items-center gap-1.5">
+                    {assignedAgent ? `${assignedAgent.name} • Temsilci` : 'RANDEVORY Destek'}
                   </h3>
-                  <p className="text-[11px] text-emerald-400 font-semibold truncate max-w-[205px] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                    {assignedAgent ? `${assignedAgent.title} • Çevrimiçi` : 'Çevrimiçi • 7/24 Yanıt Masası'}
+                  <p className="text-[10px] text-emerald-400 font-medium truncate flex items-center gap-1 leading-none mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse shrink-0" />
+                    Çevrimiçi • 7/24 Aktif
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              {/* Header Actions: Modern, Perfectly Aligned Controls */}
+              <div className="flex items-center gap-1 shrink-0">
                 {(!isTerminatedByAgent && activeTicket?.status !== 'closed' && (assignedAgent || activeTicket)) && (
                   <button
                     type="button"
                     onClick={handleCustomerEndConversation}
                     title="Görüşmeyi Sonlandır ve Puanla"
-                    className="text-[11px] font-bold px-2 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 text-rose-100 border border-rose-400/30 flex items-center gap-1 transition-colors"
+                    className="text-[10px] font-bold px-2 py-1 rounded-md bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 transition-all flex items-center gap-1 shadow-2xs"
                   >
-                    Görüşmeyi Bitir
+                    Bitir
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={handleStartNewConversation}
-                  title="Sohbeti Sıfırla / Yeni Konu Başlat"
-                  className="text-[11px] font-bold px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center gap-1 transition-colors"
+                  title="Yeni Konu Başlat"
+                  className="text-[10px] font-semibold px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all flex items-center gap-1"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" /> Yeni Konu
+                  <PlusCircle className="w-3 h-3" />
+                  <span className="hidden xs:inline">Yeni</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleCloseWidget}
-                  title="Sohbeti Kapat ve Sıfırla"
-                  className="text-slate-300 hover:text-white p-1 rounded-lg hover:bg-white/10"
+                  title="Sohbeti Kapat"
+                  className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors ml-0.5"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -1157,26 +1159,15 @@ export function SupportFloatingWidget() {
                 ref={chatContainerRef}
                 className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-slate-50 pt-3"
               >
-                {/* Status Bar */}
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between shadow-2xs">
-                  <span className="truncate max-w-[140px] font-medium text-slate-700">
-                    Sohbet: <strong>{activeTicket?.sender_name || senderName}</strong>
+                {/* Status Bar: Compact Modern Single Row */}
+                <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200/80 text-[11px] text-slate-600 flex items-center justify-between shadow-2xs">
+                  <span className="truncate max-w-[160px] font-medium text-slate-600">
+                    Sohbet: <strong className="text-slate-800">{activeTicket?.sender_name || senderName}</strong>
                   </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                      {assignedAgent ? `${assignedAgent.name} ile Canlı Görüşme` : 'Canlı Destek Masası'}
-                    </span>
-                    {(!isTerminatedByAgent && activeTicket?.status !== 'closed' && (assignedAgent || activeTicket)) && (
-                      <button
-                        type="button"
-                        onClick={handleCustomerEndConversation}
-                        className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors"
-                      >
-                        Sonlandır
-                      </button>
-                    )}
-                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                    {assignedAgent ? `${assignedAgent.name} • Canlı` : 'Destek Masası'}
+                  </span>
                 </div>
 
                 {/* All Chat Bubbles */}
@@ -1184,27 +1175,27 @@ export function SupportFloatingWidget() {
                   if (msg.sender === 'system') {
                     if (msg.isRatingCard) {
                       return (
-                        <div key={idx} className="my-3 p-3.5 rounded-2xl bg-white border border-amber-200/90 shadow-md">
-                          <div className="text-center space-y-1">
-                            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-base">
-                              ⭐
-                            </div>
-                            <h4 className="text-xs font-black text-slate-800">Canlı Destek Görüşmesini Puanlayın</h4>
-                            <p className="text-[11px] text-slate-500">
-                              {assignedAgent ? `${assignedAgent.name} ile` : 'Destek masasıyla'} olan görüşmenizi nasıl değerlendirirsiniz?
+                        <div key={idx} className="my-2.5 p-3 rounded-2xl bg-white border border-amber-200 shadow-sm max-w-[94%] mx-auto">
+                          <div className="text-center space-y-0.5">
+                            <div className="text-base leading-none">⭐</div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              {assignedAgent ? `${assignedAgent.name} • Hizmet Değerlendirmesi` : 'Destek Puanlaması'}
+                            </h4>
+                            <p className="text-[10px] text-slate-500">
+                              Görüşme deneyiminizi yıldızlarla değerlendirin
                             </p>
                           </div>
 
                           {ratingSubmitted ? (
-                            <div className="mt-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
-                              <span className="text-xs font-bold text-emerald-800">
-                                ✅ Değerlendirmeniz kaydedildi. Teşekkür ederiz!
+                            <div className="mt-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                              <span className="text-[11px] font-bold text-emerald-800">
+                                ✅ Değerlendirmeniz kaydedildi, teşekkürler!
                               </span>
                             </div>
                           ) : (
-                            <div className="mt-3 space-y-2.5">
+                            <div className="mt-2 space-y-2">
                               {/* Interactive Stars */}
-                              <div className="flex items-center justify-center gap-1.5 py-1">
+                              <div className="flex items-center justify-center gap-1 py-0.5">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <button
                                     key={star}
@@ -1212,13 +1203,13 @@ export function SupportFloatingWidget() {
                                     onClick={() => setSelectedRating(star)}
                                     onMouseEnter={() => setHoverRating(star)}
                                     onMouseLeave={() => setHoverRating(0)}
-                                    className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                                    className="p-0.5 transition-transform hover:scale-120 focus:outline-none"
                                   >
                                     <Star
-                                      className={`w-6 h-6 transition-colors ${
+                                      className={`w-5 h-5 transition-colors ${
                                         star <= (hoverRating || selectedRating)
                                           ? 'fill-amber-400 text-amber-400 drop-shadow-xs'
-                                          : 'text-slate-300'
+                                          : 'text-slate-200'
                                       }`}
                                     />
                                   </button>
@@ -1237,7 +1228,7 @@ export function SupportFloatingWidget() {
                                           prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
                                         );
                                       }}
-                                      className={`text-[10px] px-2.5 py-1 rounded-full border transition-all ${
+                                      className={`text-[9px] px-2 py-0.5 rounded-full border transition-all ${
                                         selectedTags.includes(tag)
                                           ? 'bg-amber-500 text-white border-amber-600 font-bold'
                                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -1255,14 +1246,14 @@ export function SupportFloatingWidget() {
                                 placeholder="Görüşünüzü paylaşın (İsteğe bağlı)..."
                                 value={ratingNote}
                                 onChange={(e) => setRatingNote(e.target.value)}
-                                className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
                               />
 
                               <button
                                 type="button"
                                 disabled={selectedRating === 0}
                                 onClick={handleSendRating}
-                                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all"
+                                className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-[11px] shadow-xs transition-all"
                               >
                                 Değerlendirmeyi Gönder
                               </button>
@@ -1452,19 +1443,17 @@ export function SupportFloatingWidget() {
                 </div>
               )}
 
-              {/* Bottom Message Bar */}
+              {/* Bottom Message Bar: Sleek Modern Closed State */}
               {activeTicket?.status === 'closed' || isTerminatedByAgent ? (
-                <div className="p-3.5 bg-slate-50 border-t border-slate-200 text-center space-y-2.5">
-                  <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs">
-                    <span>🛑</span> Bu destek görüşmesi sonlandırılmıştır.
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Yeni bir destek talebinde bulunmak için lütfen kurumsal iletişim kurallarına dikkat ediniz.
+                <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-2">
+                  <div className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                    Bu destek görüşmesi sonlandırılmıştır.
                   </div>
                   <button
                     type="button"
                     onClick={handleStartNewConversation}
-                    className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition-all"
+                    className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition-all"
                   >
                     Yeni Sohbet Başlat
                   </button>
