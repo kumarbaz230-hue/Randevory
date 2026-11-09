@@ -7,6 +7,8 @@ import {
   solveSupportQuery,
   SUPPORT_AGENTS,
   SupportAgent,
+  getRandomSupportAgent,
+  getInitialBotMessage,
   formatConversationalAgentReply,
 } from '@/lib/support-ai-brain';
 import {
@@ -19,10 +21,12 @@ import {
   RotateCcw,
   UserCheck,
   ChevronRight,
+  Check,
+  CheckCheck,
 } from 'lucide-react';
 
 export interface SupportChatMessage {
-  sender: 'user' | 'admin' | 'ai';
+  sender: 'user' | 'admin' | 'ai' | 'system';
   agent_name?: string;
   text: string;
   image_url?: string | null;
@@ -48,6 +52,7 @@ export interface SupportTicketRow {
 }
 
 const ACTIVE_TICKET_STORAGE_KEY = 'randevory_live_support_v3';
+const ASSIGNED_AGENT_KEY = 'randevory_assigned_agent_id_v3';
 
 const MAIN_AI_CHOICES = [
   { id: 'menu_app_error', label: '🛠️ Sitede / Uygulamada Hata Alıyorum' },
@@ -56,7 +61,7 @@ const MAIN_AI_CHOICES = [
   { id: 'menu_booking', label: '📅 Randevu Alma veya İptal Sorunu' },
   { id: 'menu_qr_wp', label: '📱 QR Kod, Afiş veya WhatsApp Sorusu' },
   { id: 'menu_billing', label: '💳 Paketler & Ödeme İşlemleri' },
-  { id: 'menu_complaint', label: '🚨 Güvenilir Olmayan İşletme Şikayeti' },
+  { id: 'connect_human', label: '👩‍💼 Canlı Müşteri Temsilcisine Bağlan' },
 ];
 
 const SUB_AI_CHOICES: Record<string, { reply: string; options: Array<{ id: string; label: string }> }> = {
@@ -66,7 +71,7 @@ const SUB_AI_CHOICES: Record<string, { reply: string; options: Array<{ id: strin
       { id: 'ans_link_broken', label: '🔗 İşletme adı/linki değiştirdim, sayfa bulunamadı diyor' },
       { id: 'ans_calendar_empty', label: '⏰ Takvimde randevu saatleri kapalı / görünmüyor' },
       { id: 'ans_staff_limit', label: '👥 Personel veya hizmet eklerken uyarı alıyorum' },
-      { id: 'connect_human', label: '👩‍💼 Farklı bir durum var, Temsilciye Doğrudan Yaz' },
+      { id: 'connect_human', label: '👩‍💼 Canlı Müşteri Temsilcisine Bağlan' },
     ],
   },
   menu_booking: {
@@ -98,8 +103,6 @@ const AI_DETAILED_ANSWERS: Record<string, string> = {
     '📱 **QR Kod, Vitrin Afişi & WhatsApp:**\n\n• İşletme Tablosunun sol menüsündeki **"QR Kod"** butonundan baskıya hazır vitrin afişinizi indirebilirsiniz.\n• Randevu alındığında veya onaylandığında çıkan yeşil **WhatsApp** butonuyla hazır mesajı tek tuşla gönderebilirsiniz.',
   menu_billing:
     '💳 **Paketler & Abonelik:**\n\nİşletmem > **Abonelik & Lisans** menüsünden Standart, Profesyonel veya Kurumsal paketlere geçiş yapabilirsiniz. Özel kampanya veya paket tanımlaması için bize buradan yazabilirsiniz.',
-  menu_complaint:
-    '🚨 **Güvenlik & İşletme Şikayeti:**\n\nGüvenilir olmayan veya kuralları ihlal eden bir işletmeyi bildirmek için lütfen aşağıdaki kutudan işletme adını veya ekran görüntüsünü yazıp gönderin. Güvenlik ekibimiz derhal inceleyecektir.',
 };
 
 async function compressImageToDataUrl(file: File): Promise<string> {
@@ -138,18 +141,6 @@ async function compressImageToDataUrl(file: File): Promise<string> {
   });
 }
 
-function getInitialAgentMessage(agent: SupportAgent): SupportChatMessage {
-  return {
-    sender: 'admin',
-    agent_name: agent.name,
-    text:
-      agent.welcomeGreeting +
-      '\n\nSize hemen yardımcı olabilmem için aşağıdaki konulardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz:',
-    created_at: new Date().toISOString(),
-    options: MAIN_AI_CHOICES,
-  };
-}
-
 export function SupportFloatingWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname() || '';
@@ -170,7 +161,7 @@ export function SupportFloatingWidget() {
   const inMessages = pathname.startsWith('/dashboard/messages');
   const [mobileWidgetDismissed, setMobileWidgetDismissed] = useState(false);
 
-  // Global announcement banner from platform_settings
+  // Global announcement banner
   const [announcementActive, setAnnouncementActive] = useState(false);
   const [announcementText, setAnnouncementText] = useState('');
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -181,28 +172,26 @@ export function SupportFloatingWidget() {
   const [lastSelectedTopic, setLastSelectedTopic] = useState('Canlı Destek Görüşmesi');
   const [lastCategory, setLastCategory] = useState<'support' | 'complaint' | 'billing'>('support');
 
-  // Human Representative Persona & Typing State
-  const [assignedAgent] = useState<SupportAgent>(() => {
+  // Assigned Agent - ONLY assigned when user connects to a representative!
+  const [assignedAgent, setAssignedAgent] = useState<SupportAgent | null>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('randevory_assigned_agent_id');
-      const found = SUPPORT_AGENTS.find((a) => a.id === saved);
-      if (found) return found;
-      const picked = SUPPORT_AGENTS[Math.floor(Math.random() * SUPPORT_AGENTS.length)];
-      localStorage.setItem('randevory_assigned_agent_id', picked.id);
-      return picked;
+      const saved = localStorage.getItem(ASSIGNED_AGENT_KEY);
+      if (saved) {
+        return SUPPORT_AGENTS.find((a) => a.id === saved) || null;
+      }
     }
-    return SUPPORT_AGENTS[0];
+    return null;
   });
 
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const typingTimerRef = useRef<any>(null);
 
-  // Unified Chat Messages when in initial stage
+  // Initial stage local messages (before activeTicket)
   const [localMessages, setLocalMessages] = useState<SupportChatMessage[]>(() => [
-    getInitialAgentMessage(SUPPORT_AGENTS[0]),
+    getInitialBotMessage(),
   ]);
 
-  // Active Database Ticket (once escalated or connected)
+  // Active Database Ticket (once escalated or connected to human representative)
   const [activeTicket, setActiveTicket] = useState<SupportTicketRow | null>(null);
   const [inputText, setInputText] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -274,7 +263,7 @@ export function SupportFloatingWidget() {
     loadInitial();
   }, [fetchActiveTicketById]);
 
-  // Poll active ticket every 3 seconds when widget is open so Admin replies appear live
+  // Poll active ticket every 3 seconds when widget is open so live replies appear
   useEffect(() => {
     if (!isOpen || !activeTicket?.id) return;
     const timer = setInterval(() => {
@@ -298,7 +287,7 @@ export function SupportFloatingWidget() {
       if (activeTicket.admin_reply) {
         fallback.push({
           sender: 'admin',
-          agent_name: assignedAgent.name,
+          agent_name: assignedAgent?.name || 'Müşteri Temsilcisi',
           text: activeTicket.admin_reply,
           created_at: activeTicket.replied_at || activeTicket.created_at,
         });
@@ -306,7 +295,7 @@ export function SupportFloatingWidget() {
       return fallback;
     }
     return localMessages;
-  }, [activeTicket, localMessages, assignedAgent.name]);
+  }, [activeTicket, localMessages, assignedAgent?.name]);
 
   // Auto-scroll on messages change or widget open
   useEffect(() => {
@@ -318,20 +307,35 @@ export function SupportFloatingWidget() {
     }
   }, [isOpen, displayedMessages.length, isAgentTyping, scrollToBottom]);
 
-  // Connect to Live Human Representative (creates DB ticket)
+  // Connect to Live Human Representative (Assigns dynamic agent at THAT moment!)
   const connectToHumanRepresentative = async (customFirstUserMessage?: string, customImage?: string | null) => {
     if (sending) return;
     setSending(true);
+
+    // Pick random representative at that exact moment (majority female, some male)
+    const pickedAgent = assignedAgent || getRandomSupportAgent();
+    setAssignedAgent(pickedAgent);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ASSIGNED_AGENT_KEY, pickedAgent.id);
+    }
+
     try {
       const supabase = createClient();
 
       const historyToSave: SupportChatMessage[] = [...localMessages].map((m) => ({
         sender: m.sender,
-        agent_name: m.agent_name || (m.sender !== 'user' ? assignedAgent.name : undefined),
+        agent_name: m.agent_name,
         text: m.text,
         image_url: m.image_url || null,
         created_at: m.created_at,
       }));
+
+      // Add system badge that representative joined
+      historyToSave.push({
+        sender: 'system',
+        text: `👩‍💼 Müşteri Temsilcisi ${pickedAgent.name} görüşmeye bağlandı.`,
+        created_at: new Date().toISOString(),
+      });
 
       const userMsgText = customFirstUserMessage || '👩‍💼 Canlı Müşteri Temsilcisine bağlanmak istiyorum.';
       historyToSave.push({
@@ -366,14 +370,14 @@ export function SupportFloatingWidget() {
       setImagePreview(null);
       setTimeout(() => scrollToBottom(true), 60);
 
-      // Show realistic typing animation, then send welcome greeting
+      // Realistic typing indicator for 2.5s, then send representative's welcome greeting
       setIsAgentTyping(true);
       setTimeout(async () => {
         try {
           const { data: repData } = await supabase.rpc('support_send_agent_auto_reply', {
             p_ticket_id: created.id,
-            p_reply: assignedAgent.welcomeGreeting,
-            p_agent_name: assignedAgent.name,
+            p_reply: pickedAgent.welcomeGreeting,
+            p_agent_name: pickedAgent.name,
           });
           setIsAgentTyping(false);
           if (repData && (repData as any).id) {
@@ -408,8 +412,7 @@ export function SupportFloatingWidget() {
         { sender: 'user', text: '✅ Teşekkürler, sorunum çözüldü!', created_at: nowIso },
         {
           sender: 'admin',
-          agent_name: assignedAgent.name,
-          text: 'Rica ederim! Memnuniyetle yardımcı oldum. Başka bir sorunuz veya desteğe ihtiyacınız olursa bana buradan dilediğiniz zaman yazabilirsiniz! 😊',
+          text: 'Rica ederiz, ne demek! İşletmenizin sorunsuz çalışması bizim için en büyük öncelik. Başka bir sorunuz veya desteğe ihtiyacınız olursa bize buradan dilediğiniz zaman yazabilirsiniz! 😊',
           created_at: new Date().toISOString(),
           options: MAIN_AI_CHOICES,
         },
@@ -424,7 +427,6 @@ export function SupportFloatingWidget() {
         { sender: 'user', text: '🔄 Başka bir konu seçmek istiyorum', created_at: nowIso },
         {
           sender: 'admin',
-          agent_name: assignedAgent.name,
           text: 'Tabii ki! Lütfen aşağıdan destek almak istediğiniz konuyu seçin veya sorununuzu kısaca yazın:',
           created_at: new Date().toISOString(),
           options: MAIN_AI_CHOICES,
@@ -449,14 +451,13 @@ export function SupportFloatingWidget() {
           ...prev,
           {
             sender: 'admin',
-            agent_name: assignedAgent.name,
             text: sub.reply,
             created_at: new Date().toISOString(),
             options: sub.options,
           },
         ]);
         setTimeout(() => scrollToBottom(true), 60);
-      }, 3500);
+      }, 3000);
       return;
     }
 
@@ -466,23 +467,21 @@ export function SupportFloatingWidget() {
       setIsAgentTyping(true);
       setTimeout(() => {
         setIsAgentTyping(false);
-        const naturalAnswer = `Merhabalar, ben ${assignedAgent.name}. Konuyla ilgili hemen yardımcı olayım:\n\n${answer}\n\nİşlemi yaptıktan sonra buradan bana yazarsanız ben de sistemden kontrol edebilirim, başka bir sorunuz olursa da buradayım! 😊`;
         setLocalMessages((prev) => [
           ...prev,
           {
             sender: 'admin',
-            agent_name: assignedAgent.name,
-            text: naturalAnswer,
+            text: answer,
             created_at: new Date().toISOString(),
             showEscalationButtons: true,
           },
         ]);
         setTimeout(() => scrollToBottom(true), 60);
-      }, 4000);
+      }, 3500);
     }
   };
 
-  // Handle bottom input submit (works BOTH in initial stage and in live ticket stage!)
+  // Handle bottom message submit
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputText.trim();
@@ -520,7 +519,9 @@ export function SupportFloatingWidget() {
           return;
         }
 
-        // Realistic typing animation for 4.5-5.5 seconds
+        const agent = assignedAgent || SUPPORT_AGENTS[0];
+
+        // Trigger realistic typing animation for 4.5 seconds
         setIsAgentTyping(true);
         if (typingTimerRef.current) {
           clearTimeout(typingTimerRef.current);
@@ -542,14 +543,14 @@ export function SupportFloatingWidget() {
             }
 
             // Generate smart conversational reply
-            const { reply } = formatConversationalAgentReply(assignedAgent, text || 'fotoğraf');
+            const { reply } = formatConversationalAgentReply(agent, text || 'fotoğraf');
 
             const { data: updatedTicket, error: repError } = await supabase.rpc(
               'support_send_agent_auto_reply',
               {
                 p_ticket_id: currentTicket.id,
                 p_reply: reply,
-                p_agent_name: assignedAgent.name,
+                p_agent_name: agent.name,
               }
             );
 
@@ -566,7 +567,7 @@ export function SupportFloatingWidget() {
             console.error('Agent reply error:', replyErr);
             setIsAgentTyping(false);
           }
-        }, 5000);
+        }, 4500);
       } catch (err: any) {
         alert(err?.message || 'Mesaj gönderilemedi.');
       } finally {
@@ -588,6 +589,8 @@ export function SupportFloatingWidget() {
       lower.includes('insan') ||
       lower.includes('admin') ||
       lower.includes('yetkili') ||
+      lower.includes('bagla') ||
+      lower.includes('baglan') ||
       lower.includes('bağla') ||
       lower.includes('bağlan')
     ) {
@@ -595,7 +598,7 @@ export function SupportFloatingWidget() {
       return;
     }
 
-    // 4. Initial stage message
+    // 4. Initial stage message (before representative is connected)
     const nowIso = new Date().toISOString();
     setLastSelectedTopic(text.slice(0, 50));
     setLocalMessages((prev) => [...prev, { sender: 'user', text, created_at: nowIso }]);
@@ -604,20 +607,19 @@ export function SupportFloatingWidget() {
     setIsAgentTyping(true);
     setTimeout(() => {
       setIsAgentTyping(false);
-      const { reply, quickActions } = formatConversationalAgentReply(assignedAgent, text);
+      const resolution = solveSupportQuery(text);
       setLocalMessages((prev) => [
         ...prev,
         {
           sender: 'admin',
-          agent_name: assignedAgent.name,
-          text: reply,
+          text: resolution.solution,
           created_at: new Date().toISOString(),
-          options: quickActions && quickActions.length > 0 ? quickActions : MAIN_AI_CHOICES,
+          options: resolution.quickActions && resolution.quickActions.length > 0 ? resolution.quickActions : MAIN_AI_CHOICES,
           showEscalationButtons: true,
         },
       ]);
       setTimeout(() => scrollToBottom(true), 60);
-    }, 4500);
+    }, 3800);
   };
 
   const handleSelectImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -636,18 +638,20 @@ export function SupportFloatingWidget() {
   const handleStartNewConversation = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(ACTIVE_TICKET_STORAGE_KEY);
+      localStorage.removeItem(ASSIGNED_AGENT_KEY);
     }
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
     }
     setIsAgentTyping(false);
     setActiveTicket(null);
+    setAssignedAgent(null);
     setInputText('');
     setImagePreview(null);
-    setLocalMessages([getInitialAgentMessage(assignedAgent)]);
+    setLocalMessages([getInitialBotMessage()]);
   };
 
-  // User closed widget: Reset state completely so old messages don't stay stuck
+  // User closed widget: Reset state completely
   const handleCloseWidget = () => {
     handleStartNewConversation();
     setIsOpen(false);
@@ -656,6 +660,9 @@ export function SupportFloatingWidget() {
   if (isMerchantBookingPage) {
     return null;
   }
+
+  // Determine current active agent name for typing indicator & header
+  const currentAgentName = assignedAgent?.name || 'Müşteri Temsilcisi';
 
   return (
     <>
@@ -713,7 +720,7 @@ export function SupportFloatingWidget() {
         </div>
       )}
 
-      {/* Floating Support Trigger Button */}
+      {/* Floating Support Trigger Button (Always Clean Original Look When Closed!) */}
       <div
         className={`fixed z-50 flex flex-col items-end ${
           inMessages || mobileWidgetDismissed ? 'hidden md:flex' : ''
@@ -729,21 +736,18 @@ export function SupportFloatingWidget() {
               type="button"
               onClick={() => setIsOpen(true)}
               aria-label="Canlı Destek"
-              className="flex items-center gap-2.5 p-2 sm:pl-3.5 sm:pr-4 sm:py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white shadow-2xl shadow-slate-900/40 border border-slate-700/80 transition-all hover:scale-105"
+              className="flex items-center gap-2.5 p-2.5 sm:pl-4 sm:pr-5 sm:py-3 rounded-full bg-slate-900 hover:bg-brand-600 text-white shadow-2xl shadow-slate-900/40 border border-slate-700/80 transition-all hover:scale-105"
             >
-              <div
-                className={`relative flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-tr ${assignedAgent.avatarColor} text-white font-black text-xs ring-2 ring-white/20`}
-              >
-                {assignedAgent.avatarLetter}
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
+              <div className="relative flex items-center justify-center w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-brand-600 group-hover:bg-white group-hover:text-brand-600 transition-colors">
+                <Headset className="w-4 h-4 text-white group-hover:text-brand-600" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
               </div>
               <div className="text-left hidden sm:block">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 leading-none flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Müşteri Temsilcisi
+                <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
+                  Canlı Destek Masası
                 </div>
                 <div className="text-xs font-extrabold leading-tight mt-0.5">
-                  {assignedAgent.name} (Çevrimiçi)
+                  Canlı Destek / Bildir
                 </div>
               </div>
             </button>
@@ -766,22 +770,30 @@ export function SupportFloatingWidget() {
         {/* Unified Single Support Chat Window */}
         {isOpen && (
           <div className="w-full sm:w-[425px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
-            {/* Header: Displays assigned representative clearly */}
+            {/* Header: Initial is RANDEVORY Destek Masası; Once connected, switches to assigned agent! */}
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-900 text-white p-3.5 sm:p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${assignedAgent.avatarColor} flex items-center justify-center shrink-0 shadow-inner relative text-white font-black text-base ring-2 ring-white/20`}
-                >
-                  {assignedAgent.avatarLetter}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
-                </div>
+                {assignedAgent ? (
+                  <div
+                    className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${assignedAgent.avatarColor} flex items-center justify-center shrink-0 shadow-inner relative text-white font-black text-base ring-2 ring-white/20`}
+                  >
+                    {assignedAgent.avatarLetter}
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shrink-0 shadow-inner relative ring-2 ring-white/20">
+                    <Headset className="w-5 h-5 text-white" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 shadow-xs" />
+                  </div>
+                )}
+
                 <div>
                   <h3 className="font-black text-sm tracking-tight text-white flex items-center gap-1.5">
-                    {assignedAgent.name}
+                    {assignedAgent ? assignedAgent.name : 'RANDEVORY Canlı Destek'}
                   </h3>
                   <p className="text-[11px] text-emerald-400 font-semibold truncate max-w-[205px] flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                    {assignedAgent.title} • Çevrimiçi
+                    {assignedAgent ? `${assignedAgent.title} • Çevrimiçi` : 'Çevrimiçi • 7/24 Yanıt Masası'}
                   </p>
                 </div>
               </div>
@@ -812,21 +824,36 @@ export function SupportFloatingWidget() {
                 ref={chatContainerRef}
                 className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-slate-50 pt-3"
               >
-                {/* Sender & Status Pill Bar */}
+                {/* Status Bar */}
                 <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between shadow-2xs">
                   <span className="truncate max-w-[180px] font-medium text-slate-700">
                     Sohbet: <strong>{activeTicket?.sender_name || senderName}</strong>
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                    {assignedAgent.name} ile Canlı Görüşme
+                    {assignedAgent ? `${assignedAgent.name} ile Canlı Görüşme` : 'Canlı Destek Masası'}
                   </span>
                 </div>
 
                 {/* All Chat Bubbles */}
                 {displayedMessages.map((msg, idx) => {
+                  if (msg.sender === 'system') {
+                    return (
+                      <div key={idx} className="flex justify-center my-2">
+                        <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[11px] font-bold text-indigo-800 shadow-2xs flex items-center gap-1.5 animate-in fade-in">
+                          {msg.text}
+                        </span>
+                      </div>
+                    );
+                  }
+
                   const isUser = msg.sender === 'user';
-                  const repName = msg.agent_name || assignedAgent.name;
+                  const repName = msg.agent_name || (assignedAgent ? assignedAgent.name : 'Destek Masası');
+
+                  // Okundu / Gönderildi durumu:
+                  // Kullanıcı mesajından sonra başka bir mesaj gelmişse veya şu an temsilci yazıyorsa "Okundu"
+                  const hasReplyAfter = displayedMessages.slice(idx + 1).some((m) => m.sender !== 'user');
+                  const isRead = hasReplyAfter || isAgentTyping;
 
                   return (
                     <div
@@ -869,22 +896,20 @@ export function SupportFloatingWidget() {
                                 type="button"
                                 disabled={sending}
                                 onClick={() => handleOptionClick(opt.id, opt.label)}
-                                className="w-full text-left px-3 py-2 rounded-xl bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 text-slate-800 hover:text-brand-700 font-semibold text-[11px] flex items-center justify-between transition-all"
+                                className={`w-full text-left px-3 py-2 rounded-xl border text-[11px] flex items-center justify-between transition-all ${
+                                  opt.id === 'connect_human'
+                                    ? 'bg-slate-900 hover:bg-slate-800 text-white font-bold border-slate-800 shadow-xs mt-2'
+                                    : 'bg-slate-50 hover:bg-brand-50 border-slate-200 hover:border-brand-300 text-slate-800 hover:text-brand-700 font-semibold'
+                                }`}
                               >
                                 <span>{opt.label}</span>
-                                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <ChevronRight
+                                  className={`w-3.5 h-3.5 shrink-0 ${
+                                    opt.id === 'connect_human' ? 'text-emerald-400' : 'text-slate-400'
+                                  }`}
+                                />
                               </button>
                             ))}
-
-                            <button
-                              type="button"
-                              disabled={sending}
-                              onClick={() => connectToHumanRepresentative()}
-                              className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs transition-all"
-                            >
-                              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                              👩‍💼 {assignedAgent.name}'e Doğrudan Bağlan
-                            </button>
                           </div>
                         )}
 
@@ -916,34 +941,59 @@ export function SupportFloatingWidget() {
                               className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs"
                             >
                               <UserCheck className="w-3.5 h-3.5" />
-                              👩‍💼 {assignedAgent.name} ile Görüşmeye Devam Et
+                              👩‍💼 Canlı Müşteri Temsilcisine Bağlan
                             </button>
                           </div>
                         )}
                       </div>
 
-                      <span className="text-[10px] text-slate-400 mt-1 px-1">
-                        {msg.created_at
-                          ? new Date(msg.created_at).toLocaleTimeString('tr-TR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : ''}
-                      </span>
+                      {/* Timestamp & Read/Sent Status Tick Bar */}
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1 px-1">
+                        <span>
+                          {msg.created_at
+                            ? new Date(msg.created_at).toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : ''}
+                        </span>
+
+                        {isUser && (
+                          <span className="flex items-center gap-0.5 ml-1">
+                            {isRead ? (
+                              <span className="inline-flex items-center gap-0.5 text-emerald-600 font-semibold" title="Temsilci Tarafından Okundu">
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-[9px]">Okundu</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-slate-400" title="Mesaj İletildi">
+                                <Check className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="text-[9px]">Gönderildi</span>
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
 
                 {/* Realistic Typing Animation */}
                 {isAgentTyping && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs max-w-[230px] animate-in fade-in slide-in-from-bottom-2">
-                    <div
-                      className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${assignedAgent.avatarColor} text-white font-extrabold text-[10px] flex items-center justify-center shrink-0`}
-                    >
-                      {assignedAgent.avatarLetter}
-                    </div>
+                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs max-w-[240px] animate-in fade-in slide-in-from-bottom-2">
+                    {assignedAgent ? (
+                      <div
+                        className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${assignedAgent.avatarColor} text-white font-extrabold text-[10px] flex items-center justify-center shrink-0`}
+                      >
+                        {assignedAgent.avatarLetter}
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 rounded-lg bg-brand-600 text-white flex items-center justify-center shrink-0">
+                        <Headset className="w-3.5 h-3.5" />
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
-                      <span>{assignedAgent.name} yazıyor</span>
+                      <span>{currentAgentName} yazıyor</span>
                       <span className="flex items-center gap-0.5 mt-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce [animation-delay:-0.3s]" />
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce [animation-delay:-0.15s]" />
@@ -979,7 +1029,7 @@ export function SupportFloatingWidget() {
                 </div>
               )}
 
-              {/* Bottom Message & Photo Input Bar */}
+              {/* Bottom Message Bar */}
               {activeTicket?.status === 'closed' ? (
                 <div className="p-3 bg-white border-t border-slate-200 text-center space-y-2">
                   <div className="text-xs text-slate-500 font-medium">
@@ -1015,7 +1065,11 @@ export function SupportFloatingWidget() {
                   </button>
                   <input
                     type="text"
-                    placeholder={`${assignedAgent.name}'e mesajınızı yazın...`}
+                    placeholder={
+                      assignedAgent
+                        ? `${assignedAgent.name}'e mesajınızı yazın...`
+                        : 'Destek ekibine mesajınızı yazın...'
+                    }
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"

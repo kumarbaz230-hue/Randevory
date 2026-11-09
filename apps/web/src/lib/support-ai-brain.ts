@@ -1,10 +1,27 @@
 /**
  * RANDEVORY AI Support Brain
- * 7/24 Kesin Çözüm Üreten Doğal Müşteri Temsilcisi Motoru
+ * Profesyonel, Doğal ve Canlı Müşteri Temsilcisi Motoru
  */
 
 export interface AiResolution {
-  category: 'greeting' | 'help_request' | 'thanks' | 'auth' | 'booking' | 'tables' | 'calendar' | 'services' | 'security' | 'billing' | 'pwa' | 'general';
+  category:
+    | 'wellbeing'
+    | 'privacy'
+    | 'identity'
+    | 'greeting'
+    | 'help_request'
+    | 'thanks'
+    | 'slang'
+    | 'complaint_dissatisfaction'
+    | 'auth'
+    | 'booking'
+    | 'tables'
+    | 'calendar'
+    | 'services'
+    | 'security'
+    | 'billing'
+    | 'pwa'
+    | 'general';
   title: string;
   solution: string;
   quickActions: Array<{ id: string; label: string; url?: string }>;
@@ -21,7 +38,7 @@ export interface SupportAgent {
 }
 
 export const SUPPORT_AGENTS: SupportAgent[] = [
-  // Çoğunluk Kadın Temsilciler (Sadece İsimler)
+  // Kadın Temsilciler (Ağırlıklı)
   {
     id: 'esma',
     name: 'Esma',
@@ -115,13 +132,21 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
   },
 ];
 
-export function getInitialAgentMessage(agent: SupportAgent) {
+export function getRandomSupportAgent(): SupportAgent {
+  return SUPPORT_AGENTS[Math.floor(Math.random() * SUPPORT_AGENTS.length)];
+}
+
+export function getInitialBotMessage(): {
+  sender: 'admin';
+  text: string;
+  created_at: string;
+  options: Array<{ id: string; label: string }>;
+} {
   return {
-    sender: 'admin' as const,
-    agent_name: agent.name,
+    sender: 'admin',
     text:
-      agent.welcomeGreeting +
-      '\n\nSize hemen yardımcı olabilmem için aşağıdaki konulardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz:',
+      'Merhabalar! RANDEVORY Destek Masasına hoş geldiniz.\n\n' +
+      'Size hemen yardımcı olabilmemiz için aşağıdaki hızlı başlıklardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz.',
     created_at: new Date().toISOString(),
     options: [
       { id: 'menu_app_error', label: '🛠️ Sitede / Uygulamada Hata Alıyorum' },
@@ -130,33 +155,38 @@ export function getInitialAgentMessage(agent: SupportAgent) {
       { id: 'menu_booking', label: '📅 Randevu Alma veya İptal Sorunu' },
       { id: 'menu_qr_wp', label: '📱 QR Kod, Afiş veya WhatsApp Sorusu' },
       { id: 'menu_billing', label: '💳 Paketler & Ödeme İşlemleri' },
-      { id: 'menu_complaint', label: '🚨 Güvenilir Olmayan İşletme Şikayeti' },
+      { id: 'connect_human', label: '👩‍💼 Canlı Müşteri Temsilcisine Bağlan' },
     ],
   };
 }
 
 export function solveSupportQuery(userText: string): AiResolution {
-  const q = userText.toLowerCase().trim();
+  const raw = userText.toLowerCase().trim();
+  // Normalize Turkish characters for robust matching
+  const q = raw
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
 
-  // 1. Selamlaşma & Giriş
+  // 1. Hal / Hatır / Nasılsınız / Ne Haber
   if (
-    q === 'merhaba' ||
-    q === 'merhabalar' ||
-    q === 'selam' ||
-    q === 'selamlar' ||
-    q === 'iyi günler' ||
-    q === 'günaydın' ||
-    q === 'iyi akşamlar' ||
-    q === 'slm' ||
-    q === 'mrb' ||
-    q.startsWith('merhaba') ||
-    q.startsWith('selam')
+    q.includes('nasilsin') ||
+    q.includes('naber') ||
+    q.includes('ne haber') ||
+    q.includes('nasil gidiyor') ||
+    q.includes('keyifler nasil') ||
+    q.includes('iyi misin') ||
+    q.includes('ne var ne yok')
   ) {
     return {
-      category: 'greeting',
-      title: '👋 Canlı Karşılama',
+      category: 'wellbeing',
+      title: '😊 Hal & Hatır',
       solution:
-        'Merhabalar! Randevory Destek Masasına hoş geldiniz. Size yardımcı olmaktan memnuniyet duyarım. Yaşadığınız durum veya işlem yapmak istediğiniz konu hakkında kısaca bilgi verirseniz hemen birlikte adım adım çözelim.',
+        'Çok teşekkür ederim, çok iyiyim! Siz nasılsınız, umarım gününüz güzel ve işleriniz bereketli geçiyordur? 😊\n\n' +
+        'Size ve işletmenize bugün nasıl yardımcı olabilirim?',
       quickActions: [
         { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
         { id: 'menu_password', label: '🔑 Şifre & Giriş' },
@@ -166,20 +196,181 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 2. Doğrudan Yardım İstekleri
+  // 2. Kullanıcının İyiyim / Süperim Yanıtı
   if (
-    q === 'yardım' ||
-    q === 'yardıma ihtiyacım var' ||
-    q === 'yardım edin' ||
-    q === 'yardım edebilir misiniz' ||
-    q === 'bakar mısınız' ||
-    q === 'burada mısınız' ||
-    q === 'kimse var mı' ||
+    q === 'iyiyim' ||
+    q === 'bende iyiyim' ||
+    q === 'ben de iyiyim' ||
+    q === 'cok sukur' ||
+    q === 'sukursun' ||
+    q.startsWith('iyiyim') ||
+    q.includes('iyiyim tesekkur')
+  ) {
+    return {
+      category: 'wellbeing',
+      title: '✨ Memnuniyet',
+      solution:
+        'Harika, iyi olmanıza çok sevindim! Randevory ile ilgili sormak istediğiniz veya işletmenizde birlikte halledebileceğimiz bir durum var mıydı?',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevularım' },
+        { id: 'menu_tables', label: '🍽️ Masa Yönetimi' },
+        { id: 'act_dashboard', label: 'İşletme Paneli', url: '/dashboard' },
+      ],
+    };
+  }
+
+  // 3. Kişisel Bilgi / Güvenlik & Gizlilik Sınırı (Numara, Yaş, Evlilik, Sosyal Medya)
+  if (
+    q.includes('nerelisin') ||
+    q.includes('yasin kac') ||
+    q.includes('yas kac') ||
+    q.includes('evli misin') ||
+    q.includes('sevgilin') ||
+    q.includes('numarani ver') ||
+    q.includes('telefon numaran') ||
+    q.includes('numaran ne') ||
+    q.includes('instagram') ||
+    q.includes('nerede oturuyorsun') ||
+    q.includes('neredesin') ||
+    q.includes('sehir neresi')
+  ) {
+    return {
+      category: 'privacy',
+      title: '🔒 Güvenlik & Gizlilik',
+      solution:
+        'Şirketimizin güvenlik ve kişisel veri gizliliği kuralları gereği temsilcilerimizin şahsi iletişim ve özel bilgilerini paylaşamıyoruz efendim.\n\n' +
+        'Ancak Randevory platformu, randevu sisteminiz, çalışma saatleriniz ve işletme ayarlarınızla ilgili her türlü konuda memnuniyetle yardımcı olmaya hazırım! Size ne konuda destek sağlayabilirim? 😊',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevu Konuları' },
+        { id: 'menu_password', label: '🔑 Şifre & Giriş' },
+        { id: 'menu_billing', label: '💳 Paketler & Abonelik' },
+      ],
+    };
+  }
+
+  // 4. Robot / Bot / Yapay Zeka / Sen Kimsin Sorguları
+  if (
+    q.includes('robot musun') ||
+    q.includes('bot musun') ||
+    q.includes('yapay zeka') ||
+    q.includes('gercek misin') ||
+    q.includes('canli misin') ||
+    q.includes('insan misin') ||
+    q.includes('sen kimsin') ||
+    q === 'kimsin' ||
+    q === 'sen kimsin'
+  ) {
+    return {
+      category: 'identity',
+      title: '👩‍💼 Temsilci Tanıtımı',
+      solution:
+        'Randevory Destek Masası müşteri temsilcisiyim efendim. İşletmenizin randevuları, çalışma saatleri, masa düzeni veya yönetim paneliyle ilgili ihtiyaç duyduğunuz tüm konularda canlı destek vermek için buradayım.\n\n' +
+        'Size bugün nasıl yardımcı olabilirim?',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
+        { id: 'menu_services', label: '✨ Hizmet & Fiyatlar' },
+        { id: 'menu_password', label: '🔑 Şifre & Güvenlik' },
+      ],
+    };
+  }
+
+  // 5. Samimi / Argo / Hitaplar (Kanka, Kral, Abi, Reis, Hocam)
+  if (
+    q === 'kanka' ||
+    q.startsWith('kanka ') ||
+    q === 'kral' ||
+    q.startsWith('kral ') ||
+    q === 'reis' ||
+    q.startsWith('reis ') ||
+    q === 'abi' ||
+    q.startsWith('abi ') ||
+    q === 'hocam' ||
+    q.startsWith('hocam ') ||
+    q === 'usta'
+  ) {
+    return {
+      category: 'slang',
+      title: '🤝 Samimi Karşılama',
+      solution:
+        'Merhabalar! Size ve işletmenize yardımcı olmak için buradayım. Paneliniz veya randevularınızla ilgili yaşanan durum nedir, hemen birlikte bakalım.',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevu Sorunu' },
+        { id: 'menu_tables', label: '🍽️ Masa Düzeni' },
+        { id: 'menu_billing', label: '💳 Paket Bilgisi' },
+      ],
+    };
+  }
+
+  // 6. Şikayet / Öfke / Çalışmıyor / Hata / İsyankarlık
+  if (
+    q.includes('calismiyor') ||
+    q.includes('bozuk') ||
+    q.includes('rezalet') ||
+    q.includes('berbat') ||
+    q.includes('sinir oldum') ||
+    q.includes('sikayet') ||
+    q.includes('dolandirici') ||
+    q.includes('yardim etmiyorsun') ||
+    q.includes('sacma')
+  ) {
+    return {
+      category: 'complaint_dissatisfaction',
+      title: '⚠️ Çözüm Odaklı Destek',
+      solution:
+        'Yaşadığınız aksaklık ve olumsuzluk için gerçekten çok üzgünüm efendim, sizi çok iyi anlıyorum. Durumu hemen ele alıp çözelim.\n\n' +
+        'Karşılaştığınız sorunu veya aldığınız hatayı kısaca yazabilir misiniz? Hemen müdahale edip düzeltelim.',
+      quickActions: [
+        { id: 'menu_app_error', label: '🛠️ Hata Detayı Seç' },
+        { id: 'menu_link', label: '🔗 Link Kontrolü' },
+      ],
+    };
+  }
+
+  // 7. Selamlaşma & Giriş
+  if (
+    q === 'merhaba' ||
+    q === 'merhabalar' ||
+    q === 'selam' ||
+    q === 'selamlar' ||
+    q === 'iyi gunler' ||
+    q === 'gunaydin' ||
+    q === 'iyi aksamlar' ||
+    q === 'slm' ||
+    q === 'mrb' ||
+    q.startsWith('merhaba') ||
+    q.startsWith('selam') ||
+    q.includes('kolay gelsin') ||
+    q.includes('iyi calismalar') ||
+    q.includes('hayirli isler')
+  ) {
+    return {
+      category: 'greeting',
+      title: '👋 Canlı Karşılama',
+      solution:
+        'Merhabalar! Randevory Destek Masasına hoş geldiniz, size de iyi çalışmalar dilerim. Yaşadığınız durum veya işlem yapmak istediğiniz konu hakkında bilgi verirseniz hemen yardımcı olayım.',
+      quickActions: [
+        { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
+        { id: 'menu_password', label: '🔑 Şifre & Giriş' },
+        { id: 'menu_tables', label: '🍽️ Masa Rezervasyonu' },
+        { id: 'menu_services', label: '✨ Hizmet & Fiyat Düzenleme' },
+      ],
+    };
+  }
+
+  // 8. Doğrudan Yardım İstekleri
+  if (
+    q === 'yardim' ||
+    q === 'yardima ihtiyacim var' ||
+    q === 'yardim edin' ||
+    q === 'yardim edebilir misiniz' ||
+    q === 'bakar misiniz' ||
+    q === 'burada misiniz' ||
+    q === 'kimse var mi' ||
     q === 'destek' ||
-    q === 'canlı destek' ||
-    q.includes('yardım edebilir misiniz') ||
-    q.includes('yardıma ihtiyacım') ||
-    q.includes('bakar mısınız')
+    q === 'canli destek' ||
+    q.includes('yardim edebilir misiniz') ||
+    q.includes('yardima ihtiyacim') ||
+    q.includes('bakar misiniz')
   ) {
     return {
       category: 'help_request',
@@ -195,34 +386,36 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 3. Teşekkür / Kapanış
+  // 9. Teşekkür / Kapanış / Memnuniyet
   if (
-    q === 'teşekkürler' ||
-    q === 'teşekkür ederim' ||
-    q === 'sağol' ||
-    q === 'sağolun' ||
+    q === 'tesekkurler' ||
+    q === 'tesekkur ederim' ||
+    q === 'sagol' ||
+    q === 'sagolun' ||
     q === 'eyvallah' ||
-    q === 'tamamdır' ||
-    q === 'anladım' ||
-    q.includes('teşekkür')
+    q === 'tamamdir' ||
+    q === 'anladim' ||
+    q.includes('tesekkur') ||
+    q.includes('harikasin') ||
+    q.includes('adamsin') ||
+    q.includes('cok iyisiniz')
   ) {
     return {
       category: 'thanks',
       title: '✨ Teşekkür & Rica',
       solution:
-        'Rica ederim, ne demek! İşletmenizin sorunsuz ve verimli çalışması bizim için her şeyden önemli. Başka bir sorunuz veya desteğe ihtiyacınız olursa bana buradan dilediğiniz zaman yazabilirsiniz. İyi çalışmalar ve bol kazançlar dilerim! 😊',
+        'Rica ederim, ne demek! Memnuniyetiniz ve işletmenizin verimli çalışması bizim için her şeyden önemli. Başka bir sorunuz veya desteğe ihtiyacınız olursa bana buradan dilediğiniz zaman yazabilirsiniz. İyi çalışmalar ve bol kazançlar dilerim! 😊',
       quickActions: [
         { id: 'act_dashboard', label: 'İşletme Tablosuna Dön', url: '/dashboard' },
       ],
     };
   }
 
-  // 4. Şifre, Giriş ve Hesap Sorunları
+  // 10. Şifre, Giriş ve Hesap Sorunları
   if (
-    q.includes('şifre') ||
     q.includes('sifre') ||
     q.includes('parola') ||
-    q.includes('giriş yapamıyorum') ||
+    q.includes('giris yapamiyorum') ||
     q.includes('giris') ||
     q.includes('unuttum') ||
     q.includes('oturum')
@@ -242,22 +435,22 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 5. Masa ve Restoran / Kafe Rezervasyonu Sorunları
+  // 11. Masa ve Restoran / Kafe Rezervasyonu Sorunları
   if (
     q.includes('masa') ||
     q.includes('restoran') ||
     q.includes('kafe') ||
     q.includes('salon') ||
-    q.includes('bölüm') ||
+    q.includes('bolum') ||
     q.includes('rezervasyon') ||
     q.includes('vip') ||
-    q.includes('bahçe')
+    q.includes('bahce')
   ) {
     return {
       category: 'tables',
       title: '🍽️ Masa ve Salon Yönetimi Çözümü',
       solution:
-        'Masa yönetimi sistemimiz yalnızca kafe, restoran, oyun salonu veya mekan işletmelerinde aktiftir:\n\n' +
+        'Masa yönetimi sistemimiz kafe, restoran veya mekan işletmeleri için özel olarak tasarlanmıştır:\n\n' +
         '1. **Masa Bölümü:** Sol menüdeki **"Masa Yönetimi"** (/dashboard/tables) sekmesine geçin.\n' +
         '2. **Bölüm & Masa Ekleme:** "Bölüm Ekle" (İç Salon, Bahçe, Teras) butonundan mekanınızı bölün, ardından masaların kişi kapasitesini ve adını girin.\n' +
         '3. **Görünürlük:** Berber veya kuaför gibi randevulu hizmet veren işletmelerde masalar gereksiz kalabalık yapmaması için gizlenmiştir. İstediğiniz zaman İşletme Ayarları > Özellikler kısmından masa modunu açıp kapatabilirsiniz.',
@@ -268,21 +461,21 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 6. Randevu Alma, İptal ve Saat Sorunları
+  // 12. Randevu Alma, İptal ve Saat Sorunları
   if (
     q.includes('randevu') ||
     q.includes('iptal') ||
     q.includes('sorgula') ||
     q.includes('saat') ||
     q.includes('dolu') ||
-    q.includes('boş') ||
+    q.includes('bos') ||
     q.includes('slot')
   ) {
     return {
       category: 'booking',
       title: '📅 Randevu İşlemleri & Takvim Çözümü',
       solution:
-        'Randevu oluşturma ve yönetimiyle ilgili pratik çözümler:\n\n' +
+        'Randevu oluşturma ve yönetimiyle ilgili adımlar:\n\n' +
         '• **Randevu İptali (Müşteri için):** İşletmenin randevu linkine girip sağ üstteki **"Randevu Sorgula / İptal"** sekmesinden telefon numarasıyla anında iptal edilebilir.\n' +
         '• **Randevu İptali (İşletme için):** Yönetim Panelinizdeki **"Randevular"** sekmesinden ilgili randevunun yanındaki üç noktadan "İptal Et" seçeneğini seçebilirsiniz.\n' +
         '• **Saat Çakışması Önleme:** Aynı personele aynı saatte 2 randevu verilemez; sistem dolu saatleri otomatik olarak listeden kaldırır.',
@@ -293,13 +486,13 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 7. Takvimde Saatlerin Kapalı / Görünmeme Sorunu
+  // 13. Takvimde Saatlerin Kapalı / Görünmeme Sorunu
   if (
-    q.includes('saatler kapalı') ||
-    q.includes('saat görünmüyor') ||
-    q.includes('müsait saat yok') ||
-    q.includes('randevu alınamıyor') ||
-    q.includes('takvim boş')
+    q.includes('saatler kapali') ||
+    q.includes('saat gorunmuyor') ||
+    q.includes('musait saat yok') ||
+    q.includes('randevu alinamiyor') ||
+    q.includes('takvim bos')
   ) {
     return {
       category: 'calendar',
@@ -316,12 +509,12 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 8. Hizmetler, Fiyatlar ve Süreler
+  // 14. Hizmetler, Fiyatlar ve Süreler
   if (
     q.includes('hizmet') ||
     q.includes('fiyat') ||
-    q.includes('ücret') ||
-    q.includes('süre') ||
+    q.includes('ucret') ||
+    q.includes('sure') ||
     q.includes('dakika') ||
     q.includes('kategori')
   ) {
@@ -339,7 +532,7 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 9. Sahte Randevu, Gelmeyen Müşteriler (No-Show) ve Güvenlik
+  // 15. Sahte Randevu, Gelmeyen Müşteriler (No-Show) ve Güvenlik
   if (
     q.includes('gelmeyen') ||
     q.includes('no-show') ||
@@ -347,7 +540,7 @@ export function solveSupportQuery(userText: string): AiResolution {
     q.includes('troll') ||
     q.includes('kara liste') ||
     q.includes('engelle') ||
-    q.includes('önlem') ||
+    q.includes('onlem') ||
     q.includes('spam')
   ) {
     return {
@@ -364,14 +557,14 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 10. Paketler, Abonelik ve Ödeme
+  // 16. Paketler, Abonelik ve Ödeme
   if (
     q.includes('paket') ||
     q.includes('abonelik') ||
     q.includes('lisans') ||
-    q.includes('ödeme') ||
+    q.includes('odeme') ||
     q.includes('shopier') ||
-    q.includes('satın al') ||
+    q.includes('satin al') ||
     q.includes('pro') ||
     q.includes('standart')
   ) {
@@ -389,14 +582,14 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 11. İşletme Linki & Web Sayfası
+  // 17. İşletme Linki & Web Sayfası
   if (
     q.includes('link') ||
-    q.includes('bağlantı') ||
+    q.includes('baglanti') ||
     q.includes('sayfam') ||
     q.includes('web sitesi') ||
-    q.includes('açılmıyor') ||
-    q.includes('bulunamadı')
+    q.includes('acilmiyor') ||
+    q.includes('bulunamadi')
   ) {
     return {
       category: 'general',
@@ -404,21 +597,20 @@ export function solveSupportQuery(userText: string): AiResolution {
       solution:
         'İşletmenizin müşterilere göndereceğiniz randevu linki: **randevory.com/isletme-adiniz** şeklindedir.\n\n' +
         '• Linkinizi sol üstteki **"Sayfamı Gör"** veya **İşletme Ayarları** sayfasından kopyalayabilirsiniz.\n' +
-        '• Instagram biyografinize veya WhatsApp İşletme profilinize bu linki ekleyerek müşterilerinizin 7/24 kendiliğinden randevu oluşturmasını sağlayabilirsiniz.\n' +
-        '• Türkçe karakterli linklerdeki uyumsuzluklar sistemimiz tarafından otomatik düzeltilir.',
+        '• Instagram biyografinize veya WhatsApp İşletme profilinize bu linki ekleyerek müşterilerinizin 7/24 kendiliğinden randevu oluşturmasını sağlayabilirsiniz.',
       quickActions: [
         { id: 'act_settings_slug', label: 'İşletme Ayarlarını Aç', url: '/dashboard/settings' },
       ],
     };
   }
 
-  // 12. QR Kod, Vitrin Afişi & WhatsApp
+  // 18. QR Kod, Vitrin Afişi & WhatsApp
   if (
     q.includes('qr') ||
     q.includes('karekod') ||
-    q.includes('afiş') ||
+    q.includes('afis') ||
     q.includes('vitrin') ||
-    q.includes('baskı') ||
+    q.includes('baski') ||
     q.includes('whatsapp')
   ) {
     return {
@@ -427,7 +619,7 @@ export function solveSupportQuery(userText: string): AiResolution {
       solution:
         'Dükkanınızın vitrinine veya masalarına koyabileceğiniz baskıya hazır materyaller:\n\n' +
         '1. **Vitrin Afişi:** İşletme Tablonuzun sol menüsündeki veya sayfanızdaki **"QR Kod"** butonuna tıklayın.\n' +
-        '2. **Tek Tıkla İndir:** Açılan ekrandan "Afişi İndir / Yazdır" diyerek dükkan logonuz ve karekodunuzun olduğu yüksek kaliteli afişi alıp kuşe kağıda bastırabilirsiniz.\n' +
+        '2. **Tek Tıkla İndir:** Açılan ekrandan "Afişi İndir / Yazdır" diyerek dükkan logonuz ve karekodunuzun olduğu yüksek kaliteli afişi alıp bastırabilirsiniz.\n' +
         '3. **WhatsApp İletişimi:** Randevu alındığında çıkan yeşil "WhatsApp ile Bilgilendir" butonu sayesinde müşteriye randevu detaylarını tek tuşla gönderebilirsiniz.',
       quickActions: [
         { id: 'act_dashboard', label: 'İşletme Tablosuna Git', url: '/dashboard' },
@@ -435,10 +627,9 @@ export function solveSupportQuery(userText: string): AiResolution {
     };
   }
 
-  // 13. Uygulama Yükleme (PWA)
+  // 19. Uygulama Yükleme (PWA)
   if (
     q.includes('uygulama') ||
-    q.includes('yükle') ||
     q.includes('yukle') ||
     q.includes('indir') ||
     q.includes('telefona') ||
@@ -451,22 +642,20 @@ export function solveSupportQuery(userText: string): AiResolution {
       solution:
         'RANDEVORY uygulamasını telefonunuza uygulama mağazası olmadan 5 saniyede indirebilirsiniz:\n\n' +
         '• **Android (Chrome):** Siteye girdiğinizde altta çıkan "Uygulamayı Yükle" butonuna basın veya sağ üstteki 3 noktaya tıklayıp **"Uygulamayı Yükle / Ana Ekrana Ekle"** deyin.\n' +
-        '• **iPhone (Safari):** Safari\'de ekranın altındaki **Paylaş (kare içinde yukarı ok)** simgesine dokunun ve aşağı kaydırıp **"Ana Ekrana Ekle"** seçeneğini seçin.\n\n' +
-        'Telefonunuzun ana ekranına RANDEVORY ikonu gelir ve tıpkı mağaza uygulaması gibi tam ekran, bildirim destekli ve hızlı çalışır.',
+        '• **iPhone (Safari):** Safari\'de ekranın altındaki **Paylaş (kare içinde yukarı ok)** simgesine dokunun ve aşağı kaydırıp **"Ana Ekrana Ekle"** seçeneğini seçin.',
       quickActions: [
         { id: 'act_home', label: 'Ana Sayfaya Git', url: '/' },
       ],
     };
   }
 
-  // 14. Genel Her Konuya Cevap Veren Doğal Temsilci Yanıtı
+  // 20. Genel Doğal Temsilci Yanıtı (ASLA echo yok!)
   return {
     category: 'general',
     title: '💬 Destek Yanıtı',
     solution:
-      `Mesajınızı aldım ve okudum ("${userText}").\n\n` +
-      `Konuyla ilgili size hemen en doğru çözümü sunabilmem için durumunuzu biraz daha detaylandırabilir misiniz? Ya da randevu, şifre, masa düzeni, fiyatlar veya işletme ayarları gibi bir konuda mı işlem yapmak istiyordunuz?\n\n` +
-      `Siz mesajınızı yazın, ben hemen buradan adım adım yardımcı olacağım.`,
+      'Mesajınızı okudum. Bu konuda size en doğru ve hızlı şekilde yardımcı olabilmem için durumu biraz daha açabilir misiniz?\n\n' +
+      'Örneğin randevu alma veya iptali, şifre sıfırlama, masa düzeni, fiyatlar veya işletme ayarlarınız gibi hangi işlemde destek istersiniz?',
     quickActions: [
       { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
       { id: 'menu_password', label: '🔑 Şifre & Giriş' },
@@ -482,36 +671,46 @@ export function formatConversationalAgentReply(
 ): { reply: string; quickActions: Array<{ id: string; label: string; url?: string }> } {
   const resolution = solveSupportQuery(userText);
 
-  // If greeting, thanks, or help request, return direct natural reply without robotic headers
-  if (resolution.category === 'greeting' || resolution.category === 'thanks' || resolution.category === 'help_request') {
+  // Doğal konuşma kategorilerinde doğrudan samimi ve net yanıt dön (hiçbir kalıp şablon olmadan)
+  if (
+    resolution.category === 'wellbeing' ||
+    resolution.category === 'privacy' ||
+    resolution.category === 'identity' ||
+    resolution.category === 'greeting' ||
+    resolution.category === 'thanks' ||
+    resolution.category === 'help_request' ||
+    resolution.category === 'slang' ||
+    resolution.category === 'complaint_dissatisfaction'
+  ) {
     return {
       reply: resolution.solution,
       quickActions: resolution.quickActions,
     };
   }
 
-  let conversationalIntro = `Merhabalar! Ben ${agent.name}. Mesajınızı okudum, hemen yardımcı olayım;`;
+  // Teknik konularda ise temsilcinin adı ve pratik adımlarla yanıt ver
+  let conversationalIntro = `Merhabalar, ben ${agent.name}. Konuyla ilgili hemen yardımcı olayım;`;
 
   if (resolution.category === 'auth') {
-    conversationalIntro = `Merhabalar, ben ${agent.name}. Şifre ve giriş konusundaki sorununuzu inceledim;`;
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Şifre ve giriş konusunu hemen halledelim;`;
   } else if (resolution.category === 'tables') {
-    conversationalIntro = `Merhaba! Ben ${agent.name}. Masa ve mekan rezervasyonu düzeniniz hakkında hemen bilgi vereyim;`;
+    conversationalIntro = `Merhaba! Ben ${agent.name}. Masa ve salon düzeninizi hemen açıklayayım;`;
   } else if (resolution.category === 'booking') {
-    conversationalIntro = `Merhabalar, ben ${agent.name}. Randevu iptal ve sorgulama işleminiz için yardımcı oluyorum;`;
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Randevu işlemleriniz için adımlar şöyle;`;
   } else if (resolution.category === 'calendar') {
-    conversationalIntro = `Merhaba! Ben ${agent.name}. Takvimde saatlerin kapalı görünmesi durumunu kontrol ettim;`;
+    conversationalIntro = `Merhaba! Ben ${agent.name}. Takvimde saatlerin kapalı görünme durumunu kontrol ettim;`;
   } else if (resolution.category === 'services') {
-    conversationalIntro = `Merhabalar! Ben ${agent.name}. Hizmet süreleri ve fiyat ayarlamaları için hemen adımları aktarayım;`;
+    conversationalIntro = `Merhabalar! Ben ${agent.name}. Hizmetler ve fiyat ayarlamaları için adımları aktarayım;`;
   } else if (resolution.category === 'security') {
-    conversationalIntro = `Merhaba! Ben ${agent.name}. Gelmeyen müşteriler ve sahte randevu engelleme konusunda sistemimiz hazır;`;
+    conversationalIntro = `Merhaba! Ben ${agent.name}. Gelmeyen müşteriler ve sahte randevulara karşı sistemimiz hazır;`;
   } else if (resolution.category === 'billing') {
-    conversationalIntro = `Merhabalar, ben ${agent.name}. Lisans ve Shopier ödeme süreçlerini hemen açıklayayım;`;
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Lisans ve paket detaylarını hemen aktarıyorum;`;
   }
 
   const naturalReply =
     `${conversationalIntro}\n\n` +
     `${resolution.solution}\n\n` +
-    `İşlemi denedikten sonra buradan bana yazarsanız ben de sistemden kontrol edebilirim, başka bir sorunuz olursa da buradayım! 😊`;
+    `İşlemi denedikten sonra bana buradan yazarsanız ben de sistemden kontrol edebilirim, başka bir sorunuz olursa da buradayım! 😊`;
 
   return {
     reply: naturalReply,
