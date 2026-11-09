@@ -320,6 +320,69 @@ export function SupportFloatingWidget() {
     }
   };
 
+  const handleCustomerEndConversation = async () => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+    }
+    setIsAgentTyping(false);
+
+    const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
+    const nowIso = new Date().toISOString();
+
+    const endMsg: SupportChatMessage = {
+      sender: 'admin',
+      agent_name: repName,
+      text: `Görüşmeyi sonlandırdınız. Size yardımcı olmaktan memnuniyet duydum! Hizmet kalitemizi artırmak için lütfen müşteri temsilciniz ${repName}'i aşağıdaki yıldızlarla değerlendiriniz. İyi günler dilerim 😊`,
+      created_at: nowIso,
+    };
+
+    const ratingCardMsg: SupportChatMessage = {
+      sender: 'system',
+      text: 'Destek Değerlendirmesi',
+      created_at: new Date(Date.now() + 500).toISOString(),
+      isRatingCard: true,
+    };
+
+    setIsTerminatedByAgent(true);
+
+    if (activeTicket?.id) {
+      try {
+        const supabase = createClient();
+        await supabase.rpc('support_send_agent_auto_reply', {
+          p_ticket_id: activeTicket.id,
+          p_reply: endMsg.text,
+          p_agent_name: repName,
+        });
+
+        const { data } = await supabase
+          .from('platform_support_tickets')
+          .select('messages')
+          .eq('id', activeTicket.id)
+          .single();
+
+        if (data && Array.isArray(data.messages)) {
+          await supabase
+            .from('platform_support_tickets')
+            .update({
+              messages: [...data.messages, ratingCardMsg],
+              status: 'closed',
+            })
+            .eq('id', activeTicket.id);
+        }
+        await fetchActiveTicketById(activeTicket.id);
+      } catch (e) {
+        console.error('Customer end conversation error:', e);
+      }
+    } else {
+      setLocalMessages((prev) => [...prev, endMsg, ratingCardMsg]);
+    }
+    setTimeout(() => scrollToBottom(true), 60);
+  };
+
+
 
 
   useEffect(() => {
@@ -1059,6 +1122,16 @@ export function SupportFloatingWidget() {
               </div>
 
               <div className="flex items-center gap-1.5">
+                {(!isTerminatedByAgent && activeTicket?.status !== 'closed' && (assignedAgent || activeTicket)) && (
+                  <button
+                    type="button"
+                    onClick={handleCustomerEndConversation}
+                    title="Görüşmeyi Sonlandır ve Puanla"
+                    className="text-[11px] font-bold px-2 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 text-rose-100 border border-rose-400/30 flex items-center gap-1 transition-colors"
+                  >
+                    Görüşmeyi Bitir
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleStartNewConversation}
@@ -1086,13 +1159,24 @@ export function SupportFloatingWidget() {
               >
                 {/* Status Bar */}
                 <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between shadow-2xs">
-                  <span className="truncate max-w-[180px] font-medium text-slate-700">
+                  <span className="truncate max-w-[140px] font-medium text-slate-700">
                     Sohbet: <strong>{activeTicket?.sender_name || senderName}</strong>
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                    {assignedAgent ? `${assignedAgent.name} ile Canlı Görüşme` : 'Canlı Destek Masası'}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                      {assignedAgent ? `${assignedAgent.name} ile Canlı Görüşme` : 'Canlı Destek Masası'}
+                    </span>
+                    {(!isTerminatedByAgent && activeTicket?.status !== 'closed' && (assignedAgent || activeTicket)) && (
+                      <button
+                        type="button"
+                        onClick={handleCustomerEndConversation}
+                        className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors"
+                      >
+                        Sonlandır
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* All Chat Bubbles */}
@@ -1329,28 +1413,16 @@ export function SupportFloatingWidget() {
                   );
                 })}
 
-                {/* Realistic Typing Animation */}
+                {/* Clean text-only typing animation without background */}
                 {isAgentTyping && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs max-w-[240px] animate-in fade-in slide-in-from-bottom-2">
-                    {assignedAgent ? (
-                      <div
-                        className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${assignedAgent.avatarColor} text-white font-extrabold text-[10px] flex items-center justify-center shrink-0`}
-                      >
-                        {assignedAgent.avatarLetter}
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 rounded-lg bg-brand-600 text-white flex items-center justify-center shrink-0">
-                        <Headset className="w-3.5 h-3.5" />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
-                      <span>{currentAgentName} yazıyor</span>
-                      <span className="flex items-center gap-0.5 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce [animation-delay:-0.3s]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce [animation-delay:-0.15s]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce" />
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-slate-500 font-medium italic animate-in fade-in">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 inline-block"></span>
+                    <span>{currentAgentName} yazıyor</span>
+                    <span className="flex items-center gap-0.5 mt-0.5">
+                      <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" />
+                    </span>
                   </div>
                 )}
 
