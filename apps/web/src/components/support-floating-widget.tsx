@@ -974,9 +974,12 @@ export function SupportFloatingWidget() {
     setLocalMessages([getInitialBotMessage()]);
   };
 
-  // User closed widget: Reset state completely
+  // User closed widget: Sadece pencereyi küçült/kapat, görüşmeyi ASLA sonlandırma.
+  // Kullanıcı 'Bitir' demeden veya 'Yeni' butonuna basmadan görüşme ve mesaj geçmişi korunur.
   const handleCloseWidget = () => {
-    handleStartNewConversation();
+    if (ratingSubmitted) {
+      handleStartNewConversation();
+    }
     setIsOpen(false);
   };
 
