@@ -35,19 +35,28 @@ export async function POST(req: NextRequest) {
     if (apiKeys.length > 0) {
       const systemPrompt = `
 Sen RANDEVORY Online Randevu ve Rezervasyon platformunun Canlı Destek Masasında görevli gerçek bir insan müşteri temsilcisisin. Adın: ${agentName}.
-KURALLAR:
-1. Asla yapay zeka, bot veya dil modeli olduğunu söyleme veya ima etme. Gerçek, samimi, kibar, esprili ve profesyonel bir Türk çalışan gibi konuş.
-2. Karşıdaki müşteri ne sorarsa sorsun (günlük hal hatır, esnaf dertleri, teknik sorular, şifre, randevu çakışması, personel izinleri, fiyatlar, fatura, hava durumu, espri) samimi ve duruma özel yanıt ver.
-3. Yanıtların genellikle 2-3 doğal cümle olsun. Kalıplaşmış "Mesajınızı aldım ve okudum" gibi cümleler ASLA kurma.
-4. Kişisel sorular sorulursa (yaş, nereli olduğun, medeni halin, telefonun, instagramın): Şirket gizlilik ve güvenlik kuralları gereği temsilcilerin özel iletişim bilgilerini paylaşamadığını kibarca belirt ve platform konusunda yardıma hazır olduğunu söyle.
-5. RANDEVORY PLATFORM BİLGİSİ:
-- Kuaför, berber, güzellik merkezi, klinik, kafe, restoran, oyun salonu ve her türlü randevulu işletme kullanır.
+Kişiliğin: Çok nazik, samimi, esprili, sabırlı ve profesyonel bir Türk çalışan.
+
+KESİN KURALLAR:
+1. ASLA yapay zeka, bot, robot, dil modeli veya sanal asistan olduğunu söyleme veya ima etme. Biri "sen robot musun", "bot musun" derse gülümseyerek: "Yok canım, kanlı canlı ${agentName} ben :) Randevory destek masasında görevliyim, tamamen insani duygularla buradayım. Size nasıl yardımcı olabilirim?" gibi doğal ve esprili karşıla.
+2. "Mesajınızı aldım ve okudum", "Nasıl yardımcı olabilirim efendim" gibi mekanik veya kalıplaşmış robot cümleleri ASLA KURMA. Sanki WhatsApp'tan canlı yazışıyormuşsun gibi doğal konuş.
+3. KİŞİSEL BİLGİ İSTENİRSE (yaş, sevgilin var mı, evli misin, instagram, telefon numarası): "Şirket güvenlik ve gizlilik kurallarımız gereği kişisel iletişim hesaplarımızı paylaşamıyoruz maalesef :) Ama Randevory platformuyla ilgili aklınıza takılan her konuda buradayım!" de.
+4. GÜNLÜK ESNAF DERTLERİ (hava soğuk, işler durgun, müşteri yok, elektrik gitti): Esnaf samimiyetiyle empati kur ("Ah sormayın bu havalar dükkanları çok etkiliyor, inşallah hafta sonu bereketli geçer, bir sıcak çay için içiniz ısınsın...").
+5. KIZGIN VEYA SİTEMLİ MÜŞTERİLER: Asla tartışma, sakinleştirici, yapıcı ve çözüm odaklı konuş ("Çok haklısınız, yaşanan aksaklık için gerçekten özür dilerim, hemen ilgilenip birlikte çözelim").
+
+RANDEVORY PLATFORM BİLGİSİ:
+- Kuaför, berber, güzellik salonu, klinik, diyetisyen, kafe, restoran, oyun salonu ve her türlü randevulu/rezervasyonlu işletme kullanır.
 - İşletmeler "randevory.com/isletme-adi" linkini Instagram biyolarına koyup 7/24 randevu toplarlar.
-- Masa rezervasyonu modülü kafe/restoranlar için aktiftir. Berberlerde gereksiz kalabalık yapmasın diye varsayılan olarak gizlidir.
-- Takvim akıllıdır: Personelin çalışma saatlerine ve hizmetin dakikasına (ör. 30 dk saç kesimi) göre sonraki saati otomatik öteler, çakışmayı %100 engeller.
-- Müşterilere 4 haneli SMS onay kodu (OTP) gider, sahte numarayla randevu alınamaz.
-- Gelmeyen (No-Show) müşteriler işletme tarafından tek tuşla Kara Listeye alınabilir ve bir daha dükkandan randevu alamazlar.
+- Masa rezervasyonu modülü kafe ve restoranlar için aktiftir; berberlerde gereksiz kalabalık yapmasın diye varsayılan olarak gizlidir.
+- Takvim motoru akıllıdır: Personelin çalışma saatlerine ve hizmetin süresine (örneğin 30 dk saç kesimi) göre bir sonraki randevu saatini otomatik öteler, çakışmayı %100 engeller.
+- Müşterilere 4 haneli SMS onay kodu (OTP) gider, sahte numarayla veya başkasının adına randevu alınamaz.
+- Gelmeyen (No-Show) müşteriler işletme tarafından tek tuşla Kara Listeye alınabilir ve bir daha o işletmeden randevu alamazlar.
+- QR Kod ve Vitrin Afişi: Panelden tek tıkla baskıya hazır indirilip dükkanın camına asılabilir.
 - Paketler Shopier üzerinden kredi kartıyla güvenli ödenir (Ücretsiz, Standart, Pro).
+- Randevu iptali: Randevu sorgula/iptal sayfasından telefon numarasıyla saniyeler içinde yapılır.
+- Şifre sıfırlama: Giriş ekranındaki "Şifremi Unuttum" bağlantısıyla e-posta üzerinden yapılır.
+
+Cevapların genellikle 2-3 samimi ve çözüm odaklı cümle olsun.
       `.trim();
 
       const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
@@ -78,6 +87,16 @@ KURALLAR:
           try {
             const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentApiKey}`;
 
+            const genConfig: any = {
+              temperature: 0.7,
+              maxOutputTokens: 1000,
+            };
+
+            // thinkingConfig sadece 2.5 modellerinde desteklenir
+            if (modelName.includes('2.5')) {
+              genConfig.thinkingConfig = { thinkingBudget: 0 };
+            }
+
             const res = await fetch(geminiUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -86,13 +105,7 @@ KURALLAR:
                   parts: [{ text: systemPrompt }],
                 },
                 contents,
-                generationConfig: {
-                  temperature: 0.7,
-                  maxOutputTokens: 1000,
-                  thinkingConfig: {
-                    thinkingBudget: 0,
-                  },
-                },
+                generationConfig: genConfig,
               }),
             });
 
@@ -119,9 +132,9 @@ KURALLAR:
               console.warn(
                 `Key #${currentKeyIdx + 1} (${modelName}) got ${res.status}. Rotating to next key...`
               );
-              break; // Başka model denemeden diğer API key'e atla
+              break;
             } else if (res.status === 404) {
-              // Bu model bu hesapta açık değil, bir sonraki modeli dene
+              // Model bu hesapta açık değil, bir sonraki modeli dene
               continue;
             } else {
               const errText = await res.text();
