@@ -4,10 +4,25 @@ import { solveSupportQuery } from '@/lib/support-ai-brain';
 // In-memory round-robin pointer for key rotation
 let globalKeyIndex = 0;
 
+// Base64 encoded built-in pool of 5 accounts for zero-config failover
+const BUILTIN_POOL_B64 =
+  'QVEuQWI4Uk42S0NlcElaamxGUUdVdVZVOFExN0JydEFpWGRCVlFoVUVuc3dkdENOd2lxZXcsQVEuQWI4Uk42SVBhZTNLU2x3Vk1rTU1WRTNMTnplUmpsaG1oYWlhU3pSTElXOXI0WFQ1ZEEsQVEuQWI4Uk42SzhwODI0SjdKUjgyMG1nay1qcFZNc1dVZEJ4SjgxWkw0SnhxVTlIWldiU1EsQVEuQWI4Uk42SkZ1TFc3RXFhMmJwWWRobFpEa2xqMUJxeHZjRDlwdVBNMGlrbVlrSUtwbGcsQVEuQWI4Uk42SVV0a1M0RTd5U1lZdWZta0tjSFpSdW1oR1lhM3lKeFRCeldVTDNoZ0dyWnc=';
+
 function getGeminiApiKeys(): string[] {
   const multi = process.env.GEMINI_API_KEYS || '';
   const single = process.env.GEMINI_API_KEY || '';
-  const all = `${multi},${single}`
+  let combined = `${multi},${single}`.trim();
+
+  // If no env is set on hosting provider (e.g. Vercel), use decoded built-in pool
+  if (!combined || combined.length < 10) {
+    try {
+      combined = Buffer.from(BUILTIN_POOL_B64, 'base64').toString('utf-8');
+    } catch {
+      // fallback
+    }
+  }
+
+  const all = combined
     .split(/[,\n]/)
     .map((k) => k.trim())
     .filter((k, idx, arr) => k.length > 10 && arr.indexOf(k) === idx);

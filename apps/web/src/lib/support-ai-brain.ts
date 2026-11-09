@@ -47,7 +47,7 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
     avatarLetter: 'E',
     avatarColor: 'from-rose-500 to-pink-600',
     welcomeGreeting:
-      'Merhabalar! Ben Esma, Randevory Destek Masasından. Mesajınızı aldım, size yardımcı olmaktan memnuniyet duyarım. Nasıl yardımcı olabilirim?',
+      'Merhabalar! Ben Esma, Randevory Destek Masasındayım. Size yardımcı olmaktan mutluluk duyarım, durum nedir? 😊',
   },
   {
     id: 'zeynep',
@@ -67,7 +67,7 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
     avatarLetter: 'S',
     avatarColor: 'from-purple-600 to-indigo-600',
     welcomeGreeting:
-      'Merhabalar! Ben Selin. Mesajınızı şimdi okudum, sorununuzu hemen halledelim. Durumu kısaca aktarabilir misiniz?',
+      'Merhabalar! Ben Selin. Randevory destek masasından yazıyorum, hemen yardımcı olayım. Durum nedir acaba?',
   },
   {
     id: 'elif',
@@ -97,7 +97,7 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
     avatarLetter: 'M',
     avatarColor: 'from-pink-500 to-rose-600',
     welcomeGreeting:
-      'Merhaba! Ben Merve. Mesajınızı aldım, hemen birlikte ilgilenelim. Hangi konuda yardımcı olabilirim?',
+      'Merhaba! Ben Merve. Randevory ekibindenim, hemen birlikte ilgilenelim. Hangi konuda yardımcı olabilirim? 😊',
   },
   // Erkek Temsilciler
   {
@@ -108,7 +108,7 @@ export const SUPPORT_AGENTS: SupportAgent[] = [
     avatarLetter: 'B',
     avatarColor: 'from-blue-600 to-indigo-600',
     welcomeGreeting:
-      'Merhaba, ben Burak! Randevory ekibinden. Mesajınızı aldım, sorununuzu hemen birlikte çözelim. Sorununuz nedir acaba?',
+      'Merhaba, ben Burak! Randevory ekibindeyim. Sorununuzu hemen birlikte çözelim, durum nedir acaba? 😊',
   },
   {
     id: 'emre',
@@ -224,6 +224,12 @@ export function solveSupportQuery(userText: string): AiResolution {
     q.includes('nerelisin') ||
     q.includes('yasin kac') ||
     q.includes('yas kac') ||
+    q.includes('kac yas') ||
+    q.includes('yasindasin') ||
+    q.includes('yasiniz') ||
+    q.includes('yasini') ||
+    q.includes('fotografin') ||
+    q.includes('resmin') ||
     q.includes('evli misin') ||
     q.includes('sevgilin') ||
     q.includes('numarani ver') ||
@@ -653,9 +659,7 @@ export function solveSupportQuery(userText: string): AiResolution {
   return {
     category: 'general',
     title: '💬 Destek Yanıtı',
-    solution:
-      'Mesajınızı okudum. Bu konuda size en doğru ve hızlı şekilde yardımcı olabilmem için durumu biraz daha açabilir misiniz?\n\n' +
-      'Örneğin randevu alma veya iptali, şifre sıfırlama, masa düzeni, fiyatlar veya işletme ayarlarınız gibi hangi işlemde destek istersiniz?',
+    solution: 'Sizi çok iyi anlıyorum. Randevory destek masasında görevliyim; paneliniz, randevularınız veya işletme ayarlarınızla ilgili ne gerekiyorsa hemen birlikte çözebiliriz. Yaşadığınız durumu kısaca aktarabilir misiniz? 😊',
     quickActions: [
       { id: 'menu_booking', label: '📅 Randevu İşlemleri' },
       { id: 'menu_password', label: '🔑 Şifre & Giriş' },
