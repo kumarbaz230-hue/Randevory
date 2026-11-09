@@ -1,5 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SUPPORT_AGENTS, solveSupportQuery } from '@/lib/support-ai-brain';
+import { solveSupportQuery } from '@/lib/support-ai-brain';
+
+// In-memory round-robin pointer for key rotation
+let globalKeyIndex = 0;
+
+function getGeminiApiKeys(): string[] {
+  const multi = process.env.GEMINI_API_KEYS || '';
+  const single = process.env.GEMINI_API_KEY || '';
+  const all = `${multi},${single}`
+    .split(/[,\n]/)
+    .map((k) => k.trim())
+    .filter((k, idx, arr) => k.length > 10 && arr.indexOf(k) === idx);
+  return all;
+}
+
+const CANDIDATE_MODELS = [
+  'gemini-flash-lite-latest',
+  'gemini-2.5-flash',
+  'gemini-3.5-flash',
+  'gemma-4-26b-a4b-it',
+];
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,12 +30,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Mesaj boş olamaz.' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKeys = getGeminiApiKeys();
 
-    // 1. Google Gemini 2.5 Flash
-    if (apiKey) {
-      try {
-        const systemPrompt = `
+    if (apiKeys.length > 0) {
+      const systemPrompt = `
 Sen RANDEVORY Online Randevu ve Rezervasyon platformunun Canlı Destek Masasında görevli gerçek bir insan müşteri temsilcisisin. Adın: ${agentName}.
 KURALLAR:
 1. Asla yapay zeka, bot veya dil modeli olduğunu söyleme veya ima etme. Gerçek, samimi, kibar, esprili ve profesyonel bir Türk çalışan gibi konuş.
@@ -30,70 +48,93 @@ KURALLAR:
 - Müşterilere 4 haneli SMS onay kodu (OTP) gider, sahte numarayla randevu alınamaz.
 - Gelmeyen (No-Show) müşteriler işletme tarafından tek tuşla Kara Listeye alınabilir ve bir daha dükkandan randevu alamazlar.
 - Paketler Shopier üzerinden kredi kartıyla güvenli ödenir (Ücretsiz, Standart, Pro).
-        `.trim();
+      `.trim();
 
-        const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+      const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
-        if (Array.isArray(history) && history.length > 0) {
-          const recent = history.slice(-6);
-          for (const h of recent) {
-            if (h.sender === 'user' && h.text) {
-              contents.push({ role: 'user', parts: [{ text: h.text }] });
-            } else if ((h.sender === 'admin' || h.sender === 'ai') && h.text) {
-              contents.push({ role: 'model', parts: [{ text: h.text }] });
-            }
+      if (Array.isArray(history) && history.length > 0) {
+        const recent = history.slice(-6);
+        for (const h of recent) {
+          if (h.sender === 'user' && h.text) {
+            contents.push({ role: 'user', parts: [{ text: h.text }] });
+          } else if ((h.sender === 'admin' || h.sender === 'ai') && h.text) {
+            contents.push({ role: 'model', parts: [{ text: h.text }] });
           }
         }
+      }
 
-        contents.push({ role: 'user', parts: [{ text: message }] });
+      contents.push({ role: 'user', parts: [{ text: message }] });
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      // Round-Robin başlangıç anahtarı
+      const startKeyIndex = (globalKeyIndex++) % apiKeys.length;
 
-        const res = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: systemPrompt }],
-            },
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1000,
-              thinkingConfig: {
-                thinkingBudget: 0,
-              },
-            },
-          }),
-        });
+      // Tüm anahtarlar havuzunda sırayla dön (Failover & Kota rotasyonu)
+      for (let attempt = 0; attempt < apiKeys.length; attempt++) {
+        const currentKeyIdx = (startKeyIndex + attempt) % apiKeys.length;
+        const currentApiKey = apiKeys[currentKeyIdx];
 
-        if (res.ok) {
-          const data = await res.json();
-          const candidate = data?.candidates?.[0];
-          const parts = candidate?.content?.parts;
-          let generatedText = '';
-          if (Array.isArray(parts)) {
-            // Find text part
-            for (const p of parts) {
-              if (p.text) generatedText += p.text;
-            }
-          }
-          if (generatedText && generatedText.trim()) {
-            return NextResponse.json({
-              reply: generatedText.trim(),
-              source: 'gemini',
+        // Bu anahtar için aday modelleri dene
+        for (const modelName of CANDIDATE_MODELS) {
+          try {
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentApiKey}`;
+
+            const res = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                system_instruction: {
+                  parts: [{ text: systemPrompt }],
+                },
+                contents,
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 1000,
+                  thinkingConfig: {
+                    thinkingBudget: 0,
+                  },
+                },
+              }),
             });
+
+            if (res.ok) {
+              const data = await res.json();
+              const candidate = data?.candidates?.[0];
+              const parts = candidate?.content?.parts;
+              let generatedText = '';
+              if (Array.isArray(parts)) {
+                for (const p of parts) {
+                  if (p.text) generatedText += p.text;
+                }
+              }
+              if (generatedText && generatedText.trim()) {
+                return NextResponse.json({
+                  reply: generatedText.trim(),
+                  source: 'gemini',
+                  model: modelName,
+                  keyPoolIndex: currentKeyIdx,
+                });
+              }
+            } else if (res.status === 429 || res.status === 503) {
+              // Kota aşıldı veya anlık yoğunluk: Bir sonraki API key'e hemen geç
+              console.warn(
+                `Key #${currentKeyIdx + 1} (${modelName}) got ${res.status}. Rotating to next key...`
+              );
+              break; // Başka model denemeden diğer API key'e atla
+            } else if (res.status === 404) {
+              // Bu model bu hesapta açık değil, bir sonraki modeli dene
+              continue;
+            } else {
+              const errText = await res.text();
+              console.warn(`Key #${currentKeyIdx + 1} API error:`, res.status, errText);
+            }
+          } catch (modelErr) {
+            console.warn(`Key #${currentKeyIdx + 1} (${modelName}) fetch error:`, modelErr);
           }
-        } else {
-          const errText = await res.text();
-          console.error('Gemini API response error:', res.status, errText);
         }
-      } catch (geminiErr) {
-        console.error('Gemini call error:', geminiErr);
       }
     }
 
-    // 2. Intelligent Fallback if API call fails
+    // Akıllı yerel çözümleme motoru (Fallback)
     const resolution = solveSupportQuery(message);
     return NextResponse.json({
       reply: resolution.solution,
