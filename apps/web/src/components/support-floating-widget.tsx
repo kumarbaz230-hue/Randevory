@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Check,
   CheckCheck,
+  Star,
 } from 'lucide-react';
 
 export interface SupportChatMessage {
@@ -33,6 +34,9 @@ export interface SupportChatMessage {
   created_at: string;
   options?: Array<{ id: string; label: string }>;
   showEscalationButtons?: boolean;
+  isRatingCard?: boolean;
+  ratingScore?: number;
+  ratingComment?: string;
 }
 
 export interface SupportTicketRow {
@@ -202,6 +206,15 @@ export function SupportFloatingWidget() {
   // Fullscreen Image Lightbox
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
+  // Inactivity timeout & Rating state
+  const [selectedRating, setSelectedRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [ratingNote, setRatingNote] = useState('');
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const inactivityTimerRef = useRef<any>(null);
+
+  
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,6 +239,87 @@ export function SupportFloatingWidget() {
       setActiveTicket(data as SupportTicketRow);
     }
   }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    inactivityTimerRef.current = setTimeout(async () => {
+      const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
+      const nowIso = new Date().toISOString();
+
+      const timeoutMsg: SupportChatMessage = {
+        sender: 'admin',
+        agent_name: repName,
+        text: 'Uzun süredir sizden bir yanıt alamadım. Başka bir sorunuz veya desteğe ihtiyacınız kalmadıysa görüşmeyi sonlandırıyorum. Hizmetimizi aşağıdan 1-5 yıldızla değerlendirebilirseniz çok seviniriz! İyi günler dilerim 😊',
+        created_at: nowIso,
+      };
+
+      const ratingCardMsg: SupportChatMessage = {
+        sender: 'system',
+        text: 'Destek Değerlendirmesi',
+        created_at: new Date(Date.now() + 500).toISOString(),
+        isRatingCard: true,
+      };
+
+      if (activeTicket?.id) {
+        try {
+          const supabase = createClient();
+          await supabase.rpc('support_send_agent_auto_reply', {
+            p_ticket_id: activeTicket.id,
+            p_reply: timeoutMsg.text,
+            p_agent_name: repName,
+          });
+
+          const { data } = await supabase
+            .from('platform_support_tickets')
+            .select('messages')
+            .eq('id', activeTicket.id)
+            .single();
+
+          if (data && Array.isArray(data.messages)) {
+            await supabase
+              .from('platform_support_tickets')
+              .update({
+                messages: [...data.messages, ratingCardMsg],
+                status: 'closed',
+              })
+              .eq('id', activeTicket.id);
+          }
+          await fetchActiveTicketById(activeTicket.id);
+        } catch (e) {
+          console.error('Inactivity timeout update error:', e);
+        }
+      } else {
+        setLocalMessages((prev) => [...prev, timeoutMsg, ratingCardMsg]);
+      }
+    }, 5 * 60 * 1000); // 5 minutes inactivity
+  }, [assignedAgent?.name, activeTicket?.id, fetchActiveTicketById]);
+
+  const handleSendRating = async () => {
+    setRatingSubmitted(true);
+    const feedbackSummary = `${selectedRating} Yıldız ${selectedTags.length > 0 ? `(${selectedTags.join(', ')})` : ''}${ratingNote ? ` - "${ratingNote}"` : ''}`;
+
+    if (activeTicket?.id) {
+      try {
+        const supabase = createClient();
+        await supabase
+          .from('platform_support_tickets')
+          .update({
+            status: 'closed',
+            admin_reply: activeTicket.admin_reply
+              ? `${activeTicket.admin_reply}\n\n[Müşteri Değerlendirmesi: ${feedbackSummary}]`
+              : `[Müşteri Değerlendirmesi: ${feedbackSummary}]`,
+          })
+          .eq('id', activeTicket.id);
+      } catch (e) {
+        console.error('Save rating error:', e);
+      }
+    }
+  };
+
+
 
   useEffect(() => {
     const supabase = createClient();
@@ -532,12 +626,12 @@ export function SupportFloatingWidget() {
           // 2. Aşama: Temsilci bildirimi gördü ve açtı (çift tik ✓✓ Okundu)!
           setReadMessageTimestamps((prev) => [...prev, sentIso]);
 
-          // 3. Aşama: 1.5 saniye mesajı okuma ve düşünme payı
+          // 3. Aşama: 2.6 saniye mesajı dikkatle okuma ve düşünme payı (+1.1s)
           typingTimerRef.current = setTimeout(() => {
             setIsAgentTyping(true);
             setTimeout(() => scrollToBottom(true), 50);
 
-            // 4. Aşama: İnsan hızında gerçekçi klavye yazma süresi (6.5 saniye)
+            // 4. Aşama: İnsan hızında gerçekçi klavye yazma süresi (8.2 saniye - +1.7s)
             setTimeout(async () => {
               try {
                 const { data: freshTicket } = await supabase
@@ -599,8 +693,9 @@ export function SupportFloatingWidget() {
                 console.error('Agent reply error:', replyErr);
                 setIsAgentTyping(false);
               }
-            }, 6500);
-          }, 1500);
+            resetInactivityTimer();
+            }, 8200);
+          }, 2600);
         }, 2800);
       } catch (err: any) {
         alert(err?.message || 'Mesaj gönderilemedi.');
@@ -696,8 +791,9 @@ export function SupportFloatingWidget() {
             },
           ]);
           setTimeout(() => scrollToBottom(true), 60);
-        }, 5500);
-      }, 1400);
+        resetInactivityTimer();
+        }, 7500);
+      }, 2500);
     }, 2800);
   };
 
@@ -725,6 +821,13 @@ export function SupportFloatingWidget() {
     if (readTimerRef.current) {
       clearTimeout(readTimerRef.current);
     }
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    setRatingSubmitted(false);
+    setSelectedRating(5);
+    setSelectedTags([]);
+    setRatingNote('');
     setIsAgentTyping(false);
     setReadMessageTimestamps([]);
     setActiveTicket(null);
@@ -921,6 +1024,96 @@ export function SupportFloatingWidget() {
                 {/* All Chat Bubbles */}
                 {displayedMessages.map((msg, idx) => {
                   if (msg.sender === 'system') {
+                    if (msg.isRatingCard) {
+                      return (
+                        <div key={idx} className="my-3 p-3.5 rounded-2xl bg-white border border-amber-200/90 shadow-md">
+                          <div className="text-center space-y-1">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-base">
+                              ⭐
+                            </div>
+                            <h4 className="text-xs font-black text-slate-800">Canlı Destek Görüşmesini Puanlayın</h4>
+                            <p className="text-[11px] text-slate-500">
+                              {assignedAgent ? `${assignedAgent.name} ile` : 'Destek masasıyla'} olan görüşmenizi nasıl değerlendirirsiniz?
+                            </p>
+                          </div>
+
+                          {ratingSubmitted ? (
+                            <div className="mt-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                              <span className="text-xs font-bold text-emerald-800">
+                                ✅ Değerlendirmeniz kaydedildi. Teşekkür ederiz!
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="mt-3 space-y-2.5">
+                              {/* Interactive Stars */}
+                              <div className="flex items-center justify-center gap-1.5 py-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setSelectedRating(star)}
+                                    onMouseEnter={() => setHoverRating(star)}
+                                    onMouseLeave={() => setHoverRating(0)}
+                                    className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                                  >
+                                    <Star
+                                      className={`w-6 h-6 transition-colors ${
+                                        star <= (hoverRating || selectedRating)
+                                          ? 'fill-amber-400 text-amber-400 drop-shadow-xs'
+                                          : 'text-slate-300'
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Quick tags */}
+                              <div className="flex flex-wrap gap-1 justify-center">
+                                {['Hızlı Çözüm ⚡', 'Kibar & İlgili ✨', 'Sorunum Çözüldü ✅', 'Geliştirilmeli 💬'].map(
+                                  (tag) => (
+                                    <button
+                                      key={tag}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedTags((prev) =>
+                                          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                                        );
+                                      }}
+                                      className={`text-[10px] px-2.5 py-1 rounded-full border transition-all ${
+                                        selectedTags.includes(tag)
+                                          ? 'bg-amber-500 text-white border-amber-600 font-bold'
+                                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                      }`}
+                                    >
+                                      {tag}
+                                    </button>
+                                  )
+                                )}
+                              </div>
+
+                              {/* Feedback input */}
+                              <input
+                                type="text"
+                                placeholder="Görüşünüzü paylaşın (İsteğe bağlı)..."
+                                value={ratingNote}
+                                onChange={(e) => setRatingNote(e.target.value)}
+                                className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              />
+
+                              <button
+                                type="button"
+                                disabled={selectedRating === 0}
+                                onClick={handleSendRating}
+                                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all"
+                              >
+                                Değerlendirmeyi Gönder
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={idx} className="flex justify-center my-2">
                         <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[11px] font-bold text-indigo-800 shadow-2xs flex items-center gap-1.5 animate-in fade-in">
