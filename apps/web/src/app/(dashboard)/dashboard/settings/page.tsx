@@ -64,6 +64,10 @@ export default function DashboardSettingsPage() {
   const [cancelHours, setCancelHours] = useState(2);
   const [enableTableBooking, setEnableTableBooking] = useState(false);
   const [defaultBookingStyle, setDefaultBookingStyle] = useState<'service' | 'table'>('service');
+  const [blacklistPhones, setBlacklistPhones] = useState<string[]>([]);
+  const [newBlockPhone, setNewBlockPhone] = useState('');
+  const [maxDailyBookings, setMaxDailyBookings] = useState(2);
+  const [requireOtp, setRequireOtp] = useState(true);
 
   // Loyalty Program State (İsteğe bağlı pazarlama)
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
@@ -103,6 +107,9 @@ export default function DashboardSettingsPage() {
         setCancelHours(b.settings.cancellation_deadline_hours ?? 2);
         setEnableTableBooking(Boolean(b.settings?.enable_table_booking || b.sector === 'cafe_restaurant'));
         setDefaultBookingStyle(b.settings?.default_booking_style || (b.sector === 'cafe_restaurant' ? 'table' : 'service'));
+        setBlacklistPhones(b.settings?.blacklist_phones || []);
+        setMaxDailyBookings(b.settings?.max_daily_bookings_per_phone ?? 2);
+        setRequireOtp(b.settings?.require_otp_verification ?? true);
 
         const lp = b.settings?.loyalty_program;
         if (lp) {
@@ -222,6 +229,9 @@ export default function DashboardSettingsPage() {
           cancellation_deadline_hours: Number(cancelHours),
           enable_table_booking: enableTableBooking,
           default_booking_style: defaultBookingStyle,
+          blacklist_phones: blacklistPhones,
+          max_daily_bookings_per_phone: Number(maxDailyBookings),
+          require_otp_verification: requireOtp,
           maps_url: mapsUrl.trim() || undefined,
           latitude: latitude || undefined,
           longitude: longitude || undefined,
@@ -819,7 +829,134 @@ export default function DashboardSettingsPage() {
           )}
         </div>
 
-        {/* Weekly Working Hours */}
+        {/* Troll, Spam & No-Show Koruması */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Troll, Spam & No-Show (Gelmeyen Müşteri) Koruması
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              İşletmenizi sahte randevulardan, troll girişlerden ve randevusuna gelmeyenlerden koruyun.
+            </p>
+          </div>
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+            Güvenlik Kalkanı Aktif
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          {/* Günlük Limit */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <label className="block font-bold text-slate-800">
+              Aynı Numara İçin Günlük Maksimum Randevu Limiti
+            </label>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Bir müşterinin aynı gün içinde dükkanınızdan alabileceği en fazla aktif randevu sayısı.
+            </p>
+            <select
+              value={maxDailyBookings}
+              onChange={(e) => setMaxDailyBookings(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500 text-xs"
+            >
+              <option value="1">1 Randevu (Maksimum Güvenlik)</option>
+              <option value="2">2 Randevu (Önerilen Standart)</option>
+              <option value="3">3 Randevu</option>
+              <option value="5">5 Randevu</option>
+              <option value="999">Limitsiz</option>
+            </select>
+          </div>
+
+          {/* Güvenlik Doğrulama Kodu */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-2">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800">4 Haneli Güvenlik Kodu Teyidi</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={requireOtp}
+                    onChange={(e) => setRequireOtp(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                Müşteri formu gönderirken 4 haneli güvenlik kodunu onaylar. Sahte telefon ve botları anında engeller.
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-emerald-700">
+              {requireOtp ? '✓ Aktif (Troll Koruması Açık)' : '○ Kapalı'}
+            </span>
+          </div>
+        </div>
+
+        {/* Kara Liste */}
+        <div className="pt-2 border-t border-slate-100 space-y-3">
+          <label className="block text-xs font-bold text-slate-800">
+            🚫 Kara Listedeki Telefon Numaraları ({blacklistPhones.length})
+          </label>
+          <p className="text-[11px] text-slate-500">
+            Aşağıdaki numaralar işletmenizden randevu veya masa rezervasyonu alamaz. Müşteriler sayfasından da tek tıkla engelleyebilirsiniz.
+          </p>
+
+          <div className="flex gap-2 max-w-md">
+            <input
+              type="tel"
+              placeholder="05XX XXX XX XX"
+              value={newBlockPhone}
+              onChange={(e) => setNewBlockPhone(e.target.value)}
+              className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 font-semibold"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const cleaned = newBlockPhone.trim().replace(/\D/g, '');
+                if (cleaned.length < 10) {
+                  alert('Lütfen geçerli bir telefon numarası girin.');
+                  return;
+                }
+                if (!blacklistPhones.includes(newBlockPhone.trim())) {
+                  setBlacklistPhones([...blacklistPhones, newBlockPhone.trim()]);
+                  setNewBlockPhone('');
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs"
+            >
+              Engelle
+            </button>
+          </div>
+
+          {blacklistPhones.length > 0 ? (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {blacklistPhones.map((ph, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-50 text-rose-800 text-xs font-bold border border-rose-200"
+                >
+                  <span>{ph}</span>
+                  <button
+                    type="button"
+                    onClick={() => setBlacklistPhones(blacklistPhones.filter((_, i) => i !== idx))}
+                    className="text-rose-400 hover:text-rose-700 font-bold ml-1"
+                    title="Engeli Kaldır"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400 italic">
+              Henüz engellenmiş bir telefon numarası yok.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Weekly Working Hours */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>

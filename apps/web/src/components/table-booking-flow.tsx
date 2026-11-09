@@ -16,6 +16,7 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Check,
+  ShieldCheck,
   ChevronRight,
   ChevronLeft,
   Sparkles,
@@ -70,6 +71,11 @@ export function TableBookingFlow({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [createdApt, setCreatedApt] = useState<Appointment | null>(null);
+  // OTP Verification State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
 
   // Filter tables by section and capacity
   const filteredTables = useMemo(() => {
@@ -120,6 +126,43 @@ export function TableBookingFlow({
       return;
     }
 
+    // 1. Blacklist / Kara Liste Koruması
+    const cleanPhone = repo.normalizePhone(customerPhone);
+    const blacklist = (business.settings?.blacklist_phones || []).map((p) => repo.normalizePhone(p));
+    if (blacklist.includes(cleanPhone)) {
+      setErrorMessage(
+        'Bu telefon numarası işletme tarafından masa rezervasyonuna kapatılmıştır. Bilgi için lütfen işletmeyle iletişime geçin.'
+      );
+      return;
+    }
+
+    // 2. Spam / Günlük Randevu Limiti
+    const maxDaily = business.settings?.max_daily_bookings_per_phone ?? 2;
+    const dateKey = selectedDate.toISOString().split('T')[0];
+    const sameDayCount = appointments.filter(
+      (a) =>
+        repo.normalizePhone(a.customer_phone) === cleanPhone &&
+        (a.status === 'confirmed' || a.status === 'pending') &&
+        a.start_time.startsWith(dateKey)
+    ).length;
+
+    if (sameDayCount >= maxDaily) {
+      setErrorMessage(
+        `Aynı gün içerisinde en fazla ${maxDaily} aktif rezervasyon oluşturabilirsiniz (Spam koruması).`
+      );
+      return;
+    }
+
+    // 3. Güvenlik Doğrulama Kodu (OTP)
+    if (business.settings?.require_otp_verification !== false) {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedOtp(code);
+      setEnteredOtp('');
+      setOtpError('');
+      setShowOtpModal(true);
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage('');
 
@@ -164,7 +207,55 @@ export function TableBookingFlow({
     }
   };
 
-  // WhatsApp Message for Reservation Confirmation
+  const handleConfirmOtpAndSubmitTable = async () => {
+    if (enteredOtp.trim() !== generatedOtp.trim()) {
+      setOtpError('Girdiğiniz 4 haneli kod hatalı. Lütfen kontrol edin.');
+      return;
+    }
+    setShowOtpModal(false);
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      if (!selectedTable) return;
+      const [h, m] = selectedTime.split(':').map(Number);
+      const start = new Date(selectedDate);
+      start.setHours(h, m, 0, 0);
+      const end = new Date(start.getTime() + 90 * 60 * 1000);
+
+      const tableNotes = `[Masa Rezervasyonu: ${selectedTable.name} • ${guestCount} Kişi]${
+        specialRequest.trim() ? ` Not: ${specialRequest.trim()}` : ''
+      }`;
+
+      const newApt = await repo.createAppointment({
+        business_id: business.id,
+        service_id: 'table-reservation',
+        staff_id: 'table-host',
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
+        customer_email: customerEmail.trim() || undefined,
+        customer_notes: tableNotes,
+        table_name: selectedTable.name,
+        guest_count: guestCount,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        total_price: 0,
+        status: business.settings?.auto_confirm_appointments === false ? 'pending' : 'confirmed',
+      });
+
+      setCreatedApt(newApt);
+      setStep(4);
+      if (onAppointmentCreated) {
+        onAppointmentCreated(newApt);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Rezervasyon oluşturulurken bir hata oluştu.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+    // WhatsApp Message for Reservation Confirmation
   const whatsappUrl = useMemo(() => {
     if (!createdApt || !selectedTable) return '';
     const cleanPhone = (business.phone || '').replace(/[^0-9]/g, '');
@@ -669,6 +760,62 @@ export function TableBookingFlow({
           </div>
         </div>
       )}
+      {/* 4 Haneli Güvenlik Kodu Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center mx-auto border border-orange-100">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Masa Rezervasyonu Doğrulaması</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Sahte rezervasyonları önlemek için lütfen aşağıdaki 4 haneli güvenlik kodunu girin:
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-orange-50 border border-orange-100">
+              <div className="text-[11px] text-orange-700 font-bold uppercase tracking-wider mb-0.5">Güvenlik Kodunuz</div>
+              <div className="text-3xl font-black text-orange-700 tracking-widest">{generatedOtp}</div>
+            </div>
+
+            <div>
+              <input
+                type="text"
+                maxLength={4}
+                autoFocus
+                placeholder="4 haneli kodu girin"
+                value={enteredOtp}
+                onChange={(e) => {
+                  setEnteredOtp(e.target.value.replace(/\D/g, ''));
+                  setOtpError('');
+                }}
+                className="w-full text-center text-xl font-bold tracking-widest py-3 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-orange-500"
+              />
+              {otpError && <p className="text-xs text-rose-600 font-semibold mt-1.5">{otpError}</p>}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowOtpModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmOtpAndSubmitTable}
+                disabled={isSubmitting || enteredOtp.length !== 4}
+                className="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
+              >
+                {isSubmitting ? 'Onaylanıyor...' : 'Doğrula & Onayla'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

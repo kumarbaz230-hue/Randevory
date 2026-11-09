@@ -50,6 +50,9 @@ export interface BusinessSettings {
     discount_percent?: number;
     reward_title?: string;
   };
+  blacklist_phones?: string[];
+  max_daily_bookings_per_phone?: number;
+  require_otp_verification?: boolean;
 }
 
 export interface Business {
@@ -139,6 +142,8 @@ export interface Customer {
   total_appointments_count: number;
   total_spent: number;
   last_appointment_date?: string;
+  is_blacklisted?: boolean;
+  no_show_count?: number;
   created_at: string;
 }
 

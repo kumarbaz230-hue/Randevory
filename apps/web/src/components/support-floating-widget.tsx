@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { solveSupportQuery } from '@/lib/support-ai-brain';
 import {
   Headset,
   X,

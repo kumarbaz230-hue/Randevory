@@ -229,7 +229,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Randevu Takvimi', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Müşteri Mesajları', href: '/dashboard/messages', icon: MessageSquare, badge: unreadMessages },
     { name: 'Hizmetler & Fiyatlar', href: '/dashboard/services', icon: Sparkles },
-    { name: 'Masalar & Alanlar', href: '/dashboard/tables', icon: UtensilsCrossed },
+    ...(activeBiz?.sector === 'cafe_restaurant' ||
+    activeBiz?.sector === 'activity_gaming' ||
+    activeBiz?.settings?.enable_table_booking
+      ? [{ name: 'Masalar & Alanlar', href: '/dashboard/tables', icon: UtensilsCrossed }]
+      : []),
     { name: 'Personel Yönetimi', href: '/dashboard/staff', icon: UserCheck },
     { name: 'Müşteriler (CRM)', href: '/dashboard/customers', icon: Users },
     { name: 'Raporlar & Gelir', href: '/dashboard/reports', icon: TrendingUp },

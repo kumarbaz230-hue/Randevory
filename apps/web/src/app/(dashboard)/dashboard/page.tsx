@@ -31,6 +31,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending: 'Onay Bekliyor',
   completed: 'Tamamlandı',
   cancelled: 'İptal Edildi',
+  no_show: 'Gelmedi (No-Show)',
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -38,6 +39,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border border-amber-200',
   completed: 'bg-blue-50 text-blue-700 border border-blue-200',
   cancelled: 'bg-rose-50 text-rose-600 border border-rose-200',
+  no_show: 'bg-amber-100 text-amber-800 border border-amber-300',
 };
 
 const PAGE_SIZE = 5;

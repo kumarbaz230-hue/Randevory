@@ -122,6 +122,11 @@ export default function BusinessPublicPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [createdAppointment, setCreatedAppointment] = useState<Appointment | null>(null);
+  // OTP Verification State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
 
   // Manage / Cancel Appointments State
   const [lookupPhone, setLookupPhone] = useState('');
@@ -256,7 +261,42 @@ export default function BusinessPublicPage() {
         .subscribe();
     }
 
-    return () => {
+    const handleConfirmOtpAndSubmit = async () => {
+    if (enteredOtp.trim() !== generatedOtp.trim()) {
+      setOtpError('Girdiğiniz 4 haneli güvenlik kodu hatalı. Lütfen kontrol edin.');
+      return;
+    }
+    setShowOtpModal(false);
+    setIsSubmitting(true);
+
+    try {
+      if (!business || !selectedService || !selectedSlot) return;
+      const newApt = await repo.createAppointment({
+        business_id: business.id,
+        service_id: selectedService.id,
+        staff_id: selectedSlot.staff_id,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
+        customer_email: customerEmail.trim() || undefined,
+        customer_notes: customerNotes.trim() || undefined,
+        start_time: selectedSlot.isoStartTime,
+        end_time: selectedSlot.isoEndTime,
+        total_price: selectedService.price,
+        status: business.settings?.auto_confirm_appointments === false ? 'pending' : 'confirmed',
+      });
+
+      saveCustomerIdentity(customerName, customerPhone);
+      setCreatedAppointment(newApt);
+      setAppointments((prev) => [newApt, ...prev]);
+      setStep(5);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Randevu oluşturulurken bir hata oluştu.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return () => {
       clearInterval(timer);
       if (channel && isSupabaseConfigured()) {
         const supabase = createClient();
@@ -352,6 +392,43 @@ export default function BusinessPublicPage() {
       setErrorMessage(
         conflictValidation.reason || 'Üzgünüz, seçilen saat için başka bir randevu oluşturuldu. Lütfen başka bir saat seçin.'
       );
+      return;
+    }
+
+    // 1. Blacklist / Kara Liste Koruması
+    const cleanPhone = repo.normalizePhone(customerPhone);
+    const blacklist = (business.settings?.blacklist_phones || []).map((p) => repo.normalizePhone(p));
+    if (blacklist.includes(cleanPhone)) {
+      setErrorMessage(
+        'Bu telefon numarası işletme tarafından randevu alımına kapatılmıştır. Bilgi için lütfen işletmeyle iletişime geçin.'
+      );
+      return;
+    }
+
+    // 2. Spam / Günlük Randevu Limiti
+    const maxDaily = business.settings?.max_daily_bookings_per_phone ?? 2;
+    const slotDay = selectedSlot.isoStartTime.split('T')[0];
+    const sameDayCount = appointments.filter(
+      (a) =>
+        repo.normalizePhone(a.customer_phone) === cleanPhone &&
+        (a.status === 'confirmed' || a.status === 'pending') &&
+        a.start_time.startsWith(slotDay)
+    ).length;
+
+    if (sameDayCount >= maxDaily) {
+      setErrorMessage(
+        `Aynı gün içerisinde en fazla ${maxDaily} aktif randevu oluşturabilirsiniz (Spam ve mükerrer randevu koruması).`
+      );
+      return;
+    }
+
+    // 3. Güvenlik Doğrulama Kodu (OTP)
+    if (business.settings?.require_otp_verification !== false) {
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedOtp(code);
+      setEnteredOtp('');
+      setOtpError('');
+      setShowOtpModal(true);
       return;
     }
 

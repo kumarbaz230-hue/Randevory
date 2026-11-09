@@ -16,6 +16,10 @@ import {
   Plus,
   X,
   AlertCircle,
+  ShieldAlert,
+  ShieldCheck,
+  Ban,
+  Check,
 } from 'lucide-react';
 
 export default function DashboardCustomersPage() {
@@ -23,6 +27,7 @@ export default function DashboardCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [successToast, setSuccessToast] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
   // New Customer Form State
@@ -83,6 +88,44 @@ export default function DashboardCustomersPage() {
     }
   };
 
+  const handleToggleBlacklist = async (phone: string, customerName: string) => {
+    if (!business) return;
+    const clean = repo.normalizePhone(phone);
+    const currentList = business.settings?.blacklist_phones || [];
+    const isAlreadyBlocked = currentList.map((p) => repo.normalizePhone(p)).includes(clean);
+
+    let nextList: string[];
+    let message = '';
+    if (isAlreadyBlocked) {
+      nextList = currentList.filter((p) => repo.normalizePhone(p) !== clean);
+      message = `${customerName} (${phone}) engeli kaldırıldı.`;
+    } else {
+      if (
+        !confirm(
+          `${customerName} (${phone}) kara listeye alınsın mı?\nBu numara işletmenizden bir daha randevu alamayacaktır.`
+        )
+      ) {
+        return;
+      }
+      nextList = [...currentList, phone];
+      message = `${customerName} (${phone}) kara listeye alındı!`;
+    }
+
+    try {
+      const updatedBiz = await repo.updateBusiness(business.id, {
+        settings: {
+          ...business.settings,
+          blacklist_phones: nextList,
+        },
+      });
+      setBusiness(updatedBiz);
+      setSuccessToast(message);
+      setTimeout(() => setSuccessToast(''), 4000);
+    } catch (err) {
+      alert('İşlem kaydedilemedi.');
+    }
+  };
+
   const filteredCustomers = customers.filter(
     (c) =>
       c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -91,6 +134,13 @@ export default function DashboardCustomersPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {successToast && (
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 bg-slate-900 text-white text-xs font-bold rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-4">
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{successToast}</span>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
@@ -130,7 +180,10 @@ export default function DashboardCustomersPage() {
         ) : (
           filteredCustomers.map((cust) => {
             const rawPhone = cust.phone.replace(/\D/g, '');
+            const cleanPhone = repo.normalizePhone(cust.phone);
             const waNumber = rawPhone.startsWith('0') ? '9' + rawPhone : (rawPhone.startsWith('90') ? rawPhone : '90' + rawPhone);
+            const isBlocked = (business?.settings?.blacklist_phones || []).map((p) => repo.normalizePhone(p)).includes(cleanPhone);
+            const noShows = appointments.filter((a) => repo.normalizePhone(a.customer_phone) === cleanPhone && a.status === 'no_show').length;
             return (
               <div
                 key={cust.id}
