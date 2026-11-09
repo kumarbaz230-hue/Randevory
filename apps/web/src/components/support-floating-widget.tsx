@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { solveSupportQuery } from '@/lib/support-ai-brain';
+import { solveSupportQuery, SUPPORT_AGENTS, SupportAgent, formatConversationalAgentReply } from '@/lib/support-ai-brain';
 import {
   Headset,
   X,
@@ -136,10 +136,12 @@ async function compressImageToDataUrl(file: File): Promise<string> {
   });
 }
 
-function getInitialAiMessage(): SupportChatMessage {
+function getInitialAgentMessage(agent: SupportAgent): SupportChatMessage {
   return {
     sender: 'ai',
-    text: 'Merhaba! 👋 Ben RANDEVORY Yapay Zeka (AI) Destek Asistanıyım.\n\nDestek ekibimize bağlanmadan önce sorununuzu hemen çözebilmem için aşağıdan bir şıkka tıklayabilir veya alt kısımdan mesaj/fotoğraf gönderebilirsiniz:',
+    text:
+      agent.welcomeGreeting +
+      '\n\nSize hemen yardımcı olabilmem için aşağıdaki hızlı konulardan birini seçebilir veya sorununuzu doğrudan aşağıya mesaj olarak yazabilirsiniz:',
     created_at: new Date().toISOString(),
     options: MAIN_AI_CHOICES,
   };
@@ -179,8 +181,25 @@ export function SupportFloatingWidget() {
   const [lastSelectedTopic, setLastSelectedTopic] = useState('Canlı Destek Görüşmesi');
   const [lastCategory, setLastCategory] = useState<'support' | 'complaint' | 'billing'>('support');
 
-  // Unified Chat Messages when in AI stage (before escalating to DB ticket)
-  const [localMessages, setLocalMessages] = useState<SupportChatMessage[]>([getInitialAiMessage()]);
+  // Human Representative Persona & Typing State
+  const [assignedAgent] = useState<SupportAgent>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('randevory_assigned_agent_id');
+      const found = SUPPORT_AGENTS.find((a) => a.id === saved);
+      if (found) return found;
+      const picked = SUPPORT_AGENTS[Math.floor(Math.random() * SUPPORT_AGENTS.length)];
+      localStorage.setItem('randevory_assigned_agent_id', picked.id);
+      return picked;
+    }
+    return SUPPORT_AGENTS[0];
+  });
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
+  const typingTimerRef = useRef<any>(null);
+
+  // Unified Chat Messages when in AI stage
+  const [localMessages, setLocalMessages] = useState<SupportChatMessage[]>(() => [
+    getInitialAgentMessage(SUPPORT_AGENTS[0]),
+  ]);
 
   // Active Database Ticket (once escalated to human agent)
   const [activeTicket, setActiveTicket] = useState<SupportTicketRow | null>(null);
@@ -394,31 +413,40 @@ export function SupportFloatingWidget() {
 
     if (SUB_AI_CHOICES[optId]) {
       const sub = SUB_AI_CHOICES[optId];
-      setLocalMessages((prev) => [
-        ...prev,
-        { sender: 'user', text: optLabel, created_at: nowIso },
-        {
-          sender: 'ai',
-          text: sub.reply,
-          created_at: new Date().toISOString(),
-          options: sub.options,
-        },
-      ]);
+      setLocalMessages((prev) => [...prev, { sender: 'user', text: optLabel, created_at: nowIso }]);
+      setIsAgentTyping(true);
+      setTimeout(() => {
+        setIsAgentTyping(false);
+        setLocalMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: sub.reply,
+            created_at: new Date().toISOString(),
+            options: sub.options,
+          },
+        ]);
+      }, 7000);
       return;
     }
 
-    const answer = AI_DETAILED_ANSWERS[optId];
+    const answer = AI_DETAILED_ANSWERS[optId] || solveSupportQuery(optLabel).solution;
     if (answer) {
-      setLocalMessages((prev) => [
-        ...prev,
-        { sender: 'user', text: optLabel, created_at: nowIso },
-        {
-          sender: 'ai',
-          text: answer,
-          created_at: new Date().toISOString(),
-          showEscalationButtons: true,
-        },
-      ]);
+      setLocalMessages((prev) => [...prev, { sender: 'user', text: optLabel, created_at: nowIso }]);
+      setIsAgentTyping(true);
+      setTimeout(() => {
+        setIsAgentTyping(false);
+        const naturalAnswer = `Merhabalar, ben ${assignedAgent.name}. Konuyla ilgili hemen yardımcı olayım:\n\n${answer}\n\nİşlemi yaptıktan sonra buradan bana yazarsanız ben de sistemden kontrol edebilirim, başka bir sorunuz olursa da buradayım! 😊`;
+        setLocalMessages((prev) => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: naturalAnswer,
+            created_at: new Date().toISOString(),
+            showEscalationButtons: true,
+          },
+        ]);
+      }, 9000);
     }
   };
 
@@ -521,7 +549,7 @@ export function SupportFloatingWidget() {
     setActiveTicket(null);
     setInputText('');
     setImagePreview(null);
-    setLocalMessages([getInitialAiMessage()]);
+    setLocalMessages([getInitialAgentMessage(assignedAgent)]);
   };
 
   const lastMsg = displayedMessages[displayedMessages.length - 1];
@@ -633,7 +661,7 @@ export function SupportFloatingWidget() {
               </div>
               <div className="text-left hidden sm:block">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-brand-300 group-hover:text-white/90 leading-none">
-                  AI Asistan & Canlı Destek
+                  Canlı Destek Masası
                 </div>
                 <div className="text-xs font-extrabold leading-tight mt-0.5">
                   Canlı Destek / Bildir
@@ -677,7 +705,7 @@ export function SupportFloatingWidget() {
                   <p className="text-[11px] text-slate-300 truncate max-w-[205px]">
                     {activeTicket
                       ? '👨‍💻 Canlı Müşteri Temsilcisi Sohbeti'
-                      : '🤖 Yapay Zeka (AI) Ön Destek Hattı'}
+                      : `${assignedAgent.name} (Çevrimiçi)`}
                   </p>
                 </div>
               </div>
@@ -721,7 +749,7 @@ export function SupportFloatingWidget() {
                     }`}
                   >
                     {!activeTicket
-                      ? '🤖 AI Asistan Aktif'
+                      ? `🟢 ${assignedAgent.name} (Çevrimiçi)`
                       : activeTicket.status === 'closed'
                       ? 'Görüşme Tamamlandı'
                       : activeTicket.status === 'answered'
@@ -749,18 +777,9 @@ export function SupportFloatingWidget() {
                         }`}
                       >
                         {!isUser && (
-                          <div className="font-extrabold text-[10px] uppercase tracking-wider text-brand-700 flex items-center gap-1 mb-1">
-                            {isAi ? (
-                              <>
-                                <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                                RANDEVORY AI Asistan
-                              </>
-                            ) : (
-                              <>
-                                <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
-                                RANDEVORY Destek Ekibi
-                              </>
-                            )}
+                          <div className="font-extrabold text-[11px] text-slate-800 flex items-center gap-1.5 mb-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span>{assignedAgent.name} • {assignedAgent.title}</span>
                           </div>
                         )}
 

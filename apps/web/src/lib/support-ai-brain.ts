@@ -280,3 +280,139 @@ export function solveSupportQuery(userText: string): AiResolution {
     ],
   };
 }
+
+export interface SupportAgent {
+  id: string;
+  name: string;
+  title: string;
+  gender: 'female' | 'male';
+  avatarLetter: string;
+  avatarColor: string;
+  welcomeGreeting: string;
+}
+
+export const SUPPORT_AGENTS: SupportAgent[] = [
+  // Çoğunluk Kadın Temsilciler
+  {
+    id: 'esma',
+    name: 'Esma Kaya',
+    title: 'Müşteri Temsilcisi',
+    gender: 'female',
+    avatarLetter: 'E',
+    avatarColor: 'from-rose-500 to-pink-600',
+    welcomeGreeting:
+      'Merhabalar! Ben Esma, Randevory Destek Masasından. Mesajınızı aldım, size yardımcı olmaktan memnuniyet duyarım. Nasıl yardımcı olabilirim?',
+  },
+  {
+    id: 'zeynep',
+    name: 'Zeynep Aksoy',
+    title: 'Müşteri Destek Uzmanı',
+    gender: 'female',
+    avatarLetter: 'Z',
+    avatarColor: 'from-fuchsia-600 to-pink-600',
+    welcomeGreeting:
+      'Merhaba! Ben Zeynep, Randevory destek ekibine hoş geldiniz. Sorununuzu hemen birlikte çözelim, size nasıl yardımcı olabilirim?',
+  },
+  {
+    id: 'selin',
+    name: 'Selin Yılmaz',
+    title: 'Müşteri Temsilcisi',
+    gender: 'female',
+    avatarLetter: 'S',
+    avatarColor: 'from-purple-600 to-indigo-600',
+    welcomeGreeting:
+      'Merhabalar! Ben Selin. Mesajınızı şimdi okudum, sorununuzu hemen halledelim. Durumu kısaca aktarabilir misiniz?',
+  },
+  {
+    id: 'elif',
+    name: 'Elif Öztürk',
+    title: 'Müşteri Başarı Temsilcisi',
+    gender: 'female',
+    avatarLetter: 'E',
+    avatarColor: 'from-amber-500 to-rose-500',
+    welcomeGreeting:
+      'Merhaba! Ben Elif, Randevory canlı destek hattından. Size yardımcı olmak için buradayım, ne konuda destek istersiniz?',
+  },
+  {
+    id: 'buse',
+    name: 'Buse Çelik',
+    title: 'Kıdemli Destek Uzmanı',
+    gender: 'female',
+    avatarLetter: 'B',
+    avatarColor: 'from-violet-600 to-purple-700',
+    welcomeGreeting:
+      'Merhabalar! Ben Buse. Randevory destek masasına hoş geldiniz. Konuyla ilgili hemen yardımcı oluyorum.',
+  },
+  // Erkek Temsilciler
+  {
+    id: 'burak',
+    name: 'Burak Demir',
+    title: 'Müşteri Temsilcisi',
+    gender: 'male',
+    avatarLetter: 'B',
+    avatarColor: 'from-blue-600 to-indigo-600',
+    welcomeGreeting:
+      'Merhaba, ben Burak! Randevory ekibinden. Mesajınızı aldım, sorununuzu hemen birlikte çözelim. Sorununuz nedir acaba?',
+  },
+  {
+    id: 'emre',
+    name: 'Emre Can',
+    title: 'Müşteri Temsilcisi',
+    gender: 'male',
+    avatarLetter: 'E',
+    avatarColor: 'from-emerald-600 to-teal-700',
+    welcomeGreeting:
+      'Merhaba! Ben Emre, Randevory destek masasından. Mesajınızı inceliyorum, sorununuzu hemen halledelim.',
+  },
+  {
+    id: 'mert',
+    name: 'Mert Kılıç',
+    title: 'Destek Uzmanı',
+    gender: 'male',
+    avatarLetter: 'M',
+    avatarColor: 'from-cyan-600 to-blue-700',
+    welcomeGreeting:
+      'Merhabalar! Ben Mert. Randevory destek ekibine hoş geldiniz. Size nasıl yardımcı olabilirim?',
+  },
+];
+
+export function getRandomSupportAgent(): SupportAgent {
+  return SUPPORT_AGENTS[Math.floor(Math.random() * SUPPORT_AGENTS.length)];
+}
+
+export function formatConversationalAgentReply(
+  agent: SupportAgent,
+  userText: string
+): { reply: string; quickActions: Array<{ id: string; label: string; url?: string }> } {
+  const resolution = solveSupportQuery(userText);
+  const q = userText.toLowerCase();
+
+  // Natural human transitions based on category
+  let conversationalIntro = `Merhaba! Ben ${agent.name}. Mesajınızı okudum, hiç merak etmeyin hemen yardımcı olayım.`;
+  
+  if (resolution.category === 'auth') {
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Şifre ve giriş konusundaki sorununuzu şimdi inceledim;`;
+  } else if (resolution.category === 'tables') {
+    conversationalIntro = `Merhaba! Ben ${agent.name}. Masa ve mekan rezervasyonu düzeniniz hakkında hemen bilgi vereyim;`;
+  } else if (resolution.category === 'booking') {
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Randevu iptal ve sorgulama işleminiz için yardımcı oluyorum;`;
+  } else if (resolution.category === 'calendar') {
+    conversationalIntro = `Merhaba! Ben ${agent.name}. Takvimde saatlerin kapalı görünmesi durumunu kontrol ettim;`;
+  } else if (resolution.category === 'services') {
+    conversationalIntro = `Merhabalar! Ben ${agent.name}. Hizmet süreleri ve fiyat ayarlamaları için hemen adımları aktarayım;`;
+  } else if (resolution.category === 'security') {
+    conversationalIntro = `Merhaba! Ben ${agent.name}. Gelmeyen müşteriler ve sahte randevu engelleme konusunda sistemimiz hazır;`;
+  } else if (resolution.category === 'billing') {
+    conversationalIntro = `Merhabalar, ben ${agent.name}. Lisans ve Shopier ödeme süreçlerini hemen açıklayayım;`;
+  }
+
+  const naturalReply =
+    `${conversationalIntro}\n\n` +
+    `${resolution.solution}\n\n` +
+    `İşlemi denedikten sonra buradan bana yazarsanız ben de sistemden kontrol edebilirim, başka bir sorunuz olursa da buradayım! 😊`;
+
+  return {
+    reply: naturalReply,
+    quickActions: resolution.quickActions,
+  };
+}

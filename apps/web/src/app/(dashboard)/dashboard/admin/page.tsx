@@ -112,6 +112,16 @@ export default function SuperAdminDashboardPage() {
   const [ticketFilter, setTicketFilter] = useState<'all' | 'open' | 'complaint'>('all');
   const [ticketSearch, setTicketSearch] = useState('');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [takenOverTickets, setTakenOverTickets] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return JSON.parse(localStorage.getItem('randevory_taken_over_tickets') || '[]');
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
   const [showQuickTools, setShowQuickTools] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
