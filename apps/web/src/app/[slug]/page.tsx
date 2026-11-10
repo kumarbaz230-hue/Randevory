@@ -261,42 +261,7 @@ export default function BusinessPublicPage() {
         .subscribe();
     }
 
-    const handleConfirmOtpAndSubmit = async () => {
-    if (enteredOtp.trim() !== generatedOtp.trim()) {
-      setOtpError('Girdiğiniz 4 haneli güvenlik kodu hatalı. Lütfen kontrol edin.');
-      return;
-    }
-    setShowOtpModal(false);
-    setIsSubmitting(true);
-
-    try {
-      if (!business || !selectedService || !selectedSlot) return;
-      const newApt = await repo.createAppointment({
-        business_id: business.id,
-        service_id: selectedService.id,
-        staff_id: selectedSlot.staff_id,
-        customer_name: customerName.trim(),
-        customer_phone: customerPhone.trim(),
-        customer_email: customerEmail.trim() || undefined,
-        customer_notes: customerNotes.trim() || undefined,
-        start_time: selectedSlot.isoStartTime,
-        end_time: selectedSlot.isoEndTime,
-        total_price: selectedService.price,
-        status: business.settings?.auto_confirm_appointments === false ? 'pending' : 'confirmed',
-      });
-
-      saveCustomerIdentity(customerName, customerPhone);
-      setCreatedAppointment(newApt);
-      setAppointments((prev) => [newApt, ...prev]);
-      setStep(5);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Randevu oluşturulurken bir hata oluştu.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return () => {
+    return () => {
       clearInterval(timer);
       if (channel && isSupabaseConfigured()) {
         const supabase = createClient();
@@ -432,7 +397,22 @@ export default function BusinessPublicPage() {
       return;
     }
 
+    await executeSubmitAppointment();
+  };
+
+  const handleConfirmOtpAndSubmit = async () => {
+    if (enteredOtp.trim() !== generatedOtp.trim()) {
+      setOtpError('Girdiğiniz 4 haneli güvenlik kodu hatalı. Lütfen kontrol edin.');
+      return;
+    }
+    setShowOtpModal(false);
+    await executeSubmitAppointment();
+  };
+
+  const executeSubmitAppointment = async () => {
+    if (!business || !selectedService || !selectedSlot) return;
     setIsSubmitting(true);
+    setErrorMessage('');
 
     try {
       const newApt = await repo.createAppointment({
@@ -451,6 +431,7 @@ export default function BusinessPublicPage() {
 
       saveCustomerIdentity(customerName, customerPhone);
       setCreatedAppointment(newApt);
+      setAppointments((prev) => [newApt, ...prev]);
 
       // 1. Otomatik Sistem Sohbet Bildirimi + 2. Otomatik SMS Tetikleme (İşletme & Müşteri)
       const aptTimeFormatted = new Date(newApt.start_time).toLocaleDateString('tr-TR', {
@@ -2395,6 +2376,62 @@ export default function BusinessPublicPage() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 4 Haneli Güvenlik Kodu (OTP) Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto border border-brand-100">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Randevu Doğrulaması</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Sahte ve mükerrer randevuları önlemek için lütfen aşağıdaki 4 haneli güvenlik kodunu girin:
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-brand-50 border border-brand-100">
+              <div className="text-[11px] text-brand-700 font-bold uppercase tracking-wider mb-0.5">Güvenlik Kodunuz</div>
+              <div className="text-3xl font-black text-brand-700 tracking-widest">{generatedOtp}</div>
+            </div>
+
+            <div>
+              <input
+                type="text"
+                maxLength={4}
+                autoFocus
+                placeholder="4 haneli kodu girin"
+                value={enteredOtp}
+                onChange={(e) => {
+                  setEnteredOtp(e.target.value.replace(/\D/g, ''));
+                  setOtpError('');
+                }}
+                className="w-full text-center text-xl font-bold tracking-widest py-3 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500"
+              />
+              {otpError && <p className="text-xs text-rose-600 font-semibold mt-1.5">{otpError}</p>}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowOtpModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmOtpAndSubmit}
+                disabled={isSubmitting || enteredOtp.length !== 4}
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-colors"
+              >
+                {isSubmitting ? 'Onaylanıyor...' : 'Doğrula & Onayla'}
+              </button>
+            </div>
           </div>
         </div>
       )}
