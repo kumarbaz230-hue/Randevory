@@ -36,22 +36,25 @@ export default function DashboardReportsPage() {
   }, []);
 
   const totalAppointments = appointments.length;
-  const completedAppointments = appointments.filter(
-    (a) => a.status === 'completed' || a.status === 'confirmed'
-  ).length;
+  const completedAppointments = appointments.filter((a) => a.status === 'completed').length;
+  const confirmedAppointments = appointments.filter((a) => a.status === 'confirmed').length;
   const cancelledAppointments = appointments.filter((a) => a.status === 'cancelled').length;
   const completionRate =
     totalAppointments > 0 ? Math.round((completedAppointments / totalAppointments) * 100) : 100;
 
   const totalRevenue = appointments
-    .filter((a) => a.status === 'confirmed' || a.status === 'completed')
+    .filter((a) => a.status === 'completed')
+    .reduce((sum, a) => sum + (a.total_price || 0), 0);
+
+  const confirmedRevenue = appointments
+    .filter((a) => a.status === 'confirmed')
     .reduce((sum, a) => sum + (a.total_price || 0), 0);
 
   // Popular Services calculation
   const serviceStats = services
     .map((s) => {
       const validApts = appointments.filter(
-        (a) => a.service_id === s.id && (a.status === 'confirmed' || a.status === 'completed')
+        (a) => a.service_id === s.id && a.status === 'completed'
       );
       const count = validApts.length;
       const revenue = validApts.reduce((sum, a) => sum + (a.total_price || s.price), 0);
@@ -63,7 +66,7 @@ export default function DashboardReportsPage() {
   const staffStats = staffList
     .map((st) => {
       const staffApts = appointments.filter(
-        (a) => a.staff_id === st.id && (a.status === 'confirmed' || a.status === 'completed')
+        (a) => a.staff_id === st.id && a.status === 'completed'
       );
       const count = staffApts.length;
       const revenue = staffApts.reduce((sum, a) => sum + (a.total_price || 0), 0);
@@ -92,7 +95,7 @@ export default function DashboardReportsPage() {
           </div>
           <div className="mt-4 text-3xl font-extrabold text-slate-900">{totalRevenue} ₺</div>
           <span className="text-xs text-emerald-600 font-semibold mt-1 inline-block">
-            Onaylanmış & Tamamlanmış ({completedAppointments} Randevu)
+            Tamamlanmış ({completedAppointments} Randevu){confirmedRevenue > 0 ? ` • Onaylı Bekleyen: +${confirmedRevenue.toLocaleString('tr-TR')} ₺ (${confirmedAppointments})` : ''}
           </span>
         </div>
 

@@ -184,6 +184,9 @@ export default function DashboardCustomersPage() {
             const waNumber = rawPhone.startsWith('0') ? '9' + rawPhone : (rawPhone.startsWith('90') ? rawPhone : '90' + rawPhone);
             const isBlocked = (business?.settings?.blacklist_phones || []).map((p) => repo.normalizePhone(p)).includes(cleanPhone);
             const noShows = appointments.filter((a) => repo.normalizePhone(a.customer_phone) === cleanPhone && a.status === 'no_show').length;
+            const completedApts = appointments.filter((a) => repo.normalizePhone(a.customer_phone) === cleanPhone && a.status === 'completed');
+            const totalSpentCalculated = completedApts.length > 0 ? completedApts.reduce((sum, a) => sum + (a.total_price || 0), 0) : cust.total_spent;
+            const sessionsCount = completedApts.length > 0 ? completedApts.length : cust.total_appointments_count;
             return (
               <div
                 key={cust.id}
@@ -204,7 +207,7 @@ export default function DashboardCustomersPage() {
                   </div>
 
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-brand-700">
-                    {cust.total_appointments_count} Seans
+                    {sessionsCount} Seans
                   </span>
                 </div>
 
@@ -216,7 +219,7 @@ export default function DashboardCustomersPage() {
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                   <div className="text-slate-500">
-                    Toplam: <span className="font-bold text-slate-900">{cust.total_spent} ₺</span>
+                    Toplam: <span className="font-bold text-slate-900">{totalSpentCalculated} ₺</span>
                   </div>
 
                   <div className="flex items-center gap-1.5">

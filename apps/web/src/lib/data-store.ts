@@ -456,11 +456,24 @@ class DataStore {
   updateAppointmentStatus(id: string, status: Appointment['status'], reason?: string): Appointment {
     const idx = this.appointments.findIndex((a) => a.id === id);
     if (idx !== -1) {
+      const prevStatus = this.appointments[idx].status;
       this.appointments[idx] = {
         ...this.appointments[idx],
         status,
         ...(reason ? { cancellation_reason: reason } : {}),
       };
+
+      if (status === 'completed' && prevStatus !== 'completed') {
+        const apt = this.appointments[idx];
+        const norm = (p: string) => p.replace(/\D/g, '').slice(-10);
+        const existingCust = this.customers.find(
+          (c) => c.business_id === apt.business_id && norm(c.phone) === norm(apt.customer_phone)
+        );
+        if (existingCust) {
+          existingCust.total_spent = (existingCust.total_spent || 0) + (apt.total_price || 0);
+          existingCust.total_appointments_count = (existingCust.total_appointments_count || 0) + 1;
+        }
+      }
       this.saveToStorage();
       return this.appointments[idx];
     }
@@ -473,8 +486,10 @@ class DataStore {
     );
 
     if (existing) {
-      existing.total_appointments_count += 1;
-      existing.total_spent += apt.total_price;
+      if (apt.status === 'completed') {
+        existing.total_appointments_count += 1;
+        existing.total_spent += (apt.total_price || 0);
+      }
       existing.last_appointment_date = apt.start_time;
       if (apt.customer_name) existing.full_name = apt.customer_name;
       if (apt.customer_email) existing.email = apt.customer_email;
@@ -486,8 +501,8 @@ class DataStore {
         phone: apt.customer_phone,
         email: apt.customer_email,
         notes: apt.customer_notes,
-        total_appointments_count: 1,
-        total_spent: apt.total_price,
+        total_appointments_count: apt.status === 'completed' ? 1 : 0,
+        total_spent: apt.status === 'completed' ? (apt.total_price || 0) : 0,
         last_appointment_date: apt.start_time,
         created_at: new Date().toISOString(),
       });

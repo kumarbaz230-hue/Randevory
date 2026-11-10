@@ -740,8 +740,8 @@ export class DataRepository {
         full_name: appointment.customer_name,
         phone: appointment.customer_phone,
         email: appointment.customer_email || null,
-        total_appointments_count: 1,
-        total_spent: appointment.total_price,
+        total_appointments_count: appointment.status === 'completed' ? 1 : 0,
+        total_spent: appointment.status === 'completed' ? (appointment.total_price || 0) : 0,
         last_appointment_date: appointment.start_time,
       }, { onConflict: 'business_id,phone' });
     } catch {
@@ -768,12 +768,37 @@ export class DataRepository {
       if (reason) updatePayload.cancellation_reason = reason;
     }
 
-    const { error } = await supabase
+    const { data: updatedApt, error } = await supabase
       .from('appointments')
       .update(updatePayload)
-      .eq('id', id);
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) throw new Error(error.message);
+
+    if (status === 'completed' && updatedApt) {
+      try {
+        const { data: custData } = await supabase
+          .from('customers')
+          .select('id, total_spent, total_appointments_count')
+          .eq('business_id', updatedApt.business_id)
+          .eq('phone', updatedApt.customer_phone)
+          .maybeSingle();
+
+        if (custData) {
+          await supabase
+            .from('customers')
+            .update({
+              total_spent: (custData.total_spent || 0) + (updatedApt.total_price || 0),
+              total_appointments_count: (custData.total_appointments_count || 0) + 1,
+            })
+            .eq('id', custData.id);
+        }
+      } catch {
+        // ignore CRM sync error
+      }
+    }
   }
 
   // --- CANLI SOHBET / MESAJLAŞMA (CHAT) ---

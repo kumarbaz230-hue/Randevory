@@ -84,10 +84,12 @@ export default function DashboardOverviewPage() {
   const staffMap = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
   // Metrics
-  const { totalRevenue, pendingAppointments, todayAppointments, upcomingList } = useMemo(() => {
-    const revenue = appointments
-      .filter((a) => a.status === 'confirmed' || a.status === 'completed')
-      .reduce((sum, a) => sum + (a.total_price || 0), 0);
+  const { totalRevenue, pendingRevenue, pendingAppointments, todayAppointments, upcomingList } = useMemo(() => {
+    const completedApts = appointments.filter((a) => a.status === 'completed');
+    const confirmedApts = appointments.filter((a) => a.status === 'confirmed');
+
+    const revenue = completedApts.reduce((sum, a) => sum + (a.total_price || 0), 0);
+    const expectedRevenue = confirmedApts.reduce((sum, a) => sum + (a.total_price || 0), 0);
 
     const pending = appointments.filter((a) => a.status === 'pending');
     const todayStr = new Date().toDateString();
@@ -104,6 +106,7 @@ export default function DashboardOverviewPage() {
 
     return {
       totalRevenue: revenue,
+      pendingRevenue: expectedRevenue,
       pendingAppointments: pending,
       todayAppointments: today,
       upcomingList: upcoming,
@@ -206,13 +209,20 @@ export default function DashboardOverviewPage() {
 
         <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-medium text-slate-500">Toplam Ciro</span>
+            <span className="text-[11px] sm:text-xs font-medium text-slate-500">Tamamlanan Ciro</span>
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900">{totalRevenue.toLocaleString('tr-TR')} ₺</div>
-          <div className="text-[11px] text-emerald-600 mt-0.5 font-medium">onaylı + tamamlanan</div>
+          <div className="text-[11px] text-slate-500 mt-0.5 font-medium flex items-center justify-between">
+            <span>Sadece tamamlananlar</span>
+            {pendingRevenue > 0 && (
+              <span className="text-amber-600 font-semibold" title="Onaylı randevulardan beklenen tutar">
+                +{pendingRevenue.toLocaleString('tr-TR')} ₺ bekleyen
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
