@@ -552,11 +552,23 @@ export function SupportFloatingWidget() {
     };
   }, [displayedMessages, isTerminatedByAgent, activeTicket?.status, ratingSubmitted, triggerInactivityEnd]);
 
-  // Clear unread indicator when widget opens
+  // Clear unread indicator when widget opens & lock body scroll on mobile
   useEffect(() => {
     if (isOpen) {
       setHasUnreadMessage(false);
+      if (typeof window !== 'undefined') {
+        document.body.style.overflow = 'hidden';
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        document.body.style.overflow = '';
+      }
     }
+    return () => {
+      if (typeof window !== 'undefined') {
+        document.body.style.overflow = '';
+      }
+    };
   }, [isOpen]);
 
   // Sesli Bildirim ve Kırmızı Nokta (Sadece pencere simge durumundayken temsilci mesaj atarsa çalar)
@@ -1146,8 +1158,8 @@ export function SupportFloatingWidget() {
 
   return (
     <>
-      {/* Global Top Announcement Banner */}
-      {announcementActive && announcementText && !bannerDismissed && (
+      {/* Global Top Announcement Banner (Hidden when chat is open) */}
+      {announcementActive && announcementText && !bannerDismissed && !isOpen && (
         <div className="bg-gradient-to-r from-slate-950 via-brand-900 to-indigo-950 text-white border-b border-indigo-500/30 py-2 px-3 text-xs font-semibold relative z-[60] shadow-md overflow-hidden flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] tracking-wide shrink-0 shadow-xs uppercase">
             <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping inline-block" />
@@ -1200,17 +1212,13 @@ export function SupportFloatingWidget() {
         </div>
       )}
 
-      {/* Floating Support Trigger Button (Always Clean Original Look When Closed!) */}
-      <div
-        className={`fixed z-50 flex flex-col items-end ${
-          inMessages || mobileWidgetDismissed ? 'hidden md:flex' : ''
-        } ${
-          isOpen
-            ? 'inset-0 sm:inset-auto sm:right-5 sm:bottom-5'
-            : `right-3 sm:right-5 ${inDashboard ? 'bottom-20 md:bottom-5' : 'bottom-4 sm:bottom-5'}`
-        }`}
-      >
-        {!isOpen && (
+      {/* Floating Support Trigger Button (When Closed) */}
+      {!isOpen && (
+        <div
+          className={`fixed z-50 flex flex-col items-end right-3 sm:right-5 ${
+            inDashboard ? 'bottom-20 md:bottom-5' : 'bottom-4 sm:bottom-5'
+          } ${inMessages || mobileWidgetDismissed ? 'hidden md:flex' : ''}`}
+        >
           <div className="relative group">
             <button
               type="button"
@@ -1260,11 +1268,12 @@ export function SupportFloatingWidget() {
               </button>
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Unified Single Support Chat Window */}
-        {isOpen && (
-          <div className="w-full h-full sm:h-auto sm:w-[425px] sm:max-h-[min(650px,calc(100dvh-2rem))] bg-white sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col relative">
+      {/* Unified Single Support Chat Window - Fullscreen on Mobile, Floating on Desktop */}
+      {isOpen && (
+        <div className="fixed inset-0 z-[99999] w-full h-[100dvh] bg-white flex flex-col sm:inset-auto sm:right-5 sm:bottom-5 sm:w-[425px] sm:h-auto sm:max-h-[min(650px,calc(100dvh-2rem))] sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
             {/* Header: Clean, Compact Modern Layout */}
             <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-brand-950 text-white px-3.5 py-3 sm:px-4 flex items-center justify-between shrink-0 border-b border-white/10 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -1703,7 +1712,6 @@ export function SupportFloatingWidget() {
             )}
           </div>
         )}
-      </div>
     </>
   );
 }
