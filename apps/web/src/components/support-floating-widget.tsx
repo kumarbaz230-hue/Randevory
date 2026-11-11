@@ -261,8 +261,10 @@ export function SupportFloatingWidget() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [ratingNote, setRatingNote] = useState('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
   const [isTerminatedByAgent, setIsTerminatedByAgent] = useState(false);
   const inactivityTimerRef = useRef<any>(null);
+  const hasTriggeredInactivityEndRef = useRef(false);
 
   
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -291,8 +293,13 @@ export function SupportFloatingWidget() {
   }, []);
 
   const triggerInactivityEnd = useCallback(async () => {
+    if (hasTriggeredInactivityEndRef.current) return;
+    if (isTerminatedByAgent || activeTicket?.status === 'closed' || ratingSubmitted) return;
+    hasTriggeredInactivityEndRef.current = true;
+
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
     }
     const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
     const nowIso = new Date().toISOString();
@@ -300,18 +307,12 @@ export function SupportFloatingWidget() {
     const timeoutMsg: SupportChatMessage = {
       sender: 'admin',
       agent_name: repName,
-      text: 'Uzun süredir sizden bir yanıt alamadım. Başka bir sorunuz veya desteğe ihtiyacınız kalmadıysa görüşmeyi sonlandırıyorum. Hizmetimizi aşağıdan 1-5 yıldızla değerlendirebilirseniz çok seviniriz! İyi günler dilerim 😊',
+      text: 'Uzun süredir sizden bir yanıt alamadım. Başka bir sorunuz veya desteğe ihtiyacınız kalmadıysa görüşmeyi sonlandırıyorum. Hizmetimizi 1-5 yıldızla değerlendirebilirseniz çok seviniriz! İyi günler dilerim 😊',
       created_at: nowIso,
     };
 
-    const ratingCardMsg: SupportChatMessage = {
-      sender: 'system',
-      text: 'Destek Değerlendirmesi',
-      created_at: new Date(Date.now() + 500).toISOString(),
-      isRatingCard: true,
-    };
-
     setIsTerminatedByAgent(true);
+    setShowRatingModal(true);
 
     if (activeTicket?.id) {
       try {
@@ -322,30 +323,22 @@ export function SupportFloatingWidget() {
           p_agent_name: repName,
         });
 
-        const { data } = await supabase
+        await supabase
           .from('platform_support_tickets')
-          .select('messages')
-          .eq('id', activeTicket.id)
-          .single();
+          .update({
+            status: 'closed',
+          })
+          .eq('id', activeTicket.id);
 
-        if (data && Array.isArray(data.messages)) {
-          await supabase
-            .from('platform_support_tickets')
-            .update({
-              messages: [...data.messages, ratingCardMsg],
-              status: 'closed',
-            })
-            .eq('id', activeTicket.id);
-        }
         await fetchActiveTicketById(activeTicket.id);
       } catch (e) {
         console.error('Inactivity timeout update error:', e);
       }
     } else {
-      setLocalMessages((prev) => [...prev, timeoutMsg, ratingCardMsg]);
+      setLocalMessages((prev) => [...prev, timeoutMsg]);
     }
     setTimeout(() => scrollToBottom(true), 60);
-  }, [assignedAgent?.name, activeTicket?.id, fetchActiveTicketById, scrollToBottom]);
+  }, [assignedAgent?.name, activeTicket?.id, isTerminatedByAgent, activeTicket?.status, ratingSubmitted, fetchActiveTicketById, scrollToBottom]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) {
@@ -358,6 +351,7 @@ export function SupportFloatingWidget() {
 
   const handleSendRating = async () => {
     setRatingSubmitted(true);
+    setShowRatingModal(false);
     const feedbackSummary = `${selectedRating} Yıldız ${selectedTags.length > 0 ? `(${selectedTags.join(', ')})` : ''}${ratingNote ? ` - "${ratingNote}"` : ''}`;
 
     if (activeTicket?.id) {
@@ -397,14 +391,8 @@ export function SupportFloatingWidget() {
       created_at: nowIso,
     };
 
-    const ratingCardMsg: SupportChatMessage = {
-      sender: 'system',
-      text: 'Destek Değerlendirmesi',
-      created_at: new Date(Date.now() + 500).toISOString(),
-      isRatingCard: true,
-    };
-
     setIsTerminatedByAgent(true);
+    setShowRatingModal(true);
 
     if (activeTicket?.id) {
       try {
@@ -415,27 +403,19 @@ export function SupportFloatingWidget() {
           p_agent_name: repName,
         });
 
-        const { data } = await supabase
+        await supabase
           .from('platform_support_tickets')
-          .select('messages')
-          .eq('id', activeTicket.id)
-          .single();
+          .update({
+            status: 'closed',
+          })
+          .eq('id', activeTicket.id);
 
-        if (data && Array.isArray(data.messages)) {
-          await supabase
-            .from('platform_support_tickets')
-            .update({
-              messages: [...data.messages, ratingCardMsg],
-              status: 'closed',
-            })
-            .eq('id', activeTicket.id);
-        }
         await fetchActiveTicketById(activeTicket.id);
       } catch (e) {
         console.error('Customer end conversation error:', e);
       }
     } else {
-      setLocalMessages((prev) => [...prev, endMsg, ratingCardMsg]);
+      setLocalMessages((prev) => [...prev, endMsg]);
     }
     setTimeout(() => scrollToBottom(true), 60);
   };
@@ -493,7 +473,7 @@ export function SupportFloatingWidget() {
   const displayedMessages: SupportChatMessage[] = React.useMemo(() => {
     if (activeTicket) {
       if (Array.isArray(activeTicket.messages) && activeTicket.messages.length > 0) {
-        return activeTicket.messages;
+        return activeTicket.messages.filter((m: any) => !m.isRatingCard && m.text !== 'Destek Değerlendirmesi');
       }
       const fallback: SupportChatMessage[] = [
         {
@@ -512,7 +492,7 @@ export function SupportFloatingWidget() {
       }
       return fallback;
     }
-    return localMessages;
+    return localMessages.filter((m: any) => !m.isRatingCard && m.text !== 'Destek Değerlendirmesi');
   }, [activeTicket, localMessages, assignedAgent?.name]);
 
   // 5 Dakikalık Cevapsızlık / Hareketsizlik Kontrolü
@@ -619,6 +599,7 @@ export function SupportFloatingWidget() {
   const connectToHumanRepresentative = async (customFirstUserMessage?: string, customImage?: string | null) => {
     if (sending) return;
     setSending(true);
+    hasTriggeredInactivityEndRef.current = false;
 
     // Pick random representative at that exact moment (majority female, some male)
     const pickedAgent = assignedAgent || getRandomSupportAgent();
@@ -911,12 +892,7 @@ export function SupportFloatingWidget() {
                     created_at: new Date(Date.now() + 500).toISOString(),
                   };
 
-                  const ratingCardMsg: SupportChatMessage = {
-                    sender: 'system',
-                    text: 'Destek Değerlendirmesi',
-                    created_at: new Date(Date.now() + 600).toISOString(),
-                    isRatingCard: true,
-                  };
+                  
 
                   const { data: latestTicket } = await supabase
                     .from('platform_support_tickets')
@@ -929,7 +905,7 @@ export function SupportFloatingWidget() {
                     .from('platform_support_tickets')
                     .update({
                       status: 'closed',
-                      messages: [...currentMsgs, badgeMsg, ratingCardMsg],
+                      messages: [...currentMsgs, badgeMsg],
                     })
                     .eq('id', currentTicket.id);
 
@@ -1137,6 +1113,8 @@ export function SupportFloatingWidget() {
     }
     setHasUnreadMessage(false);
     setRatingSubmitted(false);
+    setShowRatingModal(false);
+    hasTriggeredInactivityEndRef.current = false;
     setIsTerminatedByAgent(false);
     setSelectedRating(5);
     setSelectedTags([]);
@@ -1228,7 +1206,7 @@ export function SupportFloatingWidget() {
           inMessages || mobileWidgetDismissed ? 'hidden md:flex' : ''
         } ${
           isOpen
-            ? 'inset-x-2 bottom-2 sm:inset-x-auto sm:right-5 sm:bottom-5'
+            ? 'inset-0 sm:inset-auto sm:right-5 sm:bottom-5'
             : `right-3 sm:right-5 ${inDashboard ? 'bottom-20 md:bottom-5' : 'bottom-4 sm:bottom-5'}`
         }`}
       >
@@ -1286,9 +1264,9 @@ export function SupportFloatingWidget() {
 
         {/* Unified Single Support Chat Window */}
         {isOpen && (
-          <div className="w-full sm:w-[425px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col">
+          <div className="w-full h-full sm:h-auto sm:w-[425px] sm:max-h-[min(650px,calc(100dvh-2rem))] bg-white sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 flex flex-col relative">
             {/* Header: Clean, Compact Modern Layout */}
-            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-brand-950 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between shrink-0 border-b border-white/10">
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-brand-950 text-white px-3.5 py-3 sm:px-4 flex items-center justify-between shrink-0 border-b border-white/10 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center gap-2.5 min-w-0">
                 {assignedAgent ? (
                   <div
@@ -1344,13 +1322,13 @@ export function SupportFloatingWidget() {
                   title="Sohbeti Kapat"
                   className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors ml-0.5"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
 
             {/* Chat Area */}
-            <div className="flex flex-col h-[min(480px,calc(100dvh-8rem))]">
+            <div className="flex flex-col flex-1 sm:h-[min(480px,calc(100dvh-8rem))] overflow-hidden">
               <div
                 ref={chatContainerRef}
                 className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-slate-50 pt-3"
@@ -1377,99 +1355,9 @@ export function SupportFloatingWidget() {
                 {/* All Chat Bubbles */}
                 {displayedMessages.map((msg, idx) => {
                   if (msg.sender === 'system') {
-                    if (msg.isRatingCard) {
-                      return (
-                        <div key={idx} className="my-2.5 p-3 rounded-2xl bg-white border border-amber-200 shadow-sm max-w-[94%] mx-auto">
-                          <div className="text-center space-y-0.5">
-                            <div className="text-base leading-none">⭐</div>
-                            <h4 className="text-xs font-bold text-slate-800">
-                              {assignedAgent ? `${assignedAgent.name} • Hizmet Değerlendirmesi` : 'Destek Puanlaması'}
-                            </h4>
-                            <p className="text-[10px] text-slate-500">
-                              Görüşme deneyiminizi yıldızlarla değerlendirin
-                            </p>
-                          </div>
-
-                          {ratingSubmitted ? (
-                            <div className="mt-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
-                              <span className="text-[11px] font-bold text-emerald-800">
-                                ✅ Değerlendirmeniz kaydedildi, teşekkürler!
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="mt-2 space-y-2">
-                              {/* Interactive Stars */}
-                              <div className="flex items-center justify-center gap-1 py-0.5">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() => setSelectedRating(star)}
-                                    onMouseEnter={() => setHoverRating(star)}
-                                    onMouseLeave={() => setHoverRating(0)}
-                                    className="p-0.5 transition-transform hover:scale-120 focus:outline-none"
-                                  >
-                                    <Star
-                                      className={`w-5 h-5 transition-colors ${
-                                        star <= (hoverRating || selectedRating)
-                                          ? 'fill-amber-400 text-amber-400 drop-shadow-xs'
-                                          : 'text-slate-200'
-                                      }`}
-                                    />
-                                  </button>
-                                ))}
-                              </div>
-
-                              {/* Quick tags */}
-                              <div className="flex flex-wrap gap-1 justify-center">
-                                {['Hızlı Çözüm ⚡', 'Kibar & İlgili ✨', 'Sorunum Çözüldü ✅', 'Geliştirilmeli 💬'].map(
-                                  (tag) => (
-                                    <button
-                                      key={tag}
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedTags((prev) =>
-                                          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                                        );
-                                      }}
-                                      className={`text-[9px] px-2 py-0.5 rounded-full border transition-all ${
-                                        selectedTags.includes(tag)
-                                          ? 'bg-amber-500 text-white border-amber-600 font-bold'
-                                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                                      }`}
-                                    >
-                                      {tag}
-                                    </button>
-                                  )
-                                )}
-                              </div>
-
-                              {/* Feedback input */}
-                              <input
-                                type="text"
-                                placeholder="Görüşünüzü paylaşın (İsteğe bağlı)..."
-                                value={ratingNote}
-                                onChange={(e) => setRatingNote(e.target.value)}
-                                className="w-full text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              />
-
-                              <button
-                                type="button"
-                                disabled={selectedRating === 0}
-                                onClick={handleSendRating}
-                                className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-[11px] shadow-xs transition-all"
-                              >
-                                Değerlendirmeyi Gönder
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
                     return (
                       <div key={idx} className="flex justify-center my-2">
-                        <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[11px] font-bold text-indigo-800 shadow-2xs flex items-center gap-1.5 animate-in fade-in">
+                        <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-700 shadow-2xs flex items-center gap-1.5 animate-in fade-in">
                           {msg.text}
                         </span>
                       </div>
@@ -1649,23 +1537,35 @@ export function SupportFloatingWidget() {
 
               {/* Bottom Message Bar: Sleek Modern Closed State */}
               {activeTicket?.status === 'closed' || isTerminatedByAgent ? (
-                <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-2">
+                <div className="p-3 bg-slate-50 border-t border-slate-200 text-center space-y-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                   <div className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-slate-400"></span>
                     Bu destek görüşmesi sonlandırılmıştır.
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleStartNewConversation}
-                    className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition-all"
-                  >
-                    Yeni Sohbet Başlat
-                  </button>
+                  <div className="flex gap-2">
+                    {!ratingSubmitted && (
+                      <button
+                        type="button"
+                        onClick={() => setShowRatingModal(true)}
+                        className="flex-1 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                      >
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                        Görüşmeyi Puanla
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleStartNewConversation}
+                      className={`${!ratingSubmitted ? 'flex-1' : 'w-full'} py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xs transition-all`}
+                    >
+                      Yeni Sohbet Başlat
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-3 bg-white border-t border-slate-200 flex items-center gap-2"
+                  className="p-2.5 sm:p-3 bg-white border-t border-slate-200 flex items-center gap-2 pb-[max(0.625rem,env(safe-area-inset-bottom))]"
                 >
                   <input
                     ref={fileInputRef}
@@ -1678,7 +1578,7 @@ export function SupportFloatingWidget() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     title="Fotoğraf / Ekran Görüntüsü Gönder"
-                    className="p-2.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 shrink-0 transition-colors"
+                    className="w-10 h-10 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 shrink-0 flex items-center justify-center transition-colors"
                   >
                     <ImagePlus className="w-4 h-4 text-brand-600" />
                   </button>
@@ -1691,19 +1591,116 @@ export function SupportFloatingWidget() {
                     }
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                   <button
                     type="submit"
                     disabled={sending || (!inputText.trim() && !imagePreview)}
-                    className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50 transition-all"
+                    className="h-10 w-10 sm:w-auto sm:px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50 transition-all shadow-xs"
+                    title="Gönder"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                    Gönder
+                    <Send className="w-4 h-4" />
+                    <span className="hidden sm:inline">Gönder</span>
                   </button>
                 </form>
               )}
             </div>
+
+            {/* Dedicated Rating Modal / Window (Ayrı Değerlendirme Penceresi) */}
+            {showRatingModal && (
+              <div className="absolute inset-0 z-30 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-slate-100 text-center space-y-3 animate-in zoom-in-95">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 border border-amber-100 flex items-center justify-center mx-auto text-xl shadow-xs">
+                    ⭐
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      {assignedAgent ? `${assignedAgent.name} • Hizmet Değerlendirmesi` : 'Destek Puanlaması'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Görüşme deneyiminizi yıldızlarla değerlendirin
+                    </p>
+                  </div>
+
+                  {/* Interactive Stars */}
+                  <div className="flex items-center justify-center gap-1.5 py-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setSelectedRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                        aria-label={`${star} Yıldız`}
+                      >
+                        <Star
+                          className={`w-7 h-7 transition-colors ${
+                            star <= (hoverRating || selectedRating)
+                              ? 'fill-amber-400 text-amber-400 drop-shadow-xs'
+                              : 'text-slate-200'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Quick Tags */}
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {['Hızlı Çözüm ⚡', 'Kibar & İlgili ✨', 'Sorunum Çözüldü ✅', 'Geliştirilmeli 💬'].map(
+                      (tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTags((prev) =>
+                              prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                            );
+                          }}
+                          className={`text-[10px] px-2.5 py-1 rounded-full border transition-all ${
+                            selectedTags.includes(tag)
+                              ? 'bg-amber-500 text-white border-amber-600 font-bold shadow-xs'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {/* Optional note */}
+                  <input
+                    type="text"
+                    placeholder="Görüşünüzü paylaşın (İsteğe bağlı)..."
+                    value={ratingNote}
+                    onChange={(e) => setRatingNote(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowRatingModal(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+                    >
+                      Şimdi Değil
+                    </button>
+                    <button
+                      type="button"
+                      disabled={selectedRating === 0}
+                      onClick={async () => {
+                        await handleSendRating();
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-colors"
+                    >
+                      Değerlendirmeyi Gönder
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
