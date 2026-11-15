@@ -19,10 +19,9 @@ const WEEKLY_DATA: DataPoint[] = [
 ];
 
 /**
- * Etkileşimli HTML5 Canvas haftalık ciro ve randevu yoğunluğu grafiği.
- * Üzerine gelindiğinde veya dokunulduğunda ilgili günün metriklerini vurgular.
+ * Koyu cam ürün vitrini için etkileşimli HTML5 Canvas haftalık ciro ve randevu grafiği.
  */
-export function RevenueFlowCanvas() {
+export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [activeIndex, setActiveIndex] = useState<number>(5);
 
@@ -52,8 +51,7 @@ export function RevenueFlowCanvas() {
       const chartH = height - padTop - padBottom;
       const maxVal = 15000;
 
-      // Subtle horizontal guide lines
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+      ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.14)' : 'rgba(148, 163, 184, 0.22)';
       ctx.lineWidth = 1;
       for (let i = 0; i <= 3; i++) {
         const y = padTop + (chartH / 3) * i;
@@ -68,9 +66,8 @@ export function RevenueFlowCanvas() {
         y: padTop + chartH - (d.revenue / maxVal) * chartH,
       }));
 
-      // Area gradient fill
       const areaGrad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
-      areaGrad.addColorStop(0, 'rgba(37, 99, 235, 0.26)');
+      areaGrad.addColorStop(0, dark ? 'rgba(56, 189, 248, 0.34)' : 'rgba(37, 99, 235, 0.26)');
       areaGrad.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
 
       ctx.beginPath();
@@ -87,7 +84,6 @@ export function RevenueFlowCanvas() {
       ctx.fillStyle = areaGrad;
       ctx.fill();
 
-      // Smooth stroke line
       ctx.beginPath();
       ctx.moveTo(coords[0].x, coords[0].y);
       for (let i = 0; i < coords.length - 1; i++) {
@@ -96,11 +92,10 @@ export function RevenueFlowCanvas() {
         ctx.quadraticCurveTo(coords[i].x, coords[i].y, xc, yc);
       }
       ctx.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
-      ctx.strokeStyle = '#2563eb';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = dark ? '#38bdf8' : '#2563eb';
+      ctx.lineWidth = 2.6;
       ctx.stroke();
 
-      // Active vertical line & points
       coords.forEach((pt, idx) => {
         const isActive = idx === activeIndex;
         if (isActive) {
@@ -108,7 +103,7 @@ export function RevenueFlowCanvas() {
           ctx.setLineDash([3, 3]);
           ctx.moveTo(pt.x, padTop);
           ctx.lineTo(pt.x, padTop + chartH);
-          ctx.strokeStyle = 'rgba(37, 99, 235, 0.4)';
+          ctx.strokeStyle = dark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(37, 99, 235, 0.4)';
           ctx.lineWidth = 1.2;
           ctx.stroke();
           ctx.setLineDash([]);
@@ -116,14 +111,13 @@ export function RevenueFlowCanvas() {
 
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, isActive ? 5.5 : 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = isActive ? '#2563eb' : '#ffffff';
+        ctx.fillStyle = isActive ? (dark ? '#38bdf8' : '#2563eb') : dark ? '#0f172a' : '#ffffff';
         ctx.fill();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = dark ? '#38bdf8' : '#2563eb';
         ctx.stroke();
 
-        // Day label
-        ctx.fillStyle = isActive ? '#0f172a' : '#64748b';
+        ctx.fillStyle = isActive ? (dark ? '#f8fafc' : '#0f172a') : dark ? '#94a3b8' : '#64748b';
         ctx.font = `${isActive ? '700' : '500'} 10px Inter, system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText(WEEKLY_DATA[idx].day, pt.x, height - 8);
@@ -134,7 +128,7 @@ export function RevenueFlowCanvas() {
     const ro = new ResizeObserver(renderChart);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [activeIndex]);
+  }, [activeIndex, dark]);
 
   const handlePointer = (clientX: number) => {
     const canvas = canvasRef.current;
@@ -148,13 +142,27 @@ export function RevenueFlowCanvas() {
   const current = WEEKLY_DATA[activeIndex];
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col justify-between">
+    <div
+      className={`rounded-2xl border p-4 flex flex-col justify-between ${
+        dark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div>
-          <div className="text-xs font-bold text-slate-900">Haftalık Ciro &amp; Randevu Grafiği</div>
-          <div className="text-[11px] text-slate-500">Günlerin üzerine dokunarak inceleyin</div>
+          <div className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-900'}`}>
+            Haftalık Ciro &amp; Randevu Grafiği
+          </div>
+          <div className={`text-[11px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Günlerin üzerine dokunarak inceleyin
+          </div>
         </div>
-        <div className="px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-[11px] font-bold text-brand-700">
+        <div
+          className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold ${
+            dark
+              ? 'bg-sky-500/15 border-sky-400/30 text-sky-300'
+              : 'bg-blue-50 border-blue-200 text-brand-700'
+          }`}
+        >
           {current.day}: {current.revenue.toLocaleString('tr-TR')} ₺ • {current.appointments} Randevu
         </div>
       </div>

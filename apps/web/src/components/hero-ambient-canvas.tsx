@@ -9,10 +9,11 @@ interface Particle {
   vy: number;
   r: number;
   alpha: number;
+  hue: 'blue' | 'cyan' | 'indigo';
 }
 
 /**
- * Hero arkası için hafif HTML5 Canvas ağ & parçacık animasyonu.
+ * Koyu Hero arkası için akışkan HTML5 Canvas parçacık ve bağlantı ağı.
  * Fare hareketine yumuşak tepki verir, mobilde parçacık sayısını azaltır
  * ve prefers-reduced-motion açıkken çalışmaz.
  */
@@ -35,6 +36,12 @@ export function HeroAmbientCanvas() {
     const pointer = { x: -9999, y: -9999 };
     let particles: Particle[] = [];
 
+    const colorMap: Record<Particle['hue'], string> = {
+      blue: '96, 165, 250',
+      cyan: '34, 211, 238',
+      indigo: '129, 140, 248',
+    };
+
     const init = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
@@ -44,14 +51,16 @@ export function HeroAmbientCanvas() {
       canvas.height = Math.max(1, Math.floor(height * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const count = width < 640 ? 22 : 42;
-      particles = Array.from({ length: count }, () => ({
+      const hues: Particle['hue'][] = ['blue', 'cyan', 'indigo'];
+      const count = width < 640 ? 28 : 56;
+      particles = Array.from({ length: count }, (_, idx) => ({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        r: 1.4 + Math.random() * 1.8,
-        alpha: 0.22 + Math.random() * 0.35,
+        vx: (Math.random() - 0.5) * 0.42,
+        vy: (Math.random() - 0.5) * 0.42,
+        r: 1.4 + Math.random() * 2,
+        alpha: 0.35 + Math.random() * 0.45,
+        hue: hues[idx % hues.length],
       }));
     };
 
@@ -69,26 +78,27 @@ export function HeroAmbientCanvas() {
         const dxPtr = p.x - pointer.x;
         const dyPtr = p.y - pointer.y;
         const distPtr = Math.hypot(dxPtr, dyPtr);
-        if (distPtr < 130 && distPtr > 0) {
-          const force = (130 - distPtr) / 130;
-          p.x += (dxPtr / distPtr) * force * 0.7;
-          p.y += (dyPtr / distPtr) * force * 0.7;
+        if (distPtr < 150 && distPtr > 0) {
+          const force = (150 - distPtr) / 150;
+          p.x += (dxPtr / distPtr) * force * 0.85;
+          p.y += (dyPtr / distPtr) * force * 0.85;
         }
 
+        const rgb = colorMap[p.hue];
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(37, 99, 235, ${p.alpha})`;
+        ctx.fillStyle = `rgba(${rgb}, ${p.alpha})`;
         ctx.fill();
 
         for (let j = i + 1; j < particles.length; j++) {
           const q = particles[j];
           const dist = Math.hypot(p.x - q.x, p.y - q.y);
-          if (dist < 135) {
-            const lineAlpha = (1 - dist / 135) * 0.14;
+          if (dist < 145) {
+            const lineAlpha = (1 - dist / 145) * 0.22;
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(59, 130, 246, ${lineAlpha})`;
+            ctx.strokeStyle = `rgba(96, 165, 250, ${lineAlpha})`;
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -129,7 +139,7 @@ export function HeroAmbientCanvas() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 w-full h-full opacity-90"
+      className="pointer-events-none absolute inset-0 w-full h-full"
     />
   );
 }
