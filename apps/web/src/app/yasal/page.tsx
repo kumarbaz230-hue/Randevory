@@ -69,13 +69,19 @@ export default function LegalTermsPage() {
               5. KVKK Aydınlatma & Yurtdışı Aktarım
             </a>
             <a href="#cerez" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors">
-              6. Çerez Politikası
+              6. Çerez & Altyapılar
+            </a>
+            <a href="#on-bilgilendirme" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors">
+              Ön Bilgilendirme Formu
             </a>
             <a href="#hizmet-sozlesmesi" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors">
               7. Güncel Lisans Paketleri & Sözleşme
             </a>
             <a href="#iptal-iade" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors">
               8. İptal ve İade Şartları
+            </a>
+            <a href="#veri-silme" className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold transition-colors">
+              Veri Silme Talebi
             </a>
           </div>
         </div>
@@ -337,6 +343,38 @@ export default function LegalTermsPage() {
               <li><strong>İşlevsellik Çerezleri:</strong> Canlı destek sohbet penceresi durumu, bildirim tercihleri ve tema ayarları gibi kullanıcı deneyimini kolaylaştıran veriler yerel tarayıcınızda tutulur.</li>
               <li><strong>Reklam Çerezi Kullanılmaz:</strong> RANDEVORY web sitesinde kullanıcıları üçüncü taraf sitelerde takip eden harici hedefleme veya reklam çerezleri <strong>kesinlikle kullanılmamaktadır</strong>.</li>
             </ul>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 mt-3">
+              <p className="font-bold text-slate-800">6.1. Üçüncü Taraf Altyapı ve Hizmet Sağlayıcıları</p>
+              <p>Hizmetin teknik olarak sunulabilmesi için yalnızca aşağıdaki güvenilir altyapılarla veri minimizasyonu ilkesiyle entegrasyon sağlanmaktadır:</p>
+              <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                <li><strong>Supabase (Veritabanı ve Kimlik Doğrulama):</strong> Şifreli oturum yönetimi, RLS (satır düzeyi güvenlik) ve güvenli veri barındırma.</li>
+                <li><strong>Shopier (Ödeme Altyapısı):</strong> PCI-DSS ve 3D Secure uyumlu abonelik tahsilatı; kredi kartı verileriniz RANDEVORY sunucularında saklanmaz.</li>
+                <li><strong>Google OAuth (İsteğe Bağlı Giriş):</strong> Yalnızca Google ile giriş tercih edildiğinde temel kimlik doğrulaması için kullanılır.</li>
+                <li><strong>SMS / Bildirim ve Destek Katmanı:</strong> Randevu hatırlatma bildirimleri ve canlı destek taleplerinin yanıtlanması amacıyla sınırlı işlem verisi işlenir.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* Ön Bilgilendirme Formu */}
+        <section id="on-bilgilendirme" className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-600 shrink-0" />
+            Ön Bilgilendirme Formu (Mesafeli Sözleşmeler Yönetmeliği Uyarınca)
+          </h2>
+          <div className="text-xs text-slate-600 space-y-2.5 leading-relaxed">
+            <p>
+              <strong>Satıcı / Hizmet Sağlayıcı Bilgileri:</strong> RANDEVORY Dijital Randevu ve İşletme Yönetim Platformu — İletişim: <code>destek@randevory.com</code> · Web: <code>https://www.randevory.com</code>
+            </p>
+            <p>
+              <strong>Hizmetin Temel Nitelikleri ve Fiyatlandırma:</strong> Satın alınan ürün, seçilen aylık SaaS yazılım lisans paketidir (Başlangıç 0 ₺, Standart 149 ₺/ay, Profesyonel 299 ₺/ay, Kurumsal 599 ₺/ay). İlan edilen tüm fiyatlar şeffaftır; <strong>gizli kurulum ücreti, ek komisyon veya sürpriz kesinti yoktur.</strong>
+            </p>
+            <p>
+              <strong>Ödeme ve Teslimat Şekli:</strong> Ödemeler Shopier 3D Secure SSL korumalı sanal POS altyapısı üzerinden kredi/banka kartı ile alınır. Fiziksel gönderim bulunmayıp, ödeme onayı ile birlikte dijital lisans anında işletme hesabına tanımlanır.
+            </p>
+            <p>
+              <strong>Cayma Hakkı ve İade Bilgilendirmesi:</strong> Dijital yazılım lisansı anında ifa edilen hizmet kapsamında olduğundan (Mesafeli Sözleşmeler Yönetmeliği m.15/1-ğ) kullanım başladıktan sonra keyfi cayma hakkı uygulanmaz; ancak teknik kusur veya mükerrer çekim hallerinde 14 gün içinde yapılan başvurular tam iade kapsamındadır. Abonelik dilediğiniz zaman taahhütsüz olarak iptal edilebilir.
+            </p>
           </div>
         </section>
 
@@ -435,8 +473,18 @@ export default function LegalTermsPage() {
               <Lock className="w-4 h-4 text-slate-400 shrink-0" />
               <span><strong>KVKK ve Veri Sahibi Hakları Başvuru:</strong> kvkk@randevory.com</span>
             </div>
-            <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-              * İşletme unvanı, ticari sicil ve resmi tebligat adresi bilgileri şirketleşme ve tescil süreçlerine paralel olarak güncellenmekte olup resmi tebligatlar ve bildirimler yukarıdaki resmi elektronik posta kanalları üzerinden kabul edilmektedir.
+            <div id="veri-silme" className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200 space-y-1.5 mt-2">
+              <p className="font-bold text-rose-900">Veri Silme ve Hesap İmha Talebi (KVKK m.7 &amp; m.11)</p>
+              <p className="text-rose-800">
+                Hesabınızın ve kişisel verilerinizin kalıcı olarak silinmesini veya anonimleştirilmesini talep etmek için kayıtlı e-posta adresinizden{' '}
+                <a href="mailto:kvkk@randevory.com?subject=KVKK%20Veri%20Silme%20Talebi" className="underline font-bold">
+                  kvkk@randevory.com
+                </a>{' '}
+                adresine &ldquo;KVKK Veri Silme Talebi&rdquo; konu başlığıyla yazabilir veya işletme panelindeki destek kanalından doğrudan talep oluşturabilirsiniz. Talepleriniz en geç 30 gün içinde sonuçlandırılır (yasal fatura/muhasebe saklama yükümlülükleri saklıdır).
+              </p>
+            </div>
+            <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 leading-relaxed">
+              <strong>Şirket Künyesi &amp; ETBİS Durumu:</strong> RANDEVORY dijital SaaS yazılım altyapısı olarak faaliyet göstermekte olup ticari tescil, vergi levhası ve ETBİS (Elektronik Ticaret Bilgi Sistemi) kayıt süreçleri yürütülen ticari yapılanmaya paralel olarak güncellenmektedir. Platformdaki tüm görseller/ikonlar lisanslı açık kaynak kütüphaneler (Lucide Icons) ve özgün tasarım varlıklarından oluşur; kullanıcı yorumları gerçek işletme geri bildirimlerine dayanır.
             </p>
           </div>
         </section>

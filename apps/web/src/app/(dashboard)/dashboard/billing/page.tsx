@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { repo } from '@/lib/supabase-repository';
 import { Business, SubscriptionPlan, Subscription, SubscriptionTier } from '@/types';
@@ -41,6 +42,8 @@ function BillingContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [callbackBanner, setCallbackBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [legalConsentAccepted, setLegalConsentAccepted] = useState(false);
+  const [consentWarning, setConsentWarning] = useState(false);
 
   // Card form (Sandbox / Test fallback)
   const [cardHolder, setCardHolder] = useState('');
@@ -109,6 +112,12 @@ function BillingContent() {
 
     // Ücretsiz paket satın alınamaz veya manuel seçilemez
     if (plan.tier === 'free' || plan.price_monthly === 0) {
+      return;
+    }
+
+    if (!legalConsentAccepted) {
+      setConsentWarning(true);
+      document.getElementById('billing-legal-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -403,6 +412,47 @@ function BillingContent() {
       <div className="text-center pt-4">
         <h2 className="text-xl font-bold text-slate-900">Tüm Lisans Paketleri</h2>
         <p className="text-xs text-slate-500 mt-1">İşletmenize en uygun paketi seçin, taahhütsüz dilediğiniz an iptal edin veya yükseltin.</p>
+      </div>
+
+      {/* Ön Bilgilendirme & Mesafeli Satış Onay Kutusu */}
+      <div
+        id="billing-legal-consent"
+        className={`rounded-2xl border p-4 transition-all ${
+          consentWarning && !legalConsentAccepted
+            ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-500/20'
+            : 'bg-white border-slate-200'
+        }`}
+      >
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={legalConsentAccepted}
+            onChange={(e) => {
+              setLegalConsentAccepted(e.target.checked);
+              if (e.target.checked) setConsentWarning(false);
+            }}
+            className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 shrink-0"
+          />
+          <span className="text-xs text-slate-700 leading-relaxed">
+            <Link href="/yasal#on-bilgilendirme" target="_blank" className="font-bold text-brand-600 hover:underline">
+              Ön Bilgilendirme Formu
+            </Link>
+            ,{' '}
+            <Link href="/yasal#hizmet-sozlesmesi" target="_blank" className="font-bold text-brand-600 hover:underline">
+              Mesafeli Satış Sözleşmesi
+            </Link>{' '}
+            ve{' '}
+            <Link href="/yasal#iptal-iade" target="_blank" className="font-bold text-brand-600 hover:underline">
+              İptal/İade Şartları
+            </Link>
+            &apos;nı okudum; dijital lisans hizmetinin ödeme sonrası anında tanımlanacağını ve cayma hakkı istisnası koşullarını onaylıyorum. (Gizli ücret yoktur, tüm fiyatlar şeffaftır.)
+          </span>
+        </label>
+        {consentWarning && !legalConsentAccepted && (
+          <p className="text-[11px] font-semibold text-rose-600 mt-2 pl-7">
+            Lütfen Shopier ödeme adımına geçmeden önce yukarıdaki yasal bilgilendirme ve sözleşme onay kutusunu işaretleyin.
+          </p>
+        )}
       </div>
 
       {/* Pricing Cards Grid */}

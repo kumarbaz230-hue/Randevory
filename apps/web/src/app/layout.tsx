@@ -3,6 +3,7 @@ import './globals.css';
 import { AuthRecoveryListener } from '@/components/auth-recovery-listener';
 import { SupportWidgetLazy } from '@/components/support-widget-lazy';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
+import { CookieConsentBanner } from '@/components/cookie-consent-banner';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -48,6 +49,7 @@ export default function RootLayout({
         <AuthRecoveryListener />
         <SupportWidgetLazy />
         <PwaInstallPrompt />
+        <CookieConsentBanner />
         {children}
       </body>
     </html>
