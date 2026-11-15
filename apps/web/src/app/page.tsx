@@ -8,6 +8,7 @@ import { HomeAnimations } from '@/components/home-animations';
 import { SpotlightCard } from '@/components/ui/spotlight-card';
 import { HeroShowcaseMockup } from '@/components/hero-showcase-mockup';
 import { HeroAmbientCanvas } from '@/components/hero-ambient-canvas';
+import { SectorLiveSimulator } from '@/components/sector-live-simulator';
 import {
   Calendar,
   Clock,
@@ -15,30 +16,16 @@ import {
   TrendingUp,
   Sparkles,
   ArrowRight,
-  Scissors,
-  Wrench,
-  GraduationCap,
-  HeartPulse,
-  Laptop,
   BookOpen,
   Star,
   QrCode,
   MessageSquare,
-  UtensilsCrossed,
   CheckCircle2,
   Lock,
   Zap,
 } from 'lucide-react';
 
 export default function HomePage() {
-  const sectors = [
-    { name: 'Kuaför & Berberler', icon: Scissors, desc: 'Saç, sakal ve bakım' },
-    { name: 'Kafe & Restoranlar', icon: UtensilsCrossed, desc: 'Masa ve loca rezervasyonu' },
-    { name: 'Oto Bakım & Detailing', icon: Wrench, desc: 'Periyodik bakım ve yıkama' },
-    { name: 'Özel Ders & Eğitim', icon: GraduationCap, desc: 'Birebir ders ve seans' },
-    { name: 'Veteriner Klinikleri', icon: HeartPulse, desc: 'Muayene ve aşı takvimi' },
-    { name: 'Teknik Servisler', icon: Laptop, desc: 'Cihaz onarım ve teslim' },
-  ];
 
   return (
     <SmoothScrollProvider>
@@ -147,6 +134,35 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+
+            {/* Live Infinite Marquee Ticker */}
+            <div className="mt-14 border-y border-white/10 bg-white/[0.03] py-3.5 overflow-hidden">
+              <div className="animate-marquee flex items-center gap-8 text-xs font-semibold text-slate-300">
+                {[
+                  'Kuaför & Berberler',
+                  'GIST Çakışma Kilidi',
+                  'Baskıya Hazır QR Vitrin',
+                  'Tek Tık WhatsApp Onayı',
+                  'Oto Bakım & Detailing',
+                  '30 Saniyede Üyeliksiz Randevu',
+                  'Kafe & Restoran Rezervasyonu',
+                  'Anlık Ciro & Personel Raporu',
+                  'Veteriner & Klinikler',
+                  'Canlı Müşteri Sohbeti',
+                  'Kuaför & Berberler',
+                  'GIST Çakışma Kilidi',
+                  'Baskıya Hazır QR Vitrin',
+                  'Tek Tık WhatsApp Onayı',
+                  'Oto Bakım & Detailing',
+                  '30 Saniyede Üyeliksiz Randevu',
+                ].map((label, i) => (
+                  <span key={i} className="inline-flex items-center gap-2.5 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </section>
 
           {/* Step-by-Step How It Works Section */}
@@ -219,40 +235,22 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Sectors Interactive Showcase */}
+          {/* Sectors Interactive Live Simulator */}
           <section id="sectors" className="scroll-mt-28 py-20 bg-slate-50 text-slate-900 border-y border-slate-200/80">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center max-w-3xl mx-auto mb-12">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-bold text-[11px] uppercase tracking-wider mb-3">
+                  Sektörünüze Göre Canlı Deneyin
+                </span>
                 <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
                   Tek Bir Sektöre Değil, Randevulu Tüm İşletmelere Özel
                 </h2>
                 <p className="mt-3 text-slate-600 text-sm sm:text-base">
-                  Her sektörün dinamikleri farklıdır. Seans sürelerinizi, mola aralıklarınızı ve personel yetkinliklerinizi ihtiyacınıza göre özelleştirin.
+                  Aşağıdan kendi sektörünüzü seçin; müşterilerinizin göreceği randevu sayfasını anında önizleyin.
                 </p>
               </div>
 
-              <div className="gsap-reveal-group grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                {sectors.map((sector, idx) => {
-                  const Icon = sector.icon;
-                  return (
-                    <Link
-                      key={idx}
-                      href="/nasil-kullanilir"
-                      className="gsap-reveal-card group p-5 rounded-3xl border border-slate-200 bg-white hover:border-brand-500 hover:shadow-xl hover:shadow-brand-500/10 hover:-translate-y-1 transition-all flex flex-col items-center text-center"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 group-hover:bg-brand-50 group-hover:border-brand-300 flex items-center justify-center text-slate-700 group-hover:text-brand-600 transition-colors shadow-sm mb-3.5">
-                        <Icon className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-sm text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-                        {sector.name}
-                      </h3>
-                      <span className="text-[11px] text-slate-500 mt-1.5 leading-tight">
-                        {sector.desc} &rarr;
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+              <SectorLiveSimulator />
             </div>
           </section>
 

@@ -20,6 +20,17 @@ type ShowcaseTab = 'dashboard' | 'mobile' | 'automation';
 export function HeroShowcaseMockup() {
   const [activeTab, setActiveTab] = useState<ShowcaseTab>('dashboard');
   const [selectedSlot, setSelectedSlot] = useState('14:30');
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ rx: -y * 4, ry: x * 4 });
+  };
+
+  const resetTilt = () => setTilt({ rx: 0, ry: 0 });
 
   return (
     <div className="gsap-hero-item mt-12 sm:mt-14 max-w-5xl mx-auto">
@@ -65,8 +76,16 @@ export function HeroShowcaseMockup() {
         </div>
       </div>
 
-      {/* Glowing Outer Frame */}
-      <div className="relative rounded-3xl p-[1px] bg-gradient-to-b from-blue-400/45 via-indigo-500/20 to-white/5 shadow-[0_30px_90px_-15px_rgba(37,99,235,0.35)]">
+      {/* Glowing Outer Frame with Subtle 3D Tilt */}
+      <div
+        onMouseMove={handleMouseMove}
+        onMouseLeave={resetTilt}
+        style={{
+          transform: `perspective(1400px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
+          transition: 'transform 220ms ease-out',
+        }}
+        className="relative rounded-3xl p-[1px] bg-gradient-to-b from-blue-400/45 via-indigo-500/20 to-white/5 shadow-[0_30px_90px_-15px_rgba(37,99,235,0.35)] will-change-transform"
+      >
         <div className="relative rounded-[23px] bg-slate-900/95 backdrop-blur-2xl overflow-hidden">
           {/* Browser Chrome */}
           <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-white/[0.03] border-b border-white/10">
