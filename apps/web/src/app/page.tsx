@@ -7,6 +7,7 @@ import { SmoothScrollProvider } from '@/components/smooth-scroll-provider';
 import { HomeAnimations } from '@/components/home-animations';
 import { SpotlightCard } from '@/components/ui/spotlight-card';
 import { HeroShowcaseMockup } from '@/components/hero-showcase-mockup';
+import { HeroAmbientCanvas } from '@/components/hero-ambient-canvas';
 import {
   Calendar,
   Clock,
@@ -57,6 +58,7 @@ export default function HomePage() {
               aria-hidden="true"
               className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[560px] h-[300px] rounded-full bg-brand-500/15 blur-3xl"
             />
+            <HeroAmbientCanvas />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
               <div className="gsap-hero-item inline-flex flex-wrap items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur border border-slate-200/90 text-slate-700 text-xs font-semibold mb-7 shadow-sm">
@@ -312,41 +314,68 @@ export default function HomePage() {
                 {/* Remaining 4 Standard Bento Cards */}
                 <SpotlightCard
                   spotlightColor="rgba(147, 51, 234, 0.12)"
-                  className="gsap-reveal-card bg-slate-50/70 p-7 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
+                  className="gsap-reveal-card bg-slate-50/70 p-7 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-5"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-5">
-                    <QrCode className="w-6 h-6" />
+                  <div>
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-5">
+                      <QrCode className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-extrabold text-slate-900 mb-2">QR Kod &amp; Vitrin Afişi</h3>
+                    <p className="text-slate-600 leading-relaxed text-sm">
+                      İşletmenize özel yüksek çözünürlüklü QR kod ve baskıya hazır vitrin afişini tek tıkla indirin; müşterileriniz kamerayla okutup randevu alsın.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 mb-2">QR Kod &amp; Vitrin Afişi</h3>
-                  <p className="text-slate-600 leading-relaxed text-sm">
-                    İşletmenize özel yüksek çözünürlüklü QR kod ve baskıya hazır vitrin afişini tek tıkla indirin; müşterileriniz kamerayla okutup randevu alsın.
-                  </p>
+                  <div className="rounded-2xl bg-white border border-slate-200/80 p-3 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                      <QrCode className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-bold text-slate-900 truncate">randevory.com/isletmeniz</div>
+                      <div className="text-[10px] text-purple-600 font-semibold">A4 Baskıya Hazır PDF / PNG</div>
+                    </div>
+                  </div>
                 </SpotlightCard>
 
                 <SpotlightCard
                   spotlightColor="rgba(245, 158, 11, 0.12)"
-                  className="gsap-reveal-card bg-slate-50/70 p-7 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
+                  className="gsap-reveal-card bg-slate-50/70 p-7 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-5"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-5">
-                    <MessageSquare className="w-6 h-6" />
+                  <div>
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-5">
+                      <MessageSquare className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-extrabold text-slate-900 mb-2">Canlı Sohbet &amp; WhatsApp</h3>
+                    <p className="text-slate-600 leading-relaxed text-sm">
+                      Müşterileriniz randevu sayfasından size anlık mesaj yazsın, randevu sonrası hazır WhatsApp onay mesajlarıyla iletişimi hızlandırın.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 mb-2">Canlı Sohbet &amp; WhatsApp</h3>
-                  <p className="text-slate-600 leading-relaxed text-sm">
-                    Müşterileriniz randevu sayfasından size anlık mesaj yazsın, randevu sonrası hazır WhatsApp onay mesajlarıyla iletişimi hızlandırın.
-                  </p>
+                  <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200/80 p-3 text-[11px] text-emerald-900">
+                    <span className="font-bold">WhatsApp:</span> &ldquo;Saat 14:30 randevunuz onaylandı.&rdquo; ✓✓
+                  </div>
                 </SpotlightCard>
 
                 <SpotlightCard
                   spotlightColor="rgba(244, 63, 94, 0.12)"
-                  className="gsap-reveal-card bg-slate-50/70 p-7 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
+                  className="gsap-reveal-card bg-slate-50/70 p-7 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-5"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-5">
-                    <TrendingUp className="w-6 h-6" />
+                  <div>
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-5">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-extrabold text-slate-900 mb-2">Finans &amp; Ciro Raporları</h3>
+                    <p className="text-slate-600 leading-relaxed text-sm">
+                      Günlük ve aylık kazançlarınızı, en çok tercih edilen hizmetleri ve personel performanslarını net grafiklerle takip edin.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-extrabold text-slate-900 mb-2">Finans &amp; Ciro Raporları</h3>
-                  <p className="text-slate-600 leading-relaxed text-sm">
-                    Günlük ve aylık kazançlarınızı, en çok tercih edilen hizmetleri ve personel performanslarını net grafiklerle takip edin.
-                  </p>
+                  <div className="rounded-2xl bg-white border border-slate-200/80 p-3 flex items-end gap-1.5 h-14">
+                    {[38, 52, 46, 68, 84, 100, 74].map((h, i) => (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-t-md ${i === 5 ? 'bg-brand-600' : 'bg-slate-200'}`}
+                        style={{ height: `${h}%` }}
+                      />
+                    ))}
+                  </div>
                 </SpotlightCard>
               </div>
 
