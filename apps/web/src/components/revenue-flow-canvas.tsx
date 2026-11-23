@@ -32,12 +32,15 @@ export function RevenueFlowCanvas() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const renderChart = () => {
+    let lastWidth = 0;
+    const renderChart = (force = false) => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = canvas.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
       if (width <= 0 || height <= 0) return;
+      if (!force && width === lastWidth) return;
+      lastWidth = width;
 
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
@@ -125,8 +128,8 @@ export function RevenueFlowCanvas() {
       });
     };
 
-    renderChart();
-    const ro = new ResizeObserver(renderChart);
+    renderChart(true);
+    const ro = new ResizeObserver(() => renderChart(false));
     ro.observe(canvas);
     return () => ro.disconnect();
   }, [activeIndex]);

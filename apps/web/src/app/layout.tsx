@@ -1,5 +1,21 @@
 import type { Metadata, Viewport } from 'next';
+import { Plus_Jakarta_Sans, Instrument_Serif } from 'next/font/google';
 import './globals.css';
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400'],
+  style: ['normal', 'italic'],
+  variable: '--font-serif',
+  display: 'swap',
+});
 import { AuthRecoveryListener } from '@/components/auth-recovery-listener';
 import { SupportWidgetLazy } from '@/components/support-widget-lazy';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
@@ -40,12 +56,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr">
+    <html lang="tr" className={`${plusJakarta.variable} ${instrumentSerif.variable}`}>
       <head>
         <link rel="preconnect" href="https://ysxwuiecybnsgbjbcfoa.supabase.co" crossOrigin="" />
         <link rel="dns-prefetch" href="https://ysxwuiecybnsgbjbcfoa.supabase.co" />
       </head>
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-brand-500 selection:text-white">
+      <body className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-brand-500 selection:text-white">
         <AuthRecoveryListener />
         <SupportWidgetLazy />
         <PwaInstallPrompt />

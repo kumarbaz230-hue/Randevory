@@ -137,7 +137,7 @@ const SECTOR_ICONS: Record<string, React.ComponentType<{ className?: string; str
 };
 
 /**
- * Sektöre göre canlı randevu önizleme simülatörü.
+ * Koyu espresso zemin üzerinde sıcak krem önizlemeli sektör simülatörü.
  */
 export function SectorLiveSimulator() {
   const [selectedId, setSelectedId] = useState<string>('kuafor');
@@ -164,17 +164,17 @@ export function SectorLiveSimulator() {
               onClick={() => handleSelectSector(preset)}
               className={`text-left p-4 rounded-xl border transition-colors flex flex-col gap-3 ${
                 isSelected
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'bg-white text-stone-900 border-stone-900/10 hover:border-stone-400'
+                  ? 'bg-[#B84A24] text-white border-[#B84A24]'
+                  : 'bg-white/[0.05] text-[#FBF8F3] border-white/10 hover:border-white/25'
               }`}
             >
               <Icon
-                className={`w-4 h-4 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}
-                strokeWidth={1.5}
+                className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-[#D6C7B2]'}`}
+                strokeWidth={1.6}
               />
               <div>
-                <div className="font-medium text-xs sm:text-sm leading-snug">{preset.name}</div>
-                <div className={`text-[11px] mt-0.5 ${isSelected ? 'text-stone-400' : 'text-stone-500'}`}>
+                <div className="font-semibold text-xs sm:text-sm leading-snug">{preset.name}</div>
+                <div className={`text-[11px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-[#A89E92]'}`}>
                   {preset.shortDesc}
                 </div>
               </div>
@@ -183,48 +183,48 @@ export function SectorLiveSimulator() {
         })}
       </div>
 
-      {/* Right: Live Interactive Preview Card */}
-      <div className="lg:col-span-7 rounded-2xl border border-stone-900/10 bg-white overflow-hidden">
-        <div className="px-5 py-3 bg-[#fafaf8] border-b border-stone-900/10 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-mono text-stone-600 truncate">{active.slug}</span>
-          <span className="text-[11px] font-mono text-stone-500">Canlı önizleme</span>
+      {/* Right: Warm Ivory Preview Card */}
+      <div className="lg:col-span-7 rounded-2xl border border-white/15 bg-[#FBF8F3] text-[#171310] overflow-hidden shadow-2xl">
+        <div className="px-5 py-3 bg-[#F3EDE2] border-b border-[#171310]/10 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-mono text-[#575049] truncate">{active.slug}</span>
+          <span className="text-[11px] font-mono text-[#B84A24] font-semibold">Canlı önizleme</span>
         </div>
 
         <div className="p-5 sm:p-6 space-y-5 text-left">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-stone-900 text-white font-medium text-sm flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-[#171310] text-[#FBF8F3] font-semibold text-sm flex items-center justify-center shrink-0">
                 {active.initials}
               </div>
               <div>
-                <h3 className="text-base font-medium text-stone-900">{active.brandName}</h3>
-                <p className="text-xs text-stone-500">{active.staff}</p>
+                <h3 className="text-base font-semibold text-[#171310]">{active.brandName}</h3>
+                <p className="text-xs text-[#6E655C]">{active.staff}</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#15803D]">
               <Check className="w-4 h-4" strokeWidth={1.75} />
               7/24 randevu açık
             </span>
           </div>
 
           <div className="space-y-2">
-            <div className="text-xs font-medium text-stone-500">Hizmet ve seans listesi</div>
+            <div className="text-xs font-medium text-[#6E655C]">Hizmet ve seans listesi</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {active.services.map((srv, idx) => (
                 <div
                   key={idx}
                   className={`p-3 rounded-xl border transition-colors ${
                     idx === 0
-                      ? 'border-blue-700 bg-blue-50/40'
-                      : 'border-stone-900/10 bg-[#fafaf8]'
+                      ? 'border-[#B84A24] bg-[#FDF4EF]'
+                      : 'border-[#171310]/10 bg-white'
                   }`}
                 >
-                  <div className="text-xs font-medium text-stone-900 leading-snug">{srv.title}</div>
+                  <div className="text-xs font-semibold text-[#171310] leading-snug">{srv.title}</div>
                   <div className="mt-2 flex items-center justify-between text-[11px]">
-                    <span className="text-stone-500 inline-flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> {srv.duration}
+                    <span className="text-[#6E655C] inline-flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" strokeWidth={1.6} /> {srv.duration}
                     </span>
-                    <span className="font-mono tabular-nums font-medium text-stone-900">{srv.price}</span>
+                    <span className="font-mono tabular-nums font-semibold text-[#171310]">{srv.price}</span>
                   </div>
                 </div>
               ))}
@@ -232,7 +232,7 @@ export function SectorLiveSimulator() {
           </div>
 
           <div>
-            <div className="text-xs font-medium text-stone-500 mb-2">Müşterinin seçtiği saat</div>
+            <div className="text-xs font-medium text-[#6E655C] mb-2">Müşterinin seçtiği saat</div>
             <div className="grid grid-cols-4 gap-2">
               {active.slots.map((slot) => (
                 <button
@@ -241,8 +241,8 @@ export function SectorLiveSimulator() {
                   onClick={() => setSelectedSlot(slot)}
                   className={`py-2 rounded-lg text-xs font-mono tabular-nums border transition-colors ${
                     selectedSlot === slot
-                      ? 'bg-stone-900 text-white border-stone-900'
-                      : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
+                      ? 'bg-[#171310] text-white border-[#171310]'
+                      : 'bg-white text-[#171310] border-[#171310]/15 hover:border-[#B84A24]'
                   }`}
                 >
                   {slot}
@@ -251,16 +251,16 @@ export function SectorLiveSimulator() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-stone-900/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs text-stone-600">
-              <Calendar className="w-4 h-4 text-stone-500 shrink-0" strokeWidth={1.5} />
+          <div className="pt-4 border-t border-[#171310]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-[#575049]">
+              <Calendar className="w-4 h-4 text-[#B84A24] shrink-0" strokeWidth={1.6} />
               <span>{active.highlight}</span>
             </div>
             <Link
               href="/register"
-              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-700 text-white text-xs font-medium hover:bg-blue-800 transition-colors"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#B84A24] text-white text-xs font-semibold hover:bg-[#9E3D1C] transition-colors"
             >
-              Bu sektörle başla <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+              Bu sektörle başla <ArrowRight className="w-4 h-4" strokeWidth={1.6} />
             </Link>
           </div>
         </div>
