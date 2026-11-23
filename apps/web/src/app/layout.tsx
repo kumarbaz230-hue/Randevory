@@ -31,13 +31,18 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.randevory.com'),
   title: 'RANDEVORY – Profesyonel Randevu ve Hizmet Yönetim Platformu',
   description: 'İşini kolaylaştır, zamanını kazan. Berber, kuaför, oto servis, klinik, özel ders ve tüm randevulu işletmeler için yeni nesil randevu ve yönetim sistemi.',
   applicationName: 'RANDEVORY',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: [
+      { url: '/icon', sizes: '96x96', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icon',
+    apple: [{ url: '/apple-icon', sizes: '180x180', type: 'image/png' }],
   },
   keywords: ['randevu sistemi', 'RANDEVORY', 'online randevu', 'kuaför randevu', 'oto bakım randevu', 'işletme yönetimi'],
   appleWebApp: {
@@ -60,6 +65,18 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://ysxwuiecybnsgbjbcfoa.supabase.co" crossOrigin="" />
         <link rel="dns-prefetch" href="https://ysxwuiecybnsgbjbcfoa.supabase.co" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'RANDEVORY',
+              url: 'https://www.randevory.com',
+              logo: 'https://www.randevory.com/icon',
+            }),
+          }}
+        />
       </head>
       <body className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-brand-500 selection:text-white">
         <AuthRecoveryListener />
