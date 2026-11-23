@@ -5,13 +5,12 @@ import Link from 'next/link';
 import {
   ArrowRight,
   Calendar,
-  CheckCircle2,
+  Check,
   Clock,
   GraduationCap,
   HeartPulse,
   Laptop,
   Scissors,
-  Sparkles,
   UtensilsCrossed,
   Wrench,
 } from 'lucide-react';
@@ -23,7 +22,6 @@ interface SectorPreset {
   slug: string;
   brandName: string;
   initials: string;
-  accent: string;
   services: { title: string; duration: string; price: string }[];
   staff: string;
   slots: string[];
@@ -36,106 +34,100 @@ const SECTOR_PRESETS: SectorPreset[] = [
     name: 'Kuaför & Berberler',
     shortDesc: 'Saç, sakal ve bakım',
     slug: 'randevory.com/studio-demir',
-    brandName: 'Studio Demir Hair & Care',
+    brandName: 'Studio Demir',
     initials: 'SD',
-    accent: 'from-blue-600 to-indigo-600',
     services: [
-      { title: 'Saç Kesimi & Şekillendirme', duration: '45 dk', price: '450 ₺' },
-      { title: 'Sakal Tasarımı & Buhar', duration: '30 dk', price: '250 ₺' },
-      { title: 'Cilt Bakımı & Maske', duration: '40 dk', price: '500 ₺' },
+      { title: 'Saç kesimi ve şekillendirme', duration: '45 dk', price: '450 ₺' },
+      { title: 'Sakal tasarımı ve buhar', duration: '30 dk', price: '250 ₺' },
+      { title: 'Cilt bakımı ve maske', duration: '40 dk', price: '500 ₺' },
     ],
-    staff: 'Melih Usta • Uzman Berber',
+    staff: 'Melih Usta · Uzman Berber',
     slots: ['11:00', '13:30', '15:15', '17:45'],
-    highlight: 'Instagram linkinden ve camdaki QR afişten 7/24 randevu akışı',
+    highlight: 'Instagram linkinden ve vitrin QR afişinden 7/24 randevu akışı',
   },
   {
     id: 'kafe',
     name: 'Kafe & Restoranlar',
     shortDesc: 'Masa ve loca rezervasyonu',
     slug: 'randevory.com/luna-bistro',
-    brandName: 'Luna Bistro & Terrace',
+    brandName: 'Luna Bistro',
     initials: 'LB',
-    accent: 'from-amber-500 to-orange-600',
     services: [
-      { title: 'Teras 4 Kişilik Masa', duration: '120 dk', price: 'Ücretsiz' },
-      { title: 'VIP Loca Rezervasyonu', duration: '180 dk', price: 'Kapora Opsiyonlu' },
-      { title: 'Doğum Günü Masa Düzeni', duration: '150 dk', price: '750 ₺' },
+      { title: 'Teras 4 kişilik masa', duration: '120 dk', price: 'Ücretsiz' },
+      { title: 'Loca rezervasyonu', duration: '180 dk', price: 'Ön onaylı' },
+      { title: 'Özel masa düzeni', duration: '150 dk', price: '750 ₺' },
     ],
-    staff: 'Teras & Salon Masa Yönetimi',
+    staff: 'Teras ve salon masa yönetimi',
     slots: ['18:30', '19:30', '20:30', '21:30'],
-    highlight: 'Boş masa kalmasın, akşam yoğunluğu tek ekranda planlansın',
+    highlight: 'Akşam yoğunluğu tek ekranda planlanır, masa çakışması olmaz',
   },
   {
     id: 'oto',
     name: 'Oto Bakım & Detailing',
     shortDesc: 'Periyodik bakım ve yıkama',
     slug: 'randevory.com/apex-detailing',
-    brandName: 'Apex Garage Detailing',
+    brandName: 'Apex Garage',
     initials: 'AG',
-    accent: 'from-emerald-600 to-teal-600',
     services: [
-      { title: 'Seramik Kaplama & Pasta Cila', duration: '240 dk', price: '6.500 ₺' },
-      { title: 'Detaylı İç & Dış Temizlik', duration: '90 dk', price: '1.200 ₺' },
-      { title: 'Motor Koruma Bakımı', duration: '45 dk', price: '750 ₺' },
+      { title: 'Seramik kaplama ve pasta cila', duration: '240 dk', price: '6.500 ₺' },
+      { title: 'Detaylı iç ve dış temizlik', duration: '90 dk', price: '1.200 ₺' },
+      { title: 'Motor koruma bakımı', duration: '45 dk', price: '750 ₺' },
     ],
-    staff: '1. Peron • Baş Usta Ekibi',
+    staff: '1. Peron · Baş Usta Ekibi',
     slots: ['09:00', '11:30', '14:00', '16:30'],
-    highlight: 'Peron ve lift dolulukları çakışmadan araç kabulü',
+    highlight: 'Peron ve lift dolulukları çakışmadan araç kabulü yapılır',
   },
   {
     id: 'egitim',
     name: 'Özel Ders & Eğitim',
     shortDesc: 'Birebir ders ve seans',
     slug: 'randevory.com/akademi-plus',
-    brandName: 'Akademi Plus Koçluk',
+    brandName: 'Akademi Plus',
     initials: 'AP',
-    accent: 'from-purple-600 to-violet-600',
     services: [
-      { title: 'Birebir Matematik Etüdü', duration: '60 dk', price: '850 ₺' },
-      { title: 'İngilizce Konuşma Pratiği', duration: '50 dk', price: '700 ₺' },
-      { title: 'Sınav Koçluğu Seansı', duration: '45 dk', price: '600 ₺' },
+      { title: 'Birebir matematik etüdü', duration: '60 dk', price: '850 ₺' },
+      { title: 'İngilizce konuşma pratiği', duration: '50 dk', price: '700 ₺' },
+      { title: 'Sınav koçluğu seansı', duration: '45 dk', price: '600 ₺' },
     ],
-    staff: 'Zeynep Hoca • Kıdemli Eğitmen',
+    staff: 'Zeynep Hoca · Kıdemli Eğitmen',
     slots: ['15:00', '16:30', '18:00', '19:30'],
-    highlight: 'Öğrenci ve veliler uygun ders saatini kendisi seçsin',
+    highlight: 'Öğrenciler uygun ders saatini doğrudan kendisi seçer',
   },
   {
     id: 'veteriner',
     name: 'Veteriner Klinikleri',
     shortDesc: 'Muayene ve aşı takvimi',
     slug: 'randevory.com/pativet-klinik',
-    brandName: 'PatiVet Veteriner Kliniği',
+    brandName: 'PatiVet Klinik',
     initials: 'PV',
-    accent: 'from-rose-500 to-pink-600',
     services: [
-      { title: 'Genel Muayene & Kontrol', duration: '30 dk', price: '650 ₺' },
-      { title: 'Karma Aşı Uygulaması', duration: '20 dk', price: '900 ₺' },
-      { title: 'Pet Kuaför & Tırnak Bakımı', duration: '60 dk', price: '800 ₺' },
+      { title: 'Genel muayene ve kontrol', duration: '30 dk', price: '650 ₺' },
+      { title: 'Karma aşı uygulaması', duration: '20 dk', price: '900 ₺' },
+      { title: 'Pet kuaför ve bakım', duration: '60 dk', price: '800 ₺' },
     ],
     staff: 'Vet. Hek. Burak Bey',
     slots: ['10:00', '11:30', '14:00', '16:00'],
-    highlight: 'Klinik bekleme alanında yığılma olmadan düzenli muayene akışı',
+    highlight: 'Bekleme alanında yığılma olmadan düzenli muayene akışı',
   },
   {
     id: 'teknik',
     name: 'Teknik Servisler',
     shortDesc: 'Cihaz onarım ve teslim',
     slug: 'randevory.com/hizli-servis',
-    brandName: 'ProFix Teknik Servis',
+    brandName: 'ProFix Servis',
     initials: 'PF',
-    accent: 'from-cyan-600 to-blue-600',
     services: [
-      { title: 'Ekran & Batarya Değişimi', duration: '45 dk', price: '1.850 ₺' },
-      { title: 'Laptop Termal Macun & Bakım', duration: '60 dk', price: '950 ₺' },
-      { title: 'Arıza Tespit & Ön İnceleme', duration: '20 dk', price: 'Ücretsiz' },
+      { title: 'Ekran ve batarya değişimi', duration: '45 dk', price: '1.850 ₺' },
+      { title: 'Bilgisayar termal bakım', duration: '60 dk', price: '950 ₺' },
+      { title: 'Arıza tespit incelemesi', duration: '20 dk', price: 'Ücretsiz' },
     ],
-    staff: 'Teknik Masa 2 • Donanım Uzmanı',
+    staff: 'Teknik Masa 2 · Donanım Uzmanı',
     slots: ['10:30', '12:00', '14:30', '17:00'],
-    highlight: 'Müşteri cihazını randevulu saatte teslim edip beklemeksizin alsın',
+    highlight: 'Müşteri cihazını randevulu saatte teslim edip beklemeksizin alır',
   },
 ];
 
-const SECTOR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const SECTOR_ICONS: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
   kuafor: Scissors,
   kafe: UtensilsCrossed,
   oto: Wrench,
@@ -145,8 +137,7 @@ const SECTOR_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
 };
 
 /**
- * Ziyaretçinin kendi sektörünü seçip RANDEVORY'de işletmesinin
- * nasıl görüneceğini canlı olarak deneyimlemesini sağlayan interaktif simülatör.
+ * Sektöre göre canlı randevu önizleme simülatörü.
  */
 export function SectorLiveSimulator() {
   const [selectedId, setSelectedId] = useState<string>('kuafor');
@@ -160,35 +151,30 @@ export function SectorLiveSimulator() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* Left: Sector Selector Buttons */}
       <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
         {SECTOR_PRESETS.map((preset) => {
-          const Icon = SECTOR_ICONS[preset.id] || Sparkles;
+          const Icon = SECTOR_ICONS[preset.id] || Calendar;
           const isSelected = preset.id === active.id;
           return (
             <button
               key={preset.id}
               type="button"
               onClick={() => handleSelectSector(preset)}
-              className={`text-left p-4 rounded-2xl border transition-all flex flex-col gap-2.5 ${
+              className={`text-left p-4 rounded-xl border transition-colors flex flex-col gap-3 ${
                 isSelected
-                  ? 'bg-slate-950 text-white border-slate-900 shadow-xl shadow-slate-900/15 -translate-y-0.5'
-                  : 'bg-white text-slate-900 border-slate-200 hover:border-brand-400 hover:shadow-md'
+                  ? 'bg-stone-900 text-white border-stone-900'
+                  : 'bg-white text-stone-900 border-stone-900/10 hover:border-stone-400'
               }`}
             >
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  isSelected
-                    ? `bg-gradient-to-br ${preset.accent} text-white shadow-sm`
-                    : 'bg-slate-100 text-slate-700'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-              </div>
+              <Icon
+                className={`w-4 h-4 ${isSelected ? 'text-stone-300' : 'text-stone-500'}`}
+                strokeWidth={1.5}
+              />
               <div>
-                <div className="font-bold text-xs sm:text-sm leading-snug">{preset.name}</div>
-                <div className={`text-[11px] mt-0.5 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                <div className="font-medium text-xs sm:text-sm leading-snug">{preset.name}</div>
+                <div className={`text-[11px] mt-0.5 ${isSelected ? 'text-stone-400' : 'text-stone-500'}`}>
                   {preset.shortDesc}
                 </div>
               </div>
@@ -197,81 +183,66 @@ export function SectorLiveSimulator() {
         })}
       </div>
 
-      {/* Right: Live Interactive Preview Card for Selected Sector */}
-      <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white shadow-[0_20px_60px_-15px_rgba(15,23,42,0.12)] overflow-hidden">
-        {/* Top Bar */}
-        <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 truncate">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="truncate">{active.slug}</span>
-          </div>
-          <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
-            Canlı Sektör Önizlemesi
-          </span>
+      {/* Right: Live Interactive Preview Card */}
+      <div className="lg:col-span-7 rounded-2xl border border-stone-900/10 bg-white overflow-hidden">
+        <div className="px-5 py-3 bg-[#fafaf8] border-b border-stone-900/10 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-mono text-stone-600 truncate">{active.slug}</span>
+          <span className="text-[11px] font-mono text-stone-500">Canlı önizleme</span>
         </div>
 
-        <div className="p-5 sm:p-7 space-y-5 text-left">
-          {/* Business Header */}
+        <div className="p-5 sm:p-6 space-y-5 text-left">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3.5">
-              <div
-                className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${active.accent} text-white font-extrabold text-base flex items-center justify-center shadow-md shrink-0`}
-              >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-stone-900 text-white font-medium text-sm flex items-center justify-center shrink-0">
                 {active.initials}
               </div>
               <div>
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900">{active.brandName}</h3>
-                <p className="text-xs text-slate-500">{active.staff}</p>
+                <h3 className="text-base font-medium text-stone-900">{active.brandName}</h3>
+                <p className="text-xs text-stone-500">{active.staff}</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              7/24 Randevu Açık
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+              <Check className="w-4 h-4" strokeWidth={1.75} />
+              7/24 randevu açık
             </span>
           </div>
 
-          {/* Services List */}
           <div className="space-y-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Hizmet &amp; Seans Listesi
-            </div>
+            <div className="text-xs font-medium text-stone-500">Hizmet ve seans listesi</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {active.services.map((srv, idx) => (
                 <div
                   key={idx}
-                  className={`p-3 rounded-2xl border transition-all ${
+                  className={`p-3 rounded-xl border transition-colors ${
                     idx === 0
-                      ? 'border-brand-500 bg-brand-50/40'
-                      : 'border-slate-200 bg-slate-50/60'
+                      ? 'border-blue-700 bg-blue-50/40'
+                      : 'border-stone-900/10 bg-[#fafaf8]'
                   }`}
                 >
-                  <div className="text-xs font-bold text-slate-900 leading-snug">{srv.title}</div>
+                  <div className="text-xs font-medium text-stone-900 leading-snug">{srv.title}</div>
                   <div className="mt-2 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 inline-flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {srv.duration}
+                    <span className="text-stone-500 inline-flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" strokeWidth={1.5} /> {srv.duration}
                     </span>
-                    <span className="font-extrabold text-slate-900">{srv.price}</span>
+                    <span className="font-mono tabular-nums font-medium text-stone-900">{srv.price}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Interactive Time Slots */}
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Müşterinin Seçtiği Saat
-            </div>
+            <div className="text-xs font-medium text-stone-500 mb-2">Müşterinin seçtiği saat</div>
             <div className="grid grid-cols-4 gap-2">
               {active.slots.map((slot) => (
                 <button
                   key={slot}
                   type="button"
                   onClick={() => setSelectedSlot(slot)}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                  className={`py-2 rounded-lg text-xs font-mono tabular-nums border transition-colors ${
                     selectedSlot === slot
-                      ? 'bg-slate-950 text-white border-slate-950 shadow-sm'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-brand-400'
+                      ? 'bg-stone-900 text-white border-stone-900'
+                      : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
                   }`}
                 >
                   {slot}
@@ -280,17 +251,16 @@ export function SectorLiveSimulator() {
             </div>
           </div>
 
-          {/* Bottom Highlight + CTA */}
-          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <Calendar className="w-4 h-4 text-brand-600 shrink-0" />
+          <div className="pt-4 border-t border-stone-900/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-stone-600">
+              <Calendar className="w-4 h-4 text-stone-500 shrink-0" strokeWidth={1.5} />
               <span>{active.highlight}</span>
             </div>
             <Link
               href="/register"
-              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-700 text-white text-xs font-medium hover:bg-blue-800 transition-colors"
             >
-              Bu Sektörle Başla <ArrowRight className="w-3.5 h-3.5" />
+              Bu sektörle başla <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
             </Link>
           </div>
         </div>

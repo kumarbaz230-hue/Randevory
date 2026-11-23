@@ -4,451 +4,315 @@ import { HomeHeader } from '@/components/home-header';
 import { ReviewsSection } from '@/components/reviews-section';
 import { PricingSection } from '@/components/pricing-section';
 import { SmoothScrollProvider } from '@/components/smooth-scroll-provider';
-import { HomeAnimations } from '@/components/home-animations';
-import { SpotlightCard } from '@/components/ui/spotlight-card';
 import { HeroShowcaseMockup } from '@/components/hero-showcase-mockup';
-import { HeroAmbientCanvas } from '@/components/hero-ambient-canvas';
 import { SectorLiveSimulator } from '@/components/sector-live-simulator';
 import {
+  ArrowRight,
   Calendar,
   Clock,
+  MessageSquare,
+  QrCode,
   ShieldCheck,
   TrendingUp,
-  Sparkles,
-  ArrowRight,
-  BookOpen,
-  Star,
-  QrCode,
-  MessageSquare,
-  CheckCircle2,
-  Lock,
-  Zap,
 } from 'lucide-react';
 
 export default function HomePage() {
-
   return (
     <SmoothScrollProvider>
-      <HomeAnimations>
-        <div className="flex flex-col min-h-screen bg-slate-950">
-          {/* Top Navbar & Mobile Quick Nav */}
-          <HomeHeader />
+      <div className="flex flex-col min-h-screen bg-[#f5f4ef] text-stone-900">
+        {/* Top Navbar & Mobile Quick Nav */}
+        <HomeHeader />
 
-          {/* Dark Obsidian + Aurora + Canvas Hero Section */}
-          <section className="relative overflow-hidden pt-12 pb-20 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28 bg-slate-950 text-white">
-            {/* Ambient Aurora Orbs */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[780px] h-[420px] rounded-full bg-gradient-to-r from-blue-600/25 via-indigo-500/20 to-cyan-400/20 blur-3xl"
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-0 right-0 w-[420px] h-[320px] rounded-full bg-blue-500/10 blur-3xl"
-            />
-            {/* Subtle Dark Grid + Live Canvas Network */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:52px_52px] [mask-image:radial-gradient(ellipse_85%_70%_at_50%_15%,#000_60%,transparent_100%)]"
-            />
-            <HeroAmbientCanvas />
-
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-              <div className="gsap-hero-item inline-flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/15 text-slate-200 text-xs font-semibold mb-7 shadow-lg">
-                <span className="inline-flex items-center gap-1.5 text-sky-300">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                  Yeni Nesil Randevu Altyapısı
-                </span>
-                <span className="text-white/25">•</span>
-                <a href="#yorumlar" className="inline-flex items-center gap-1 text-amber-300 hover:underline font-bold">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  4.7/5 (108+ Yorum)
+        {/* Editorial Scene Hero */}
+        <section className="pt-12 pb-16 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24 bg-[#f5f4ef] border-b border-stone-900/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl text-left">
+              <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-stone-500 mb-5">
+                <span>Randevu ve işletme yönetimi</span>
+                <span>·</span>
+                <a href="#yorumlar" className="text-stone-700 hover:text-stone-900 transition-colors tabular-nums">
+                  4,7 / 5 (108 değerlendirme)
                 </a>
               </div>
 
-              <h1 className="gsap-hero-item text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-[1.1]">
-                İşletmeniz İçin{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-blue-400 to-indigo-300">
-                  Kusursuz
-                </span>{' '}
-                Randevu ve Personel Yönetimi
+              <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-medium tracking-tight text-stone-900 leading-[1.12]">
+                İşletmeniz için tek bağlantıdan 7/24 online randevu ve takvim yönetimi
               </h1>
 
-              <p className="gsap-hero-item mt-5 text-base sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-                Telefon trafiğine ve randevu çakışmalarına son verin. Müşterileriniz QR kod veya link ile 7/24 randevu alsın; WhatsApp, canlı sohbet ve ciro takibini tek ekrandan yönetin.
+              <p className="mt-5 text-base sm:text-lg text-stone-600 max-w-2xl leading-relaxed font-normal">
+                Telefon trafiğini ve çakışan saatleri ortadan kaldırın. Müşterileriniz QR kod veya size özel bağlantı üzerinden randevu alsın; siz takvimi, WhatsApp onaylarını ve günlük ciroyu tek ekrandan takip edin.
               </p>
 
-              <div className="gsap-hero-item mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+              <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
                 <Link
                   href="/dashboard"
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 hover:brightness-110 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 rounded-lg bg-blue-700 text-white font-medium text-sm hover:bg-blue-800 transition-colors inline-flex items-center justify-center gap-2"
                 >
-                  İşletme Tablosunu İncele <ArrowRight className="w-4 h-4" />
+                  İşletme tablosunu incele
+                  <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </Link>
                 <Link
                   href="/nasil-kullanilir"
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-white/[0.06] text-white border border-white/15 backdrop-blur-xl font-semibold text-sm hover:bg-white/10 hover:border-white/25 transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3 rounded-lg bg-white text-stone-900 border border-stone-900/15 font-medium text-sm hover:border-stone-400 transition-colors inline-flex items-center justify-center gap-2"
                 >
-                  <BookOpen className="w-4 h-4 text-sky-400" />
-                  Nasıl Kullanılır?
-                </Link>
-              </div>
-
-              {/* Trust Mini Pills */}
-              <div className="gsap-hero-item mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-400 font-medium">
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  Ücretsiz Başlangıç Paketi
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  Kurulum 2 Dakika
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-sky-400" />
-                  Taahhüt &amp; Gizli Ücret Yok
-                </span>
-              </div>
-
-              {/* Interactive Dark Glass Product Showcase */}
-              <HeroShowcaseMockup />
-
-              {/* Quick Stats Badges */}
-              <div className="gsap-hero-item mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto">
-                <div className="bg-white/[0.04] backdrop-blur-xl rounded-2xl p-4 border border-white/10">
-                  <div className="text-xl sm:text-2xl font-extrabold text-white">%0</div>
-                  <div className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">Çakışma Garantisi (GIST Lock)</div>
-                </div>
-                <div className="bg-white/[0.04] backdrop-blur-xl rounded-2xl p-4 border border-white/10">
-                  <div className="text-xl sm:text-2xl font-extrabold text-white">7/24</div>
-                  <div className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">Kesintisiz Randevu Alma</div>
-                </div>
-                <div className="bg-white/[0.04] backdrop-blur-xl rounded-2xl p-4 border border-white/10">
-                  <div className="text-xl sm:text-2xl font-extrabold text-white">&lt; 30 sn</div>
-                  <div className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">Müşteri Randevu Tamamlama</div>
-                </div>
-                <div className="bg-white/[0.04] backdrop-blur-xl rounded-2xl p-4 border border-white/10">
-                  <div className="text-xl sm:text-2xl font-extrabold text-amber-400 flex items-center justify-center gap-1">
-                    4.7 <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-400 text-amber-400" />
-                  </div>
-                  <div className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">1.840+ Beğeni &amp; Memnuniyet</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Live Infinite Marquee Ticker */}
-            <div className="mt-14 border-y border-white/10 bg-white/[0.03] py-3.5 overflow-hidden">
-              <div className="animate-marquee flex items-center gap-8 text-xs font-semibold text-slate-300">
-                {[
-                  'Kuaför & Berberler',
-                  'GIST Çakışma Kilidi',
-                  'Baskıya Hazır QR Vitrin',
-                  'Tek Tık WhatsApp Onayı',
-                  'Oto Bakım & Detailing',
-                  '30 Saniyede Üyeliksiz Randevu',
-                  'Kafe & Restoran Rezervasyonu',
-                  'Anlık Ciro & Personel Raporu',
-                  'Veteriner & Klinikler',
-                  'Canlı Müşteri Sohbeti',
-                  'Kuaför & Berberler',
-                  'GIST Çakışma Kilidi',
-                  'Baskıya Hazır QR Vitrin',
-                  'Tek Tık WhatsApp Onayı',
-                  'Oto Bakım & Detailing',
-                  '30 Saniyede Üyeliksiz Randevu',
-                ].map((label, i) => (
-                  <span key={i} className="inline-flex items-center gap-2.5 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Step-by-Step How It Works Section */}
-          <section id="nasil-calisir" className="scroll-mt-28 py-20 bg-white text-slate-900">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-3xl mx-auto mb-14">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-bold text-[11px] uppercase tracking-wider">
-                  <Zap className="w-3.5 h-3.5" />
-                  Adım Adım Sistem Rehberi
-                </span>
-                <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mt-3">
-                  RANDEVORY Nasıl Kullanılır?
-                </h2>
-                <p className="mt-3 text-slate-600 text-sm sm:text-base">
-                  Hem işletmeniz hem de müşterileriniz için 4 basit adımda kusursuz randevu yönetimi.
-                </p>
-              </div>
-
-              <div className="gsap-reveal-group grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {[
-                  {
-                    step: '01',
-                    title: 'İşletmenizi Tanımlayın',
-                    desc: 'Kayıt olun, hizmetlerinizi, seans sürelerinizi ve personellerinizin çalışma saatlerini birkaç dakikada girin.',
-                  },
-                  {
-                    step: '02',
-                    title: 'Link veya QR Kod Paylaşın',
-                    desc: 'Size özel randevory.com/isletmeniz linkini Instagram profilinize ekleyin veya hazır Vitrin QR Afişini camınıza asın.',
-                  },
-                  {
-                    step: '03',
-                    title: 'Müşteriniz Saatini Seçsin',
-                    desc: 'Müşterileriniz uygulama indirmeden veya üye olmadan; hizmet, uzman ve müsait saati seçerek 30 saniyede randevu alsın.',
-                  },
-                  {
-                    step: '04',
-                    title: 'WhatsApp & Takvim Yönetimi',
-                    desc: 'Tüm randevuları akıllı takvimde görün, tek tıkla WhatsApp onayı gönderin, canlı sohbet ve aylık cironuzu takip edin.',
-                  },
-                ].map((item) => (
-                  <SpotlightCard
-                    key={item.step}
-                    className="gsap-reveal-card p-6 rounded-3xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:shadow-xl hover:shadow-slate-200/60 transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-5">
-                        <span className="w-10 h-10 rounded-xl bg-slate-950 text-white font-extrabold text-sm flex items-center justify-center shadow-sm">
-                          {item.step}
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                          Adım {item.step}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-slate-900 text-base">{item.title}</h3>
-                      <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">{item.desc}</p>
-                    </div>
-                  </SpotlightCard>
-                ))}
-              </div>
-
-              <div className="mt-10 text-center">
-                <Link
-                  href="/nasil-kullanilir"
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-slate-950 text-white font-semibold text-xs sm:text-sm hover:bg-slate-800 transition-all shadow-sm"
-                >
-                  İnteraktif Müşteri &amp; İşletme Rehberini Aç <ArrowRight className="w-4 h-4" />
+                  Nasıl kullanılır
                 </Link>
               </div>
             </div>
-          </section>
 
-          {/* Sectors Interactive Live Simulator */}
-          <section id="sectors" className="scroll-mt-28 py-20 bg-slate-50 text-slate-900 border-y border-slate-200/80">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center max-w-3xl mx-auto mb-12">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-bold text-[11px] uppercase tracking-wider mb-3">
-                  Sektörünüze Göre Canlı Deneyin
-                </span>
-                <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-                  Tek Bir Sektöre Değil, Randevulu Tüm İşletmelere Özel
-                </h2>
-                <p className="mt-3 text-slate-600 text-sm sm:text-base">
-                  Aşağıdan kendi sektörünüzü seçin; müşterilerinizin göreceği randevu sayfasını anında önizleyin.
-                </p>
-              </div>
+            {/* Real Product Preview */}
+            <HeroShowcaseMockup />
+          </div>
+        </section>
 
-              <SectorLiveSimulator />
+        {/* Step-by-Step How It Works */}
+        <section id="nasil-calisir" className="scroll-mt-28 py-20 bg-white border-b border-stone-900/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-12 text-left">
+              <div className="text-xs font-mono text-stone-500 mb-2">Sistem akışı</div>
+              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-stone-900">
+                Dört adımda düzenli randevu akışı
+              </h2>
+              <p className="mt-3 text-sm sm:text-base text-stone-600 leading-relaxed">
+                Hem işletmeniz hem de müşterileriniz için ek uygulama gerektirmeyen sade kurulum.
+              </p>
             </div>
-          </section>
 
-          {/* Dark Glass Bento Grid Features */}
-          <section id="features" className="scroll-mt-28 py-24 bg-slate-950 text-white relative overflow-hidden">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[280px] rounded-full bg-indigo-500/15 blur-3xl"
-            />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-              <div className="text-center max-w-3xl mx-auto mb-14">
-                <span className="text-sky-400 font-bold text-xs uppercase tracking-wider">İşletmenizi Büyütün</span>
-                <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white mt-2">
-                  Profesyonel Yönetim İçin Gereken Her Şey
-                </h2>
-              </div>
-
-              <div className="gsap-reveal-group grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Featured Wide Bento Card */}
-                <SpotlightCard
-                  spotlightColor="rgba(56, 189, 248, 0.16)"
-                  className="gsap-reveal-card md:col-span-2 bg-white/[0.04] backdrop-blur-xl p-7 sm:p-8 rounded-3xl border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-6"
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  step: '01',
+                  title: 'İşletmenizi tanımlayın',
+                  desc: 'Hizmetlerinizi, seans sürelerinizi ve personel çalışma saatlerinizi birkaç dakikada girin.',
+                },
+                {
+                  step: '02',
+                  title: 'Bağlantı veya QR paylaşın',
+                  desc: 'Size özel randevory.com/isletmeniz bağlantısını profilinize ekleyin veya vitrin QR afişini asın.',
+                },
+                {
+                  step: '03',
+                  title: 'Müşteriniz saat seçsin',
+                  desc: 'Müşterileriniz üye olmadan hizmet, uzman ve müsait saati seçerek randevusunu oluştursun.',
+                },
+                {
+                  step: '04',
+                  title: 'Takvim ve ciroyu yönetin',
+                  desc: 'Gelen randevuları tek tıkla onaylayın, WhatsApp mesajı gönderin ve günlük kazancınızı görün.',
+                },
+              ].map((item) => (
+                <div
+                  key={item.step}
+                  className="p-6 rounded-xl border border-stone-900/10 bg-[#fafaf8] flex flex-col justify-between"
                 >
                   <div>
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-sky-400 text-white flex items-center justify-center mb-5 shadow-lg shadow-sky-500/20">
-                      <Calendar className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-extrabold text-white mb-2">Akıllı Randevu Takvimi</h3>
-                    <p className="text-slate-300 leading-relaxed text-sm max-w-xl">
-                      Günlük, haftalık ve personel bazlı görünümler. Gelen randevuları tek tıkla onaylayın, işlem tamamlandığında ciroya otomatik yansıtın veya WhatsApp mesajı gönderin.
-                    </p>
+                    <div className="text-xs font-mono tabular-nums text-stone-400 mb-4">{item.step}</div>
+                    <h3 className="font-medium text-stone-900 text-base">{item.title}</h3>
+                    <p className="text-sm text-stone-600 mt-2 leading-relaxed">{item.desc}</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2.5 pt-2">
-                    <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 text-center">
-                      <div className="text-xs font-bold text-white">Günlük</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Saatlik Akış</div>
-                    </div>
-                    <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 text-center">
-                      <div className="text-xs font-bold text-white">Personel</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Ekip Bazlı</div>
-                    </div>
-                    <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/25 p-3 text-center">
-                      <div className="text-xs font-bold text-emerald-300">Tek Tık</div>
-                      <div className="text-[10px] text-slate-300 mt-0.5">Onay &amp; Tamamla</div>
-                    </div>
-                  </div>
-                </SpotlightCard>
-
-                {/* Highlighted Security Card */}
-                <SpotlightCard
-                  spotlightColor="rgba(16, 185, 129, 0.18)"
-                  className="gsap-reveal-card bg-gradient-to-b from-emerald-500/10 to-white/[0.03] backdrop-blur-xl text-white p-7 sm:p-8 rounded-3xl border border-emerald-400/25 hover:border-emerald-400/40 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center mb-5">
-                      <ShieldCheck className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-extrabold mb-2">Çakışma Önleme Motoru</h3>
-                    <p className="text-slate-300 leading-relaxed text-sm">
-                      Aynı personele aynı saat diliminde iki randevu verilmesini hem veritabanı kısıtlarıyla (GIST Lock) hem de algoritmayla kesinlikle engeller.
-                    </p>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-emerald-300 font-semibold">
-                    <span>Veritabanı Seviyesinde Koruma</span>
-                    <span>%100 Aktif</span>
-                  </div>
-                </SpotlightCard>
-
-                {/* Remaining 3 Standard Bento Cards */}
-                <SpotlightCard
-                  spotlightColor="rgba(168, 85, 247, 0.16)"
-                  className="gsap-reveal-card bg-white/[0.04] backdrop-blur-xl p-7 rounded-3xl border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-5"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-400/25 flex items-center justify-center mb-5">
-                      <QrCode className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-lg font-extrabold text-white mb-2">QR Kod &amp; Vitrin Afişi</h3>
-                    <p className="text-slate-300 leading-relaxed text-sm">
-                      İşletmenize özel yüksek çözünürlüklü QR kod ve baskıya hazır vitrin afişini tek tıkla indirin; müşterileriniz kamerayla okutup randevu alsın.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-white text-slate-950 flex items-center justify-center shrink-0">
-                      <QrCode className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-bold text-white truncate">randevory.com/isletmeniz</div>
-                      <div className="text-[10px] text-purple-300 font-semibold">A4 Baskıya Hazır PDF / PNG</div>
-                    </div>
-                  </div>
-                </SpotlightCard>
-
-                <SpotlightCard
-                  spotlightColor="rgba(245, 158, 11, 0.16)"
-                  className="gsap-reveal-card bg-white/[0.04] backdrop-blur-xl p-7 rounded-3xl border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-5"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-400/25 flex items-center justify-center mb-5">
-                      <MessageSquare className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-lg font-extrabold text-white mb-2">Canlı Sohbet &amp; WhatsApp</h3>
-                    <p className="text-slate-300 leading-relaxed text-sm">
-                      Müşterileriniz randevu sayfasından size anlık mesaj yazsın, randevu sonrası hazır WhatsApp onay mesajlarıyla iletişimi hızlandırın.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-emerald-500/15 border border-emerald-400/25 p-3 text-[11px] text-emerald-200">
-                    <span className="font-bold text-white">WhatsApp:</span> &ldquo;Saat 14:30 randevunuz onaylandı.&rdquo; ✓✓
-                  </div>
-                </SpotlightCard>
-
-                <SpotlightCard
-                  spotlightColor="rgba(56, 189, 248, 0.16)"
-                  className="gsap-reveal-card bg-white/[0.04] backdrop-blur-xl p-7 rounded-3xl border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-5"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-300 border border-sky-400/25 flex items-center justify-center mb-5">
-                      <TrendingUp className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-lg font-extrabold text-white mb-2">Finans &amp; Ciro Raporları</h3>
-                    <p className="text-slate-300 leading-relaxed text-sm">
-                      Günlük ve aylık kazançlarınızı, en çok tercih edilen hizmetleri ve personel performanslarını net grafiklerle takip edin.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 flex items-end gap-1.5 h-14">
-                    {[38, 52, 46, 68, 84, 100, 74].map((h, i) => (
-                      <div
-                        key={i}
-                        className={`flex-1 rounded-t-md ${i === 5 ? 'bg-sky-400' : 'bg-white/20'}`}
-                        style={{ height: `${h}%` }}
-                      />
-                    ))}
-                  </div>
-                </SpotlightCard>
-              </div>
-
-              {/* Extra Bottom Feature Strip */}
-              <div className="mt-6">
-                <SpotlightCard
-                  spotlightColor="rgba(34, 211, 238, 0.16)"
-                  className="gsap-reveal-card bg-white/[0.04] backdrop-blur-xl p-6 sm:p-7 rounded-3xl border border-white/10 hover:border-white/20 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-start sm:items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/25 flex items-center justify-center shrink-0">
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-extrabold text-white">Müşteri Sorgulama &amp; CRM</h3>
-                      <p className="text-slate-300 text-sm mt-0.5">
-                        Müşteriler telefon numarasıyla kendi randevusunu sorgulayıp iptal edebilir; tüm müşteri geçmişi ve harcamaları otomatik kaydedilir.
-                      </p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/register"
-                    className="shrink-0 px-5 py-2.5 rounded-xl bg-white text-slate-950 text-xs font-bold hover:bg-slate-200 transition-colors text-center"
-                  >
-                    Hemen Dene &rarr;
-                  </Link>
-                </SpotlightCard>
-              </div>
+                </div>
+              ))}
             </div>
-          </section>
 
-          {/* Customer & Business Rating + 108 Reviews Section */}
-          <ReviewsSection />
+            <div className="mt-8">
+              <Link
+                href="/nasil-kullanilir"
+                className="inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-800 transition-colors"
+              >
+                Adım adım müşteri ve işletme rehberini aç
+                <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+              </Link>
+            </div>
+          </div>
+        </section>
 
-          {/* Subscription Plans Interactive Section with Monthly/Yearly Toggle */}
-          <PricingSection />
+        {/* Sectors Live Simulator */}
+        <section id="sectors" className="scroll-mt-28 py-20 bg-[#f5f4ef] border-b border-stone-900/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-12 text-left">
+              <div className="text-xs font-mono text-stone-500 mb-2">Sektöre göre önizleme</div>
+              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-stone-900">
+                Randevulu çalışan tüm işletmelere uygun
+              </h2>
+              <p className="mt-3 text-sm sm:text-base text-stone-600 leading-relaxed">
+                Kendi sektörünüzü seçerek müşterilerinizin göreceği randevu sayfasını anında inceleyin.
+              </p>
+            </div>
 
-          {/* Footer */}
-          <footer className="bg-slate-900 text-slate-400 py-12 mt-auto border-t border-slate-800">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <BrandLogo size="md" variant="dark" showSlogan={true} />
-                <p className="text-xs text-slate-500 text-center md:text-left">
-                  &copy; {new Date().getFullYear()} RANDEVORY. Tüm hakları saklıdır. Profesyonel Randevu ve Hizmet Yönetim Platformu.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
-                  <Link href="/nasil-kullanilir" className="hover:text-white transition-colors">Nasıl Kullanılır?</Link>
-                  <a href="#yorumlar" className="hover:text-white transition-colors">Kullanıcı Yorumları</a>
-                  <Link href="/yasal#on-bilgilendirme" className="hover:text-white transition-colors">Ön Bilgilendirme</Link>
-                  <Link href="/yasal#hizmet-sozlesmesi" className="hover:text-white transition-colors">Hizmet Sözleşmesi</Link>
-                  <Link href="/yasal#iptal-iade" className="hover:text-white transition-colors">İptal &amp; İade</Link>
-                  <Link href="/yasal#cerez" className="hover:text-white transition-colors">Çerez Politikası</Link>
-                  <Link href="/yasal#kvkk" className="hover:text-white transition-colors">Gizlilik &amp; KVKK</Link>
-                  <Link href="/yasal#veri-silme" className="hover:text-white transition-colors">Veri Silme Talebi</Link>
-                  <Link href="/dashboard" className="hover:text-white transition-colors">İşletme Tablosu</Link>
+            <SectorLiveSimulator />
+          </div>
+        </section>
+
+        {/* Features Asymmetric Grid */}
+        <section id="features" className="scroll-mt-28 py-20 bg-white border-b border-stone-900/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl mb-12 text-left">
+              <div className="text-xs font-mono text-stone-500 mb-2">Temel yetenekler</div>
+              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-stone-900">
+                Günlük operasyonu sadeleştiren araçlar
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Wide Lead Feature */}
+              <div className="md:col-span-2 p-6 rounded-xl border border-stone-900/10 bg-[#fafaf8] flex flex-col justify-between gap-6">
+                <div>
+                  <Calendar className="w-4 h-4 text-stone-500 mb-4" strokeWidth={1.5} />
+                  <h3 className="text-lg font-medium text-stone-900 mb-2">Akıllı randevu takvimi</h3>
+                  <p className="text-stone-600 leading-relaxed text-sm max-w-xl">
+                    Günlük, haftalık ve personel bazlı görünümler. Gelen randevuları tek tıkla onaylayın, işlem tamamlandığında ciroya otomatik yansıtın veya WhatsApp mesajı gönderin.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="rounded-lg bg-white border border-stone-900/10 p-3">
+                    <div className="text-xs font-medium text-stone-900">Günlük görünüm</div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">Saatlik akış</div>
+                  </div>
+                  <div className="rounded-lg bg-white border border-stone-900/10 p-3">
+                    <div className="text-xs font-medium text-stone-900">Personel planı</div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">Ekip bazlı sütunlar</div>
+                  </div>
+                  <div className="rounded-lg bg-white border border-stone-900/10 p-3">
+                    <div className="text-xs font-medium text-blue-700">Tek tık onay</div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">Tamamlandığında ciro</div>
+                  </div>
                 </div>
               </div>
-              <div className="pt-5 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500">
-                <span>256-Bit SSL &amp; Shopier 3D Secure Korumalı Ödeme Altyapısı • Gizli Ücret Yok, Taahhüt Yok</span>
-                <span>Resmi İletişim: destek@randevory.com • kvkk@randevory.com</span>
+
+              {/* Conflict Lock Card */}
+              <div className="p-6 rounded-xl border border-stone-900/10 bg-stone-900 text-white flex flex-col justify-between">
+                <div>
+                  <ShieldCheck className="w-4 h-4 text-stone-400 mb-4" strokeWidth={1.5} />
+                  <h3 className="text-lg font-medium mb-2">Çakışma önleme motoru</h3>
+                  <p className="text-stone-300 leading-relaxed text-sm">
+                    Aynı personele aynı saat diliminde iki randevu verilmesini hem veritabanı GIST kısıtlarıyla hem de slot algoritmasıyla engeller.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs font-mono text-stone-300">
+                  <span>Veritabanı kilidi</span>
+                  <span>Aktif</span>
+                </div>
+              </div>
+
+              {/* Remaining Features */}
+              <div className="p-6 rounded-xl border border-stone-900/10 bg-[#fafaf8] flex flex-col justify-between gap-4">
+                <div>
+                  <QrCode className="w-4 h-4 text-stone-500 mb-4" strokeWidth={1.5} />
+                  <h3 className="text-base font-medium text-stone-900 mb-2">QR kod ve vitrin afişi</h3>
+                  <p className="text-stone-600 leading-relaxed text-sm">
+                    İşletmenize özel yüksek çözünürlüklü QR kod ve baskıya hazır A4 vitrin afişini tek tıkla indirin.
+                  </p>
+                </div>
+                <div className="text-xs font-mono text-stone-500">randevory.com/isletmeniz</div>
+              </div>
+
+              <div className="p-6 rounded-xl border border-stone-900/10 bg-[#fafaf8] flex flex-col justify-between gap-4">
+                <div>
+                  <MessageSquare className="w-4 h-4 text-stone-500 mb-4" strokeWidth={1.5} />
+                  <h3 className="text-base font-medium text-stone-900 mb-2">Canlı sohbet ve WhatsApp</h3>
+                  <p className="text-stone-600 leading-relaxed text-sm">
+                    Müşterileriniz randevu sayfasından size anlık mesaj yazsın; randevu sonrası hazır WhatsApp şablonuyla onay gönderin.
+                  </p>
+                </div>
+                <div className="text-xs font-mono text-stone-500">Hazır onay şablonu</div>
+              </div>
+
+              <div className="p-6 rounded-xl border border-stone-900/10 bg-[#fafaf8] flex flex-col justify-between gap-4">
+                <div>
+                  <TrendingUp className="w-4 h-4 text-stone-500 mb-4" strokeWidth={1.5} />
+                  <h3 className="text-base font-medium text-stone-900 mb-2">Finans ve ciro raporları</h3>
+                  <p className="text-stone-600 leading-relaxed text-sm">
+                    Tamamlanan randevulardan oluşan günlük ve aylık kazançlarınızı, en çok tercih edilen hizmetleri takip edin.
+                  </p>
+                </div>
+                <div className="text-xs font-mono text-stone-500">Personel ve hizmet bazlı</div>
               </div>
             </div>
-          </footer>
-        </div>
-      </HomeAnimations>
+
+            {/* Bottom Strip */}
+            <div className="mt-4 p-6 rounded-xl border border-stone-900/10 bg-[#fafaf8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-4">
+                <Clock className="w-4 h-4 text-stone-500 shrink-0 mt-1 sm:mt-0" strokeWidth={1.5} />
+                <div>
+                  <h3 className="text-base font-medium text-stone-900">Müşteri sorgulama ve CRM</h3>
+                  <p className="text-stone-600 text-sm mt-0.5">
+                    Müşteriler telefon numarasıyla kendi randevusunu sorgulayıp iptal edebilir; ziyaret ve harcama geçmişi otomatik kaydedilir.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/register"
+                className="shrink-0 px-4 py-2.5 rounded-lg bg-white border border-stone-900/15 text-stone-900 text-xs font-medium hover:border-stone-400 transition-colors text-center"
+              >
+                Hesap oluştur
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Quiet CTA Band */}
+        <section className="py-16 bg-stone-900 text-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <div className="text-xs font-mono text-stone-400">Hızlı başlangıç</div>
+              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight">
+                İşletmenizi bugün çevrimiçi randevuya açın
+              </h2>
+              <p className="text-sm text-stone-300 leading-relaxed">
+                Ücretsiz Başlangıç paketi ile hemen hesabınızı açın; kredi kartı gerekmez, taahhüt ve gizli ücret yoktur.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <Link
+                href="/register"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-white text-stone-900 font-medium text-sm hover:bg-stone-100 transition-colors inline-flex items-center justify-center gap-2"
+              >
+                Ücretsiz hesap oluştur
+                <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+              </Link>
+              <Link
+                href="/dashboard"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-transparent text-white border border-white/20 font-medium text-sm hover:border-white/40 transition-colors text-center"
+              >
+                Paneli gör
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Customer & Business Rating + 108 Reviews Section */}
+        <ReviewsSection />
+
+        {/* Subscription Plans Interactive Section with Monthly/Yearly Toggle */}
+        <PricingSection />
+
+        {/* Footer */}
+        <footer className="bg-stone-900 text-stone-400 py-12 mt-auto border-t border-white/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <BrandLogo size="md" variant="dark" showSlogan={true} />
+              <p className="text-xs text-stone-500 text-center md:text-left">
+                &copy; {new Date().getFullYear()} RANDEVORY. Tüm hakları saklıdır. Profesyonel Randevu ve Hizmet Yönetim Platformu.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+                <Link href="/nasil-kullanilir" className="hover:text-white transition-colors">Nasıl Kullanılır</Link>
+                <a href="#yorumlar" className="hover:text-white transition-colors">Kullanıcı Yorumları</a>
+                <Link href="/yasal#on-bilgilendirme" className="hover:text-white transition-colors">Ön Bilgilendirme</Link>
+                <Link href="/yasal#hizmet-sozlesmesi" className="hover:text-white transition-colors">Hizmet Sözleşmesi</Link>
+                <Link href="/yasal#iptal-iade" className="hover:text-white transition-colors">İptal &amp; İade</Link>
+                <Link href="/yasal#cerez" className="hover:text-white transition-colors">Çerez Politikası</Link>
+                <Link href="/yasal#kvkk" className="hover:text-white transition-colors">Gizlilik &amp; KVKK</Link>
+                <Link href="/yasal#veri-silme" className="hover:text-white transition-colors">Veri Silme Talebi</Link>
+                <Link href="/dashboard" className="hover:text-white transition-colors">İşletme Tablosu</Link>
+              </div>
+            </div>
+            <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-stone-500">
+              <span>256-Bit SSL &amp; Shopier 3D Secure Korumalı Ödeme Altyapısı · Gizli Ücret Yok, Taahhüt Yok</span>
+              <span>Resmi İletişim: destek@randevory.com · kvkk@randevory.com</span>
+            </div>
+          </div>
+        </footer>
+      </div>
     </SmoothScrollProvider>
   );
 }

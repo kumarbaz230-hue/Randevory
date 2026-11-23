@@ -19,9 +19,10 @@ const WEEKLY_DATA: DataPoint[] = [
 ];
 
 /**
- * Koyu cam ürün vitrini için etkileşimli HTML5 Canvas haftalık ciro ve randevu grafiği.
+ * Haftalık ciro ve randevu yoğunluğu grafiği.
+ * Sıcak nötr ızgara, tek kobalt vurgu ve tabular sayı biçimiyle çizilir.
  */
-export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
+export function RevenueFlowCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [activeIndex, setActiveIndex] = useState<number>(5);
 
@@ -44,14 +45,14 @@ export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
 
       ctx.clearRect(0, 0, width, height);
 
-      const padX = 18;
-      const padTop = 20;
-      const padBottom = 26;
+      const padX = 16;
+      const padTop = 16;
+      const padBottom = 24;
       const chartW = width - padX * 2;
       const chartH = height - padTop - padBottom;
       const maxVal = 15000;
 
-      ctx.strokeStyle = dark ? 'rgba(148, 163, 184, 0.14)' : 'rgba(148, 163, 184, 0.22)';
+      ctx.strokeStyle = 'rgba(28, 25, 23, 0.08)';
       ctx.lineWidth = 1;
       for (let i = 0; i <= 3; i++) {
         const y = padTop + (chartH / 3) * i;
@@ -67,8 +68,8 @@ export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
       }));
 
       const areaGrad = ctx.createLinearGradient(0, padTop, 0, padTop + chartH);
-      areaGrad.addColorStop(0, dark ? 'rgba(56, 189, 248, 0.34)' : 'rgba(37, 99, 235, 0.26)');
-      areaGrad.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
+      areaGrad.addColorStop(0, 'rgba(29, 78, 216, 0.14)');
+      areaGrad.addColorStop(1, 'rgba(29, 78, 216, 0.0)');
 
       ctx.beginPath();
       ctx.moveTo(coords[0].x, padTop + chartH);
@@ -92,8 +93,8 @@ export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
         ctx.quadraticCurveTo(coords[i].x, coords[i].y, xc, yc);
       }
       ctx.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
-      ctx.strokeStyle = dark ? '#38bdf8' : '#2563eb';
-      ctx.lineWidth = 2.6;
+      ctx.strokeStyle = '#1d4ed8';
+      ctx.lineWidth = 2;
       ctx.stroke();
 
       coords.forEach((pt, idx) => {
@@ -103,24 +104,24 @@ export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
           ctx.setLineDash([3, 3]);
           ctx.moveTo(pt.x, padTop);
           ctx.lineTo(pt.x, padTop + chartH);
-          ctx.strokeStyle = dark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(37, 99, 235, 0.4)';
-          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = 'rgba(29, 78, 216, 0.35)';
+          ctx.lineWidth = 1;
           ctx.stroke();
           ctx.setLineDash([]);
         }
 
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, isActive ? 5.5 : 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = isActive ? (dark ? '#38bdf8' : '#2563eb') : dark ? '#0f172a' : '#ffffff';
+        ctx.arc(pt.x, pt.y, isActive ? 4.5 : 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = isActive ? '#1d4ed8' : '#ffffff';
         ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = dark ? '#38bdf8' : '#2563eb';
+        ctx.lineWidth = 1.75;
+        ctx.strokeStyle = '#1d4ed8';
         ctx.stroke();
 
-        ctx.fillStyle = isActive ? (dark ? '#f8fafc' : '#0f172a') : dark ? '#94a3b8' : '#64748b';
-        ctx.font = `${isActive ? '700' : '500'} 10px Inter, system-ui, sans-serif`;
+        ctx.fillStyle = isActive ? '#1c1917' : '#78716c';
+        ctx.font = `${isActive ? '600' : '400'} 11px ui-monospace, SFMono-Regular, Menlo, monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(WEEKLY_DATA[idx].day, pt.x, height - 8);
+        ctx.fillText(WEEKLY_DATA[idx].day, pt.x, height - 6);
       });
     };
 
@@ -128,7 +129,7 @@ export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
     const ro = new ResizeObserver(renderChart);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [activeIndex, dark]);
+  }, [activeIndex]);
 
   const handlePointer = (clientX: number) => {
     const canvas = canvasRef.current;
@@ -142,32 +143,21 @@ export function RevenueFlowCanvas({ dark = true }: { dark?: boolean }) {
   const current = WEEKLY_DATA[activeIndex];
 
   return (
-    <div
-      className={`rounded-2xl border p-4 flex flex-col justify-between ${
-        dark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white'
-      }`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+    <div className="rounded-xl border border-stone-900/10 bg-[#fafaf8] p-4 flex flex-col justify-between h-full">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
         <div>
-          <div className={`text-xs font-bold ${dark ? 'text-white' : 'text-slate-900'}`}>
-            Haftalık Ciro &amp; Randevu Grafiği
-          </div>
-          <div className={`text-[11px] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Günlerin üzerine dokunarak inceleyin
-          </div>
+          <div className="text-xs font-medium text-stone-900">Haftalık ciro akışı</div>
+          <div className="text-[11px] text-stone-500">Gün bazlı randevu geliri</div>
         </div>
-        <div
-          className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold ${
-            dark
-              ? 'bg-sky-500/15 border-sky-400/30 text-sky-300'
-              : 'bg-blue-50 border-blue-200 text-brand-700'
-          }`}
-        >
-          {current.day}: {current.revenue.toLocaleString('tr-TR')} ₺ • {current.appointments} Randevu
+        <div className="text-xs font-mono tabular-nums text-stone-900">
+          <span className="text-stone-500 mr-1.5">{current.day}</span>
+          <span className="font-semibold">{current.revenue.toLocaleString('tr-TR')} ₺</span>
+          <span className="text-stone-400 mx-1.5">·</span>
+          <span className="text-stone-600">{current.appointments} randevu</span>
         </div>
       </div>
 
-      <div className="relative h-36 sm:h-40 w-full">
+      <div className="relative h-36 w-full">
         <canvas
           ref={canvasRef}
           onMouseMove={(e) => handlePointer(e.clientX)}
