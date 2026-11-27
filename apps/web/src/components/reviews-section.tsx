@@ -286,16 +286,11 @@ export function ReviewsSection() {
       prev.map((r) => (r.id === id ? { ...r, helpfulCount: r.helpfulCount + 1 } : r))
     );
 
-    // Veritabanı yorumuysa helpful_count'u artır
+    // Veritabanı yorumuysa helpful_count'u güvenli RPC ile artır
     if (!id.startsWith('r-') && !id.startsWith('custom-')) {
       try {
         const supabase = createClient();
-        const currentReview = reviews.find((r) => r.id === id);
-        const newCount = (currentReview?.helpfulCount || 0) + 1;
-        await supabase
-          .from('site_reviews')
-          .update({ helpful_count: newCount })
-          .eq('id', id);
+        await supabase.rpc('increment_site_review_helpful', { p_review_id: id });
       } catch (err) {
         console.warn('Could not update helpful count:', err);
       }

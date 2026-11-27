@@ -54,10 +54,36 @@ export interface SupportTicketRow {
   is_taken_over?: boolean;
   replied_at: string | null;
   created_at: string;
+  access_token?: string;
 }
 
 const ACTIVE_TICKET_STORAGE_KEY = 'randevory_live_support_v3';
+const ACTIVE_TICKET_TOKEN_KEY = 'randevory_live_support_token_v3';
 const ASSIGNED_AGENT_KEY = 'randevory_assigned_agent_id_v3';
+
+function extractAgentFromTicket(ticket: SupportTicketRow | null | undefined): SupportAgent | null {
+  if (!ticket || !Array.isArray(ticket.messages)) return null;
+  // Sondan başa doğru biletteki mevcut temsilciyi bul (Zeynep bağlandıysa Zeynep kalsın)
+  for (let i = ticket.messages.length - 1; i >= 0; i--) {
+    const msg = ticket.messages[i];
+    if (msg?.agent_name) {
+      const byName = SUPPORT_AGENTS.find(
+        (a) => a.name.toLowerCase() === msg.agent_name!.trim().toLowerCase()
+      );
+      if (byName) return byName;
+    }
+    if (msg?.sender === 'system' && typeof msg.text === 'string') {
+      const joinMatch = msg.text.match(/Müşteri Temsilcisi\s+([^\s]+)\s+görüşmeye bağlandı/i);
+      if (joinMatch?.[1]) {
+        const byJoin = SUPPORT_AGENTS.find(
+          (a) => a.name.toLowerCase() === joinMatch[1].trim().toLowerCase()
+        );
+        if (byJoin) return byJoin;
+      }
+    }
+  }
+  return null;
+}
 
 const MAIN_AI_CHOICES = [
   { id: 'menu_app_error', label: '🛠️ Sitede / Uygulamada Hata Alıyorum' },
@@ -220,15 +246,34 @@ export function SupportFloatingWidget() {
   const [lastCategory, setLastCategory] = useState<'support' | 'complaint' | 'billing'>('support');
 
   // Assigned Agent - ONLY assigned when user connects to a representative!
-  const [assignedAgent, setAssignedAgent] = useState<SupportAgent | null>(() => {
+  const [assignedAgent, setAssignedAgent] = useState<SupportAgent | null>(null);
+  const assignedAgentRef = useRef<SupportAgent | null>(null);
+
+  const syncAssignedAgent = useCallback((agent: SupportAgent | null) => {
+    assignedAgentRef.current = agent;
+    setAssignedAgent(agent);
+    if (typeof window !== 'undefined') {
+      if (agent) {
+        localStorage.setItem(ASSIGNED_AGENT_KEY, agent.id);
+      } else {
+        localStorage.removeItem(ASSIGNED_AGENT_KEY);
+      }
+    }
+  }, []);
+
+  // Hydrate assignedAgent safely on client mount (prevents SSR null mismatch)
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(ASSIGNED_AGENT_KEY);
       if (saved) {
-        return SUPPORT_AGENTS.find((a) => a.id === saved) || null;
+        const found = SUPPORT_AGENTS.find((a) => a.id === saved) || null;
+        if (found) {
+          assignedAgentRef.current = found;
+          setAssignedAgent(found);
+        }
       }
     }
-    return null;
-  });
+  }, []);
 
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const [readMessageTimestamps, setReadMessageTimestamps] = useState<string[]>([]);
@@ -279,18 +324,37 @@ export function SupportFloatingWidget() {
     }
   }, []);
 
-  const fetchActiveTicketById = useCallback(async (ticketId: string) => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('platform_support_tickets')
-      .select('*')
-      .eq('id', ticketId)
-      .maybeSingle();
-
-    if (data) {
-      setActiveTicket(data as SupportTicketRow);
+  const getStoredTicketToken = useCallback((ticket?: SupportTicketRow | null): string => {
+    if (ticket?.access_token) return ticket.access_token;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(ACTIVE_TICKET_TOKEN_KEY) || '';
     }
+    return '';
   }, []);
+
+  const fetchActiveTicketById = useCallback(async (ticketId: string, explicitToken?: string) => {
+    const token = explicitToken ?? (typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_TICKET_TOKEN_KEY) || '' : '');
+    if (!token) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(ACTIVE_TICKET_STORAGE_KEY);
+      }
+      return;
+    }
+    const supabase = createClient();
+    const { data } = await supabase.rpc('support_get_ticket', {
+      p_ticket_id: ticketId,
+      p_access_token: token,
+    });
+
+    if (data && (data as any).id) {
+      const ticketRow = data as SupportTicketRow;
+      setActiveTicket(ticketRow);
+      const ticketAgent = extractAgentFromTicket(ticketRow);
+      if (ticketAgent && assignedAgentRef.current?.id !== ticketAgent.id) {
+        syncAssignedAgent(ticketAgent);
+      }
+    }
+  }, [syncAssignedAgent]);
 
   const triggerInactivityEnd = useCallback(async () => {
     if (hasTriggeredInactivityEndRef.current) return;
@@ -301,7 +365,11 @@ export function SupportFloatingWidget() {
       clearTimeout(inactivityTimerRef.current);
       inactivityTimerRef.current = null;
     }
-    const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
+    const repName =
+      extractAgentFromTicket(activeTicket)?.name ||
+      assignedAgentRef.current?.name ||
+      assignedAgent?.name ||
+      'Müşteri Temsilcisi';
     const nowIso = new Date().toISOString();
 
     const timeoutMsg: SupportChatMessage = {
@@ -317,20 +385,20 @@ export function SupportFloatingWidget() {
     if (activeTicket?.id) {
       try {
         const supabase = createClient();
+        const token = getStoredTicketToken(activeTicket);
         await supabase.rpc('support_send_agent_auto_reply', {
           p_ticket_id: activeTicket.id,
           p_reply: timeoutMsg.text,
           p_agent_name: repName,
+          p_access_token: token,
         });
 
-        await supabase
-          .from('platform_support_tickets')
-          .update({
-            status: 'closed',
-          })
-          .eq('id', activeTicket.id);
+        await supabase.rpc('support_close_own_ticket', {
+          p_ticket_id: activeTicket.id,
+          p_access_token: token,
+        });
 
-        await fetchActiveTicketById(activeTicket.id);
+        await fetchActiveTicketById(activeTicket.id, token);
       } catch (e) {
         console.error('Inactivity timeout update error:', e);
       }
@@ -338,7 +406,7 @@ export function SupportFloatingWidget() {
       setLocalMessages((prev) => [...prev, timeoutMsg]);
     }
     setTimeout(() => scrollToBottom(true), 60);
-  }, [assignedAgent?.name, activeTicket?.id, isTerminatedByAgent, activeTicket?.status, ratingSubmitted, fetchActiveTicketById, scrollToBottom]);
+  }, [assignedAgent?.name, activeTicket, isTerminatedByAgent, ratingSubmitted, fetchActiveTicketById, getStoredTicketToken, scrollToBottom]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) {
@@ -357,15 +425,12 @@ export function SupportFloatingWidget() {
     if (activeTicket?.id) {
       try {
         const supabase = createClient();
-        await supabase
-          .from('platform_support_tickets')
-          .update({
-            status: 'closed',
-            admin_reply: activeTicket.admin_reply
-              ? `${activeTicket.admin_reply}\n\n[Müşteri Değerlendirmesi: ${feedbackSummary}]`
-              : `[Müşteri Değerlendirmesi: ${feedbackSummary}]`,
-          })
-          .eq('id', activeTicket.id);
+        const token = getStoredTicketToken(activeTicket);
+        await supabase.rpc('support_close_own_ticket', {
+          p_ticket_id: activeTicket.id,
+          p_access_token: token,
+          p_rating_summary: feedbackSummary,
+        });
       } catch (e) {
         console.error('Save rating error:', e);
       }
@@ -381,7 +446,11 @@ export function SupportFloatingWidget() {
     }
     setIsAgentTyping(false);
 
-    const repName = assignedAgent?.name || 'Müşteri Temsilcisi';
+    const repName =
+      extractAgentFromTicket(activeTicket)?.name ||
+      assignedAgentRef.current?.name ||
+      assignedAgent?.name ||
+      'Müşteri Temsilcisi';
     const nowIso = new Date().toISOString();
 
     const endMsg: SupportChatMessage = {
@@ -397,20 +466,20 @@ export function SupportFloatingWidget() {
     if (activeTicket?.id) {
       try {
         const supabase = createClient();
+        const token = getStoredTicketToken(activeTicket);
         await supabase.rpc('support_send_agent_auto_reply', {
           p_ticket_id: activeTicket.id,
           p_reply: endMsg.text,
           p_agent_name: repName,
+          p_access_token: token,
         });
 
-        await supabase
-          .from('platform_support_tickets')
-          .update({
-            status: 'closed',
-          })
-          .eq('id', activeTicket.id);
+        await supabase.rpc('support_close_own_ticket', {
+          p_ticket_id: activeTicket.id,
+          p_access_token: token,
+        });
 
-        await fetchActiveTicketById(activeTicket.id);
+        await fetchActiveTicketById(activeTicket.id, token);
       } catch (e) {
         console.error('Customer end conversation error:', e);
       }
@@ -614,11 +683,8 @@ export function SupportFloatingWidget() {
     hasTriggeredInactivityEndRef.current = false;
 
     // Pick random representative at that exact moment (majority female, some male)
-    const pickedAgent = assignedAgent || getRandomSupportAgent();
-    setAssignedAgent(pickedAgent);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ASSIGNED_AGENT_KEY, pickedAgent.id);
-    }
+    const pickedAgent = assignedAgentRef.current || assignedAgent || getRandomSupportAgent();
+    syncAssignedAgent(pickedAgent);
 
     try {
       const supabase = createClient();
@@ -646,26 +712,24 @@ export function SupportFloatingWidget() {
         created_at: new Date().toISOString(),
       });
 
-      const { data, error } = await supabase
-        .from('platform_support_tickets')
-        .insert({
-          sender_name: senderName.trim() || 'Ziyaretçi',
-          sender_contact: senderContact.trim() || 'Canlı Sohbet',
-          category: lastCategory,
-          subject: lastSelectedTopic || userMsgText.slice(0, 50),
-          message: userMsgText,
-          messages: historyToSave,
-          status: 'open',
-        })
-        .select('*')
-        .single();
+      const { data, error } = await supabase.rpc('support_create_ticket', {
+        p_sender_name: senderName.trim() || 'Ziyaretçi',
+        p_sender_contact: senderContact.trim() || 'Canlı Sohbet',
+        p_category: lastCategory,
+        p_subject: lastSelectedTopic || userMsgText.slice(0, 50),
+        p_message: userMsgText,
+        p_messages: historyToSave,
+      });
 
-      if (error) throw error;
+      if (error || !data) throw error || new Error('Destek talebi oluşturulamadı.');
 
       const created = data as SupportTicketRow;
       setActiveTicket(created);
       if (typeof window !== 'undefined') {
         localStorage.setItem(ACTIVE_TICKET_STORAGE_KEY, created.id);
+        if (created.access_token) {
+          localStorage.setItem(ACTIVE_TICKET_TOKEN_KEY, created.access_token);
+        }
       }
       setInputText('');
       setImagePreview(null);
@@ -675,16 +739,18 @@ export function SupportFloatingWidget() {
       setIsAgentTyping(true);
       setTimeout(async () => {
         try {
+          const token = created.access_token || getStoredTicketToken(created);
           const { data: repData } = await supabase.rpc('support_send_agent_auto_reply', {
             p_ticket_id: created.id,
             p_reply: pickedAgent.welcomeGreeting,
             p_agent_name: pickedAgent.name,
+            p_access_token: token,
           });
           setIsAgentTyping(false);
           if (repData && (repData as any).id) {
             setActiveTicket(repData as SupportTicketRow);
           } else {
-            await fetchActiveTicketById(created.id);
+            await fetchActiveTicketById(created.id, token);
           }
           setTimeout(() => scrollToBottom(true), 60);
         } catch {
@@ -797,10 +863,12 @@ export function SupportFloatingWidget() {
       setSending(true);
       try {
         const supabase = createClient();
+        const ticketToken = getStoredTicketToken(activeTicket);
         const { data, error } = await supabase.rpc('support_send_user_msg', {
           p_ticket_id: activeTicket.id,
           p_message: text || '📷 [Fotoğraf Gönderildi]',
           p_image_url: currentImg || '',
+          p_access_token: ticketToken,
         });
 
         if (error) throw error;
@@ -810,7 +878,7 @@ export function SupportFloatingWidget() {
           currentTicket = data as SupportTicketRow;
           setActiveTicket(currentTicket);
         } else {
-          await fetchActiveTicketById(activeTicket.id);
+          await fetchActiveTicketById(activeTicket.id, ticketToken);
         }
 
         setTimeout(() => scrollToBottom(true), 50);
@@ -820,7 +888,12 @@ export function SupportFloatingWidget() {
           return;
         }
 
-        const agent = assignedAgent || SUPPORT_AGENTS[0];
+        // Biletteki mevcut temsilciyi (ör. Zeynep) koru — asla başka temsilciye (Esma) atlama
+        const ticketAgent = extractAgentFromTicket(currentTicket);
+        const agent = ticketAgent || assignedAgentRef.current || assignedAgent || SUPPORT_AGENTS[0];
+        if (agent && assignedAgentRef.current?.id !== agent.id) {
+          syncAssignedAgent(agent);
+        }
         const sentIso = new Date().toISOString();
 
         // 1. Aşama: Mesaj gönderildi (tek tik ✓). Temsilci hemen görmüyor, 2.8 saniye bekle
@@ -839,13 +912,12 @@ export function SupportFloatingWidget() {
             // 4. Aşama: İnsan hızında gerçekçi klavye yazma süresi (8.2 saniye - +1.7s)
             setTimeout(async () => {
               try {
-                const { data: freshTicket } = await supabase
-                  .from('platform_support_tickets')
-                  .select('*')
-                  .eq('id', currentTicket.id)
-                  .maybeSingle();
+                const { data: freshTicket } = await supabase.rpc('support_get_ticket', {
+                  p_ticket_id: currentTicket.id,
+                  p_access_token: ticketToken,
+                });
 
-                if (freshTicket?.is_taken_over || freshTicket?.status === 'closed') {
+                if ((freshTicket as any)?.is_taken_over || (freshTicket as any)?.status === 'closed') {
                   setIsAgentTyping(false);
                   if (freshTicket) setActiveTicket(freshTicket as SupportTicketRow);
                   return;
@@ -896,6 +968,7 @@ export function SupportFloatingWidget() {
                     p_ticket_id: currentTicket.id,
                     p_reply: replyText,
                     p_agent_name: agent.name,
+                    p_access_token: ticketToken,
                   });
 
                   const badgeMsg: SupportChatMessage = {
@@ -904,26 +977,15 @@ export function SupportFloatingWidget() {
                     created_at: new Date(Date.now() + 500).toISOString(),
                   };
 
-                  
-
-                  const { data: latestTicket } = await supabase
-                    .from('platform_support_tickets')
-                    .select('messages')
-                    .eq('id', currentTicket.id)
-                    .single();
-
-                  const currentMsgs = latestTicket?.messages || [];
-                  await supabase
-                    .from('platform_support_tickets')
-                    .update({
-                      status: 'closed',
-                      messages: [...currentMsgs, badgeMsg],
-                    })
-                    .eq('id', currentTicket.id);
+                  await supabase.rpc('support_close_own_ticket', {
+                    p_ticket_id: currentTicket.id,
+                    p_access_token: ticketToken,
+                    p_badge_message: badgeMsg,
+                  });
 
                   setIsAgentTyping(false);
                   setIsTerminatedByAgent(true);
-                  await fetchActiveTicketById(currentTicket.id);
+                  await fetchActiveTicketById(currentTicket.id, ticketToken);
                   setTimeout(() => scrollToBottom(true), 60);
                   return;
                 }
@@ -934,6 +996,7 @@ export function SupportFloatingWidget() {
                     p_ticket_id: currentTicket.id,
                     p_reply: replyText,
                     p_agent_name: agent.name,
+                    p_access_token: ticketToken,
                   }
                 );
 
@@ -942,7 +1005,7 @@ export function SupportFloatingWidget() {
                 if (!repError && updatedTicket && (updatedTicket as any).id) {
                   setActiveTicket(updatedTicket as SupportTicketRow);
                 } else {
-                  await fetchActiveTicketById(currentTicket.id);
+                  await fetchActiveTicketById(currentTicket.id, ticketToken);
                 }
 
                 setTimeout(() => scrollToBottom(true), 60);
@@ -1112,6 +1175,7 @@ export function SupportFloatingWidget() {
   const handleStartNewConversation = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(ACTIVE_TICKET_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_TICKET_TOKEN_KEY);
       localStorage.removeItem(ASSIGNED_AGENT_KEY);
     }
     if (typingTimerRef.current) {
@@ -1134,7 +1198,7 @@ export function SupportFloatingWidget() {
     setIsAgentTyping(false);
     setReadMessageTimestamps([]);
     setActiveTicket(null);
-    setAssignedAgent(null);
+    syncAssignedAgent(null);
     setInputText('');
     setImagePreview(null);
     setLocalMessages([getInitialBotMessage()]);

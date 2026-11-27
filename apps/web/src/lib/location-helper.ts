@@ -30,7 +30,15 @@ export function getBusinessMapsUrl(business?: {
 
   const customUrl = business.settings?.maps_url?.trim();
   if (customUrl) {
-    return customUrl.startsWith('http') ? customUrl : `https://${customUrl}`;
+    try {
+      const candidate = /^https?:\/\//i.test(customUrl) ? customUrl : `https://${customUrl}`;
+      const parsed = new URL(candidate);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return parsed.toString();
+      }
+    } catch {
+      // Fallback to coordinates/address below
+    }
   }
 
   const lat = business.settings?.latitude;

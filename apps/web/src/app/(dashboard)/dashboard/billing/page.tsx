@@ -183,7 +183,10 @@ function BillingContent() {
       }
     }
 
-    setIsModalOpen(true);
+    setCallbackBanner({
+      type: 'error',
+      text: 'Ödeme sayfası şu anda başlatılamadı. Lütfen tekrar deneyin veya destek ekibiyle iletişime geçin.',
+    });
   };
 
   const handleFillTestCard = () => {

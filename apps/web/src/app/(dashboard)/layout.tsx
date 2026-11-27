@@ -163,8 +163,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           name: user.user_metadata?.full_name || user.email?.split('@')[0],
         });
 
-        const isAdminEmail = user.email?.toLowerCase() === 'kumar.baz230@gmail.com';
-        if (isAdminEmail) {
+        const { data: isAdmin } = await supabase.rpc('is_current_user_platform_admin');
+        if (isAdmin === true) {
           setIsSuperAdmin(true);
           const { count } = await supabase
             .from('platform_support_tickets')

@@ -188,7 +188,7 @@ export default function BusinessPublicPage() {
         repo.getServices(b.id),
         repo.getStaff(b.id),
         repo.getWorkingHours(b.id),
-        repo.getAppointments(b.id),
+        repo.getBusySlots(b.id),
         repo.getBusinessReviews(b.id),
       ]);
       setServices(srvs);
@@ -241,7 +241,7 @@ export default function BusinessPublicPage() {
     };
 
     fetchMsgs();
-    const timer = setInterval(fetchMsgs, isSupabaseConfigured() ? 15000 : 5000);
+    const timer = setInterval(fetchMsgs, 5000);
 
     let channel: any = null;
     if (isSupabaseConfigured()) {
@@ -458,14 +458,8 @@ export default function BusinessPublicPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event: 'appointment_created',
-          businessName: business.name,
-          businessPhone: business.phone,
-          businessSlug: business.slug,
-          customerName: customerName.trim(),
+          appointmentId: newApt.id,
           customerPhone: customerPhone.trim(),
-          serviceName: selectedService.name,
-          startTime: newApt.start_time,
-          totalPrice: selectedService.price,
         }),
       }).catch(() => {});
 
@@ -533,13 +527,8 @@ export default function BusinessPublicPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event: 'appointment_cancelled',
-            businessName: business.name,
-            businessPhone: business.phone,
-            businessSlug: business.slug,
-            customerName: cancellingApt.customer_name,
+            appointmentId: cancellingApt.id,
             customerPhone: cancellingApt.customer_phone,
-            startTime: cancellingApt.start_time,
-            cancelReason,
           }),
         }).catch(() => {});
 

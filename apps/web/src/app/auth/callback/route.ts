@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getSafeRedirectPath } from '@/lib/redirect-helper';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const token_hash = searchParams.get('token_hash');
   const type = searchParams.get('type') as any;
-  const next = searchParams.get('next');
+  const rawNext = searchParams.get('next');
+  const safeNext = rawNext ? getSafeRedirectPath(rawNext, '/dashboard') : null;
   const errorParam = searchParams.get('error');
   const errorDesc = searchParams.get('error_description');
 
   const isRecoveryRedirect =
-    next === '/reset-password' ||
-    next === '/dashboard/settings' ||
+    safeNext === '/reset-password' ||
+    safeNext === '/dashboard/settings' ||
     type === 'recovery';
 
   if (errorParam) {
@@ -47,10 +49,10 @@ export async function GET(request: Request) {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        const destination = next || (member ? '/dashboard' : '/create-business');
+        const destination = safeNext || (member ? '/dashboard' : '/create-business');
         return NextResponse.redirect(`${origin}${destination}`);
       }
-      return NextResponse.redirect(`${origin}${next || '/dashboard'}`);
+      return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
     } else {
       // PKCE code_verifier uyuşmazlığı durumunda (ör. eski e-posta linki veya farklı tarayıcı)
       // kullanıcıyı login hatası yerine doğrudan /reset-password ekranına yönlendir
@@ -77,10 +79,10 @@ export async function GET(request: Request) {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        const destination = next || (member ? '/dashboard' : '/create-business');
+        const destination = safeNext || (member ? '/dashboard' : '/create-business');
         return NextResponse.redirect(`${origin}${destination}`);
       }
-      return NextResponse.redirect(`${origin}${next || '/dashboard'}`);
+      return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
     } else {
       return NextResponse.redirect(`${origin}/reset-password?error=expired`);
     }

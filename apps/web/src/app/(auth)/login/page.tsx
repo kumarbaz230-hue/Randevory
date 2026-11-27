@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getSafeRedirectPath } from '@/lib/redirect-helper';
 import { useResendCooldown } from '@/lib/use-resend-cooldown';
 import { BrandLogo } from '@/components/brand-logo';
 import {
@@ -58,7 +59,7 @@ function LoginForm() {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) {
-          const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+          const redirectTo = getSafeRedirectPath(searchParams.get('redirectTo'), '/dashboard');
           router.replace(redirectTo);
         }
       });
@@ -168,7 +169,7 @@ function LoginForm() {
 
       setSuccessMessage('Giriş başarılı! Yönlendiriliyorsunuz...');
 
-      const targetUrl = searchParams.get('redirectTo') || '/dashboard';
+      const targetUrl = getSafeRedirectPath(searchParams.get('redirectTo'), '/dashboard');
       setTimeout(() => {
         window.location.href = targetUrl;
       }, 350);

@@ -115,28 +115,13 @@ export class DataRepository {
         if (member?.businesses) {
           const bizObj = (Array.isArray(member.businesses) ? member.businesses[0] : member.businesses) as any;
           if (bizObj) {
-            // Lisans süresi kontrolü: Ücretli paketteyse süresi geçmiş mi kontrol et
+            // Lisans süresi kontrolü: Ücretli paketteyse sunucu RPC ile süresi geçmiş mi kontrol et
             if (bizObj.subscription_plan && bizObj.subscription_plan !== 'free') {
-              const { data: sub } = await supabase
-                .from('subscriptions')
-                .select('id, current_period_end, status')
-                .eq('business_id', bizObj.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-              if (sub && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
-                // Süresi dolmuş -> Free pakete düşür
-                await supabase
-                  .from('businesses')
-                  .update({ subscription_plan: 'free' })
-                  .eq('id', bizObj.id);
-
-                await supabase
-                  .from('subscriptions')
-                  .update({ status: 'past_due' })
-                  .eq('id', sub.id);
-
+              const { data: wasExpired } = await supabase.rpc(
+                'expire_business_subscription_if_needed',
+                { p_business_id: bizObj.id }
+              );
+              if (wasExpired === true) {
                 bizObj.subscription_plan = 'free';
               }
             }
@@ -208,59 +193,20 @@ export class DataRepository {
     }
 
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: biz, error: bizErr } = await supabase.rpc('create_business_with_owner', {
+      p_name: params.name,
+      p_slug: this.normalizeSlug(params.slug),
+      p_sector: params.sector,
+      p_phone: params.phone,
+      p_email: params.email,
+      p_address: params.address,
+      p_city: params.city,
+      p_district: params.district || null,
+      p_description: params.description || null,
+    });
 
-    const { data: biz, error: bizErr } = await supabase
-      .from('businesses')
-      .insert({
-        name: params.name,
-        slug: params.slug,
-        sector: params.sector,
-        phone: params.phone,
-        email: params.email,
-        address: params.address,
-        city: params.city,
-        district: params.district || null,
-        description: params.description || null,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (bizErr) throw new Error(bizErr.message);
+    if (bizErr || !biz) throw new Error(bizErr?.message || 'İşletme oluşturulamadı.');
     this.invalidateActiveBusinessCache();
-
-    // Eğer oturum açmış kullanıcı varsa işletme üyesi/sahibi yap
-    if (user) {
-      await supabase.from('business_members').insert({
-        business_id: biz.id,
-        user_id: user.id,
-        role: 'business_owner',
-        is_owner: true,
-      });
-    }
-
-    // Varsayılan çalışma saatleri tanımla
-    const defaultHours = [
-      { business_id: biz.id, day_of_week: 1, is_open: true, open_time: '09:00', close_time: '19:00' },
-      { business_id: biz.id, day_of_week: 2, is_open: true, open_time: '09:00', close_time: '19:00' },
-      { business_id: biz.id, day_of_week: 3, is_open: true, open_time: '09:00', close_time: '19:00' },
-      { business_id: biz.id, day_of_week: 4, is_open: true, open_time: '09:00', close_time: '19:00' },
-      { business_id: biz.id, day_of_week: 5, is_open: true, open_time: '09:00', close_time: '19:00' },
-      { business_id: biz.id, day_of_week: 6, is_open: true, open_time: '10:00', close_time: '18:00' },
-      { business_id: biz.id, day_of_week: 0, is_open: false, open_time: '10:00', close_time: '17:00' },
-    ];
-    await supabase.from('business_hours').insert(defaultHours);
-
-    // Ücretsiz paket aboneliği başlat
-    const { data: plan } = await supabase.from('subscription_plans').select('id').eq('tier', 'free').maybeSingle();
-    if (plan) {
-      await supabase.from('subscriptions').insert({
-        business_id: biz.id,
-        plan_id: plan.id,
-        status: 'active',
-      });
-    }
 
     return biz as Business;
   }
@@ -620,6 +566,35 @@ export class DataRepository {
   }
 
   // --- RANDEVULAR (ÇAKIŞMA ÖNLEME KISITLI) ---
+  async getBusySlots(businessId: string): Promise<Appointment[]> {
+    if (!isSupabaseConfigured()) {
+      return store.getAppointments(businessId);
+    }
+
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('get_business_busy_slots', {
+      p_business_id: businessId,
+    });
+
+    if (error || !Array.isArray(data)) {
+      return [];
+    }
+
+    return data.map((row: any) => ({
+      id: row.id,
+      business_id: row.business_id,
+      staff_id: row.staff_id,
+      service_id: row.service_id,
+      customer_name: '',
+      customer_phone: '',
+      start_time: row.start_time,
+      end_time: row.end_time,
+      total_price: 0,
+      status: row.status,
+      created_at: row.start_time,
+    })) as Appointment[];
+  }
+
   async getAppointments(businessId: string): Promise<Appointment[]> {
     if (!isSupabaseConfigured()) {
       return store.getAppointments(businessId);
@@ -642,27 +617,22 @@ export class DataRepository {
     const normInput = this.normalizePhone(customerPhone);
     if (normInput.length < 10) return [];
 
-    const all = await this.getAppointments(businessId);
-    return all
-      .filter((apt) => this.normalizePhone(apt.customer_phone) === normInput)
-      .sort((a, b) => {
-        // Öncelik 1: Aktif ve Onay Bekleyen Randevular EN ÜSTTE
-        // 'pending' (Onay Bekliyor) = 4, 'confirmed' (Onaylandı) = 3
-        // 'completed' (Tamamlandı) = 2, 'cancelled' (İptal Edildi) = 1 (En altta)
-        const getScore = (status: string) => {
-          if (status === 'pending') return 4;
-          if (status === 'confirmed') return 3;
-          if (status === 'completed') return 2;
-          return 1; // cancelled
-        };
-        const scoreDiff = getScore(b.status) - getScore(a.status);
-        if (scoreDiff !== 0) return scoreDiff;
+    if (!isSupabaseConfigured()) {
+      const all = await this.getAppointments(businessId);
+      return all.filter((apt) => this.normalizePhone(apt.customer_phone) === normInput);
+    }
 
-        // Öncelik 2: Aynı durumdaki randevularda EN YENİ oluşturulan veya en yeni tarihli en üstte
-        const timeB = new Date(b.created_at || b.start_time).getTime();
-        const timeA = new Date(a.created_at || a.start_time).getTime();
-        return timeB - timeA;
-      });
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('get_customer_appointments_by_phone', {
+      p_business_id: businessId,
+      p_customer_phone: customerPhone,
+    });
+
+    if (error || !Array.isArray(data)) {
+      return [];
+    }
+
+    return data as Appointment[];
   }
 
   async cancelCustomerAppointment(
@@ -708,6 +678,34 @@ export class DataRepository {
     }
 
     const supabase = createClient();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const { data: { session } } = await supabase.auth.getSession();
+
+    // Halka açık randevu akışında sunucu taraflı doğrulamalı RPC kullan (fiyat, kara liste, spam limiti)
+    if (!session?.user && uuidRegex.test(appointment.service_id) && uuidRegex.test(appointment.staff_id)) {
+      const { data: rpcApt, error: rpcErr } = await supabase.rpc('book_public_appointment', {
+        p_business_id: appointment.business_id,
+        p_service_id: appointment.service_id,
+        p_staff_id: appointment.staff_id,
+        p_customer_name: appointment.customer_name,
+        p_customer_phone: appointment.customer_phone,
+        p_start_time: appointment.start_time,
+        p_end_time: appointment.end_time,
+        p_customer_email: appointment.customer_email || null,
+        p_customer_notes: appointment.customer_notes || null,
+      });
+
+      if (rpcErr) {
+        if (rpcErr.code === '23P01') {
+          throw new Error('Seçilen saat diliminde personele ait başka bir randevu bulunmaktadır. Lütfen başka bir saat seçin.');
+        }
+        throw new Error(rpcErr.message || 'Randevu kaydedilemedi.');
+      }
+
+      return rpcApt as Appointment;
+    }
+
+    // Oturum açmış işletme üyesi panelden manuel eklerken (veya kendi işletmesinde) RLS ile korunan insert
     const { data, error } = await supabase
       .from('appointments')
       .insert({
@@ -727,6 +725,28 @@ export class DataRepository {
       .single();
 
     if (error) {
+      // Oturum açmış bir kullanıcı başka bir işletmeden müşteri olarak randevu alıyorsa RPC'ye yönlendir
+      if ((error.code === '42501' || error.message.includes('row-level security')) && uuidRegex.test(appointment.service_id) && uuidRegex.test(appointment.staff_id)) {
+        const { data: rpcApt, error: rpcErr } = await supabase.rpc('book_public_appointment', {
+          p_business_id: appointment.business_id,
+          p_service_id: appointment.service_id,
+          p_staff_id: appointment.staff_id,
+          p_customer_name: appointment.customer_name,
+          p_customer_phone: appointment.customer_phone,
+          p_start_time: appointment.start_time,
+          p_end_time: appointment.end_time,
+          p_customer_email: appointment.customer_email || null,
+          p_customer_notes: appointment.customer_notes || null,
+        });
+        if (rpcErr) {
+          if (rpcErr.code === '23P01') {
+            throw new Error('Seçilen saat diliminde personele ait başka bir randevu bulunmaktadır. Lütfen başka bir saat seçin.');
+          }
+          throw new Error(rpcErr.message || 'Randevu kaydedilemedi.');
+        }
+        return rpcApt as Appointment;
+      }
+
       if (error.code === '23P01') {
         throw new Error('Seçilen saat diliminde personele ait başka bir randevu bulunmaktadır. Lütfen başka bir saat seçin.');
       }
@@ -808,20 +828,28 @@ export class DataRepository {
     }
 
     const supabase = createClient();
-    let query = supabase
+
+    // Müşteri telefonuna özel sorguda yalnızca o telefonun mesajlarını dönen güvenli RPC kullan
+    if (customerPhone) {
+      const norm = this.normalizePhone(customerPhone);
+      if (norm.length < 10) return [];
+      const { data, error } = await supabase.rpc('get_customer_chat_messages', {
+        p_business_id: businessId,
+        p_customer_phone: norm,
+      });
+      if (error || !Array.isArray(data)) {
+        return [];
+      }
+      return data as ChatMessage[];
+    }
+
+    // İşletme paneli (oturum açmış işletme üyesi -> RLS ile korunur)
+    const { data, error } = await supabase
       .from('chat_messages')
       .select('*')
       .eq('business_id', businessId)
       .order('created_at', { ascending: true });
 
-    if (customerPhone) {
-      const norm = this.normalizePhone(customerPhone);
-      if (norm.length >= 10) {
-        query = query.eq('customer_phone', norm);
-      }
-    }
-
-    const { data, error } = await query;
     if (error || !data) {
       return store.getChatMessages(businessId, customerPhone);
     }
@@ -891,7 +919,15 @@ export class DataRepository {
     }
 
     const supabase = createClient();
-    const targetSender = readerType === 'business' ? 'customer' : 'business';
+    if (readerType === 'customer') {
+      await supabase.rpc('mark_customer_chat_read', {
+        p_business_id: businessId,
+        p_customer_phone: normPhone,
+      });
+      return;
+    }
+
+    const targetSender = 'customer';
     await supabase
       .from('chat_messages')
       .update({ is_read: true })
@@ -1081,19 +1117,16 @@ export class DataRepository {
 
     if (!data) return null;
 
-    // Lisans süresi dolmuşsa status'u past_due ve işletmeyi free yap
+    // Lisans süresi dolmuşsa sunucu RPC ile güncelle
     if (data.current_period_end && new Date(data.current_period_end) < new Date()) {
       if (data.status === 'active') {
-        data.status = 'past_due' as any;
-        await supabase
-          .from('subscriptions')
-          .update({ status: 'past_due' })
-          .eq('id', data.id);
-
-        await supabase
-          .from('businesses')
-          .update({ subscription_plan: 'free' })
-          .eq('id', businessId);
+        const { data: wasExpired } = await supabase.rpc(
+          'expire_business_subscription_if_needed',
+          { p_business_id: businessId }
+        );
+        if (wasExpired === true) {
+          data.status = 'past_due' as any;
+        }
       }
     }
 
@@ -1109,7 +1142,7 @@ export class DataRepository {
     } as Subscription;
   }
 
-  async upgradeSubscription(params: {
+  async upgradeSubscription(_params: {
     businessId: string;
     tier: SubscriptionTier;
     billingCycle: 'monthly' | 'yearly';
@@ -1119,64 +1152,7 @@ export class DataRepository {
       brand?: string;
     };
   }): Promise<{ success: boolean; plan: SubscriptionPlan }> {
-    const plans = await this.getSubscriptionPlans();
-    const selectedPlan = plans.find((p) => p.tier === params.tier);
-    if (!selectedPlan) {
-      throw new Error('Seçilen abonelik paketi bulunamadı.');
-    }
-
-    if (!isSupabaseConfigured()) {
-      return { success: true, plan: selectedPlan };
-    }
-
-    const supabase = createClient();
-    const now = new Date();
-    const endDate = new Date(now);
-    if (params.billingCycle === 'yearly') {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    } else {
-      endDate.setMonth(endDate.getMonth() + 1);
-    }
-
-    // 1. İşletmenin paketini güncelle
-    const { error: bizError } = await supabase
-      .from('businesses')
-      .update({
-        subscription_plan: params.tier,
-        updated_at: now.toISOString(),
-      })
-      .eq('id', params.businessId);
-
-    if (bizError) throw new Error(bizError.message);
-
-    // 2. Subscriptions tablosuna kayıt oluştur veya güncelle
-    const { error: subError } = await supabase
-      .from('subscriptions')
-      .upsert(
-        {
-          business_id: params.businessId,
-          plan_id: selectedPlan.id,
-          status: 'active',
-          current_period_start: now.toISOString(),
-          current_period_end: endDate.toISOString(),
-          cancel_at_period_end: false,
-          updated_at: now.toISOString(),
-        },
-        { onConflict: 'business_id' }
-      );
-
-    if (subError) {
-      await supabase.from('subscriptions').insert({
-        business_id: params.businessId,
-        plan_id: selectedPlan.id,
-        status: 'active',
-        current_period_start: now.toISOString(),
-        current_period_end: endDate.toISOString(),
-        cancel_at_period_end: false,
-      });
-    }
-
-    return { success: true, plan: selectedPlan };
+    throw new Error('Paket yükseltme işlemi yalnızca doğrulanmış Shopier ödeme akışı üzerinden yapılabilir.');
   }
 
   async downgradeToFree(businessId: string): Promise<void> {
@@ -1186,27 +1162,10 @@ export class DataRepository {
     }
 
     const supabase = createClient();
-    await supabase
-      .from('businesses')
-      .update({ subscription_plan: 'free' })
-      .eq('id', businessId);
-
-    const { data: existingSub } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (existingSub?.id) {
-      await supabase
-        .from('subscriptions')
-        .update({
-          status: 'canceled',
-          cancel_at_period_end: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingSub.id);
-    }
+    const { error } = await supabase.rpc('downgrade_my_business_to_free', {
+      p_business_id: businessId,
+    });
+    if (error) throw new Error(error.message);
 
     this.invalidateActiveBusinessCache();
   }

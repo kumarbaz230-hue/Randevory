@@ -6,10 +6,10 @@ export function createClient() {
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
     cookieOptions: {
-      // Kullanıcı kendi isteğiyle "Çıkış Yap" demediği sürece oturumu 1 yıl boyunca açık tut
-      maxAge: 60 * 60 * 24 * 365,
+      maxAge: 60 * 60 * 24 * 30,
       path: '/',
       sameSite: 'lax',
+      secure: typeof window !== 'undefined' ? window.location.protocol === 'https:' : process.env.NODE_ENV === 'production',
     },
   });
 }

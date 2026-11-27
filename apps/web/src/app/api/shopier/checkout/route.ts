@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+const ALLOWED_TIERS = new Set(['standard', 'pro', 'enterprise']);
 
 /**
  * Shopier Ödeme Başlatma Ucu (/api/shopier/checkout)
@@ -8,6 +11,19 @@ import crypto from 'crypto';
  */
 export async function POST(request: Request) {
   try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Ödeme başlatmak için oturum açmanız gerekmektedir.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const {
       businessId,
@@ -15,7 +31,6 @@ export async function POST(request: Request) {
       planTier,
       planName,
       billingCycle,
-      amount,
       buyerName,
       buyerEmail,
       buyerPhone,
@@ -23,10 +38,25 @@ export async function POST(request: Request) {
       buyerCity,
     } = body;
 
-    if (!businessId || !planTier || !amount) {
+    if (!businessId || !planTier || !ALLOWED_TIERS.has(String(planTier))) {
       return NextResponse.json(
-        { error: 'Eksik sipariş bilgisi (businessId, planTier, amount zorunludur).' },
+        { error: 'Geçersiz veya eksik sipariş bilgisi (businessId ve planTier zorunludur).' },
         { status: 400 }
+      );
+    }
+
+    // Kullanıcının ilgili işletmenin üyesi/sahibi olduğunu doğrula
+    const { data: membership } = await supabase
+      .from('business_members')
+      .select('business_id')
+      .eq('business_id', businessId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      return NextResponse.json(
+        { error: 'Bu işletme için ödeme başlatma yetkiniz bulunmamaktadır.' },
+        { status: 403 }
       );
     }
 
@@ -50,17 +80,45 @@ export async function POST(request: Request) {
     const apiSecret = process.env.SHOPIER_API_SECRET;
 
     if (!apiKey || !apiSecret) {
-      return NextResponse.json({
-        mode: 'sandbox',
-        message: 'Shopier hesabı onay sürecinde. Sandbox / Test modu kullanılıyor.',
-      });
+      return NextResponse.json(
+        {
+          error: 'Ödeme altyapısı şu anda yapılandırma aşamasındadır. Lütfen destek ekibiyle iletişime geçin.',
+        },
+        { status: 503 }
+      );
     }
 
-    // Sipariş numarası içinde businessId, planTier ve billingCycle bilgisini taşıyoruz
-    // Böylece callback geldiğinde hangi işletmenin hangi paketi aldığını %100 kesin biliriz.
-    const randomNr = Math.floor(100000 + Math.random() * 900000).toString();
-    const platformOrderId = `${businessId}__${planTier}__${billingCycle || 'monthly'}__${Date.now()}`;
-    const totalOrderValue = Number(amount).toFixed(2);
+    // Fiyatı asla istemciden alma — doğrudan veritabanındaki subscription_plans tablosundan çek
+    const normalizedCycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
+    const { data: planRow, error: planErr } = await supabase
+      .from('subscription_plans')
+      .select('name, price_monthly, price_yearly')
+      .eq('tier', planTier)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (planErr || !planRow) {
+      return NextResponse.json(
+        { error: 'Seçilen abonelik paketi bulunamadı.' },
+        { status: 404 }
+      );
+    }
+
+    const authoritativeAmount =
+      normalizedCycle === 'yearly'
+        ? Number(planRow.price_yearly)
+        : Number(planRow.price_monthly);
+
+    if (!Number.isFinite(authoritativeAmount) || authoritativeAmount <= 0) {
+      return NextResponse.json(
+        { error: 'Paket tutarı doğrulanamadı.' },
+        { status: 400 }
+      );
+    }
+
+    const randomNr = crypto.randomInt(100000, 1000000).toString();
+    const platformOrderId = `${businessId}__${planTier}__${normalizedCycle}__${Date.now()}`;
+    const totalOrderValue = authoritativeAmount.toFixed(2);
     const currency = '0'; // 0 = TRY
 
     const nameParts = (buyerName || businessName || 'Isletme Yetkilisi').trim().split(' ');
@@ -81,11 +139,11 @@ export async function POST(request: Request) {
       API_key: apiKey,
       website_index: process.env.SHOPIER_WEBSITE_INDEX || '1',
       platform_order_id: platformOrderId,
-      product_name: `RANDEVORY ${planName} (${billingCycle === 'yearly' ? 'Yıllık' : 'Aylık'} Lisans)`,
-      product_type: '1', // 1 = Dijital / İndirilebilir Hizmet (Kargo gerektirmez)
+      product_name: `RANDEVORY ${planRow.name || planName} (${normalizedCycle === 'yearly' ? 'Yıllık' : 'Aylık'} Lisans)`,
+      product_type: '1',
       buyer_name: firstName,
       buyer_surname: lastName,
-      buyer_email: buyerEmail || 'iletisim@randevory.com',
+      buyer_email: buyerEmail || user.email || 'iletisim@randevory.com',
       buyer_account_age: '0',
       buyer_id_nr: '0',
       buyer_phone: buyerPhone || '05000000000',
@@ -101,7 +159,7 @@ export async function POST(request: Request) {
       currency: currency,
       platform: '0',
       is_in_frame: '0',
-      current_language: '0', // 0 = TR
+      current_language: '0',
       modul_version: '1.0.4',
       random_nr: randomNr,
       signature: signature,
@@ -114,8 +172,9 @@ export async function POST(request: Request) {
       formFields,
     });
   } catch (err: any) {
+    console.error('Shopier checkout error:', err);
     return NextResponse.json(
-      { error: err.message || 'Shopier ödeme oturumu başlatılamadı.' },
+      { error: 'Shopier ödeme oturumu başlatılamadı.' },
       { status: 500 }
     );
   }

@@ -554,7 +554,7 @@ export function solveSupportQuery(userText: string): AiResolution {
       title: '🛡️ Sahte Randevu & No-Show Engelleme Çözümü',
       solution:
         'RANDEVORY işletmenizi sahte ve ciddiyetsiz randevulardan korumak için 3 katmanlı güvenlik sunar:\n\n' +
-        '1. **Telefon SMS / OTP Doğrulama:** Randevu oluşturan müşterilere 4 haneli güvenlik onay kodu gider, sahte numarayla işlem yapılamaz.\n' +
+        '1. **Onay Kodu, E-posta & WhatsApp Teyidi:** Randevu akışında güvenlik doğrulaması ve tek tuşla WhatsApp/E-posta randevu teyidi ile sahte işlemler engellenir.\n' +
         '2. **Kara Liste (1 Tıkla Engelleme):** Randevusuna mazeretsiz gelmeyen müşteriyi **Müşteriler** (/dashboard/customers) sayfasından tek tuşla kara listeye alabilirsiniz. Kara listedeki numara bir daha dükkanınızdan randevu alamaz.\n' +
         '3. **Günlük Randevu Limiti:** Aynı telefon numarasından günde en fazla 2 aktif randevu alınabilir, art arda slot işgali engellenir.',
       quickActions: [

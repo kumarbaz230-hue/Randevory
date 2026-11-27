@@ -1,6 +1,30 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { createClient as createSupabaseJsClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+const ALLOWED_TIERS = new Set(['standard', 'pro', 'enterprise']);
+const ALLOWED_CYCLES = new Set(['monthly', 'yearly']);
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function timingSafeEquals(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+async function getCallbackSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && serviceKey) {
+    return createSupabaseJsClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return createServerSupabaseClient();
+}
 
 /**
  * Shopier Otomatik Sipariş Bildirimi (OSB / Callback) Ucu (/api/shopier/callback)
@@ -33,26 +57,44 @@ export async function POST(request: Request) {
 
     // Durum A: Shopier API Callback Doğrulaması
     if (platformOrderId && status) {
-      if (apiSecret && signature) {
-        const expectedSig = crypto
-          .createHmac('sha256', apiSecret)
-          .update(`${randomNr}${platformOrderId}`)
-          .digest('base64');
+      // İmza ve random_nr zorunludur; eksik veya geçersizse kesinlikle reddet
+      if (!apiSecret || !signature || !randomNr) {
+        return NextResponse.redirect(`${origin}/dashboard/billing?payment=invalid_signature`);
+      }
 
-        if (signature !== expectedSig) {
-          return NextResponse.redirect(`${origin}/dashboard/billing?payment=invalid_signature`);
-        }
+      const expectedSig = crypto
+        .createHmac('sha256', apiSecret)
+        .update(`${randomNr}${platformOrderId}`)
+        .digest('base64');
+
+      if (!timingSafeEquals(signature, expectedSig)) {
+        return NextResponse.redirect(`${origin}/dashboard/billing?payment=invalid_signature`);
       }
 
       if (status.toLowerCase() === 'success') {
         const parts = platformOrderId.split('__');
         const businessId = parts[0];
-        const planTier = (parts[1] || 'pro') as 'standard' | 'pro' | 'enterprise';
-        const billingCycle = (parts[2] || 'monthly') as 'monthly' | 'yearly';
+        const rawTier = (parts[1] || 'pro').toLowerCase();
+        const rawCycle = (parts[2] || 'monthly').toLowerCase();
 
-        if (businessId) {
-          await activateBusinessLicense(businessId, planTier, billingCycle, paymentId);
+        if (
+          !UUID_REGEX.test(businessId) ||
+          !ALLOWED_TIERS.has(rawTier) ||
+          !ALLOWED_CYCLES.has(rawCycle)
+        ) {
+          return NextResponse.redirect(`${origin}/dashboard/billing?payment=failed`);
         }
+
+        const planTier = rawTier as 'standard' | 'pro' | 'enterprise';
+        const billingCycle = rawCycle as 'monthly' | 'yearly';
+
+        await activateBusinessLicense(
+          businessId,
+          planTier,
+          billingCycle,
+          paymentId || platformOrderId,
+          apiSecret
+        );
 
         return NextResponse.redirect(
           `${origin}/dashboard/billing?payment=success&tier=${encodeURIComponent(planTier)}`
@@ -64,16 +106,18 @@ export async function POST(request: Request) {
 
     // Durum B: Shopier OSB (Otomatik Sipariş Bildirimi) JSON Base64 Akışı
     if (resParam && hashParam) {
-      if (apiSecret) {
-        const expectedHash = crypto
-          .createHmac('sha256', apiSecret)
-          .update(`${resParam}${osbUsername}`)
-          .digest('hex');
+      if (!apiSecret || !osbUsername) {
+        return new NextResponse('MISCONFIGURED', { status: 500 });
+      }
 
-        if (hashParam !== expectedHash) {
-          console.warn('Shopier OSB hash mismatch:', { hashParam, expectedHash });
-          return new NextResponse('INVALID_HASH', { status: 400 });
-        }
+      const expectedHash = crypto
+        .createHmac('sha256', apiSecret)
+        .update(`${resParam}${osbUsername}`)
+        .digest('hex');
+
+      if (!timingSafeEquals(hashParam.toLowerCase(), expectedHash.toLowerCase())) {
+        console.warn('Shopier OSB hash mismatch');
+        return new NextResponse('INVALID_HASH', { status: 400 });
       }
 
       const decodedJson = Buffer.from(resParam, 'base64').toString('utf-8');
@@ -95,13 +139,14 @@ export async function POST(request: Request) {
       }
 
       if (buyerEmail || buyerPhone) {
-        const supabase = await createServerSupabaseClient();
+        const supabase = await getCallbackSupabaseClient();
         let targetBusinessId: string | null = null;
 
-        // 1. RLS bypass eden find_business_by_contact RPC ile işletmeyi bul
-        const { data: contacts, error: contactErr } = await supabase.rpc('find_business_by_contact', {
+        // 1. Doğrulanmış webhook sırrı ile işletmeyi bul
+        const { data: contacts } = await supabase.rpc('find_business_by_contact', {
           p_email: buyerEmail,
           p_phone: buyerPhone,
+          p_webhook_secret: apiSecret,
         });
 
         if (contacts && contacts.length > 0 && contacts[0].business_id) {
@@ -120,7 +165,14 @@ export async function POST(request: Request) {
         }
 
         if (targetBusinessId) {
-          await activateBusinessLicense(targetBusinessId, detectedTier, 'monthly', String(orderData?.orderid || ''));
+          const orderId = String(orderData?.orderid || orderData?.order_id || '');
+          await activateBusinessLicense(
+            targetBusinessId,
+            detectedTier,
+            'monthly',
+            orderId || undefined,
+            apiSecret
+          );
         }
       }
 
@@ -129,14 +181,18 @@ export async function POST(request: Request) {
 
     // Durum C: Shopier Bağlantı ve Ping Testi
     const acceptHeader = request.headers.get('accept') || '';
-    if (acceptHeader.includes('application/json') || acceptHeader.includes('text/plain') || !acceptHeader.includes('text/html')) {
+    if (
+      acceptHeader.includes('application/json') ||
+      acceptHeader.includes('text/plain') ||
+      !acceptHeader.includes('text/html')
+    ) {
       return new NextResponse('OK', { status: 200 });
     }
 
     return NextResponse.redirect(`${origin}/dashboard/billing`);
   } catch (err) {
     console.error('Shopier callback error:', err);
-    return new NextResponse('OK', { status: 200 });
+    return new NextResponse('ERROR', { status: 400 });
   }
 }
 
@@ -144,11 +200,11 @@ async function activateBusinessLicense(
   businessId: string,
   tier: 'standard' | 'pro' | 'enterprise',
   billingCycle: 'monthly' | 'yearly',
-  paymentId?: string
+  paymentId: string | undefined,
+  webhookSecret: string
 ) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = await getCallbackSupabaseClient();
 
-  // 1. Önce PostgreSQL SECURITY DEFINER RPC ile RLS engeli olmadan aktifleştir
   const { data: rpcData, error: rpcError } = await supabase.rpc(
     'activate_business_license_admin',
     {
@@ -156,67 +212,16 @@ async function activateBusinessLicense(
       p_tier: tier,
       p_billing_cycle: billingCycle,
       p_order_id: paymentId || null,
+      p_webhook_secret: webhookSecret,
     }
   );
 
-  if (!rpcError) {
-    console.log('License activated successfully via admin RPC:', rpcData);
-    return;
+  if (rpcError) {
+    console.error('activate_business_license_admin RPC error:', rpcError.message);
+    throw new Error('Lisans aktivasyonu gerçekleştirilemedi.');
   }
 
-  console.error('activate_business_license_admin RPC error, trying direct update fallback:', rpcError);
-
-  const now = new Date();
-  const periodEnd = new Date(now);
-  if (billingCycle === 'yearly') {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
-  }
-
-  // 1. businesses tablosundaki subscription_plan alanını güncelle
-  await supabase
-    .from('businesses')
-    .update({ subscription_plan: tier })
-    .eq('id', businessId);
-
-  // 2. subscription_plans tablosundan ilgili planın id'sini bul
-  const { data: planRow } = await supabase
-    .from('subscription_plans')
-    .select('id')
-    .eq('tier', tier)
-    .maybeSingle();
-
-  if (planRow?.id) {
-    const { data: existingSub } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('business_id', businessId)
-      .maybeSingle();
-
-    if (existingSub?.id) {
-      await supabase
-        .from('subscriptions')
-        .update({
-          plan_id: planRow.id,
-          status: 'active',
-          current_period_start: now.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          cancel_at_period_end: false,
-          updated_at: now.toISOString(),
-        })
-        .eq('id', existingSub.id);
-    } else {
-      await supabase.from('subscriptions').insert({
-        business_id: businessId,
-        plan_id: planRow.id,
-        status: 'active',
-        current_period_start: now.toISOString(),
-        current_period_end: periodEnd.toISOString(),
-        cancel_at_period_end: false,
-      });
-    }
-  }
+  console.log('License activated successfully via verified RPC:', rpcData);
 }
 
 export async function GET() {
